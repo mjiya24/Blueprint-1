@@ -136,4 +136,4 @@ A premium, highly personalized income aggregator app that:
 - Profile: Home environment, Solo preference, Laptop asset, Tech + Finance interests
 
 ## App URL
-https://side-hustle-hub-13.preview.emergentagent.com
+https://blueprint-sprint1.preview.emergentagent.com
