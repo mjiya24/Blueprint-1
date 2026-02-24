@@ -396,6 +396,12 @@ export default function IdeaDetailScreen() {
             </View>
           )}
 
+          {/* Market Pulse */}
+          <MarketPulse ideaId={id as string} />
+
+          {/* Blueprint Veterans */}
+          <BlueprintVeterans ideaId={id as string} />
+
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
