@@ -492,7 +492,7 @@ async def get_all_ideas():
     if count == 0:
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
     
-    ideas = await db.ideas.find().to_list(1000)
+    ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
     return ideas
 
 @api_router.get("/ideas/personalized/{user_id}")
