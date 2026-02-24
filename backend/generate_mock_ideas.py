@@ -89,7 +89,7 @@ async def generate_idea_with_gemini(chat: LlmChat, idea_number: int, category: s
         return None
 
 async def generate_mock_ideas(num_ideas: int = 60):
-    """Generate multiple mock ideas using Gemini"""
+    """Generate multiple mock ideas using Gemini with concurrent requests"""
     
     print(f"\n🚀 Starting Mock Idea Generation (Target: {num_ideas} ideas)\n")
     
@@ -100,35 +100,45 @@ async def generate_mock_ideas(num_ideas: int = 60):
         system_message="You are an expert in entrepreneurship and creative money-making strategies. Generate diverse, realistic business ideas in valid JSON format."
     ).with_model("gemini", "gemini-2.5-flash")
     
-    ideas = []
+    # Create tasks for concurrent generation (batches of 5)
+    all_tasks = []
+    idea_number = 1
     
     # Generate ideas across different categories
     ideas_per_category = num_ideas // len(CATEGORIES)
-    idea_number = 1
     
     for category in CATEGORIES:
-        print(f"\n📦 Generating {ideas_per_category} ideas for category: {category}")
-        
         for i in range(ideas_per_category):
-            idea = await generate_idea_with_gemini(chat, idea_number, category)
-            if idea:
-                ideas.append(idea)
+            all_tasks.append((chat, idea_number, category))
             idea_number += 1
-            
-            # Small delay to avoid rate limits
-            await asyncio.sleep(0.5)
     
-    # Generate a few extra to reach target
-    remaining = num_ideas - len(ideas)
-    if remaining > 0:
-        print(f"\n🎯 Generating {remaining} additional ideas...")
-        for i in range(remaining):
-            category = CATEGORIES[i % len(CATEGORIES)]
-            idea = await generate_idea_with_gemini(chat, idea_number, category)
-            if idea:
-                ideas.append(idea)
-            idea_number += 1
-            await asyncio.sleep(0.5)
+    # Generate remaining ideas
+    remaining = num_ideas - len(all_tasks)
+    for i in range(remaining):
+        category = CATEGORIES[i % len(CATEGORIES)]
+        all_tasks.append((chat, idea_number, category))
+        idea_number += 1
+    
+    # Process in batches of 5 for faster generation
+    ideas = []
+    batch_size = 5
+    
+    for i in range(0, len(all_tasks), batch_size):
+        batch = all_tasks[i:i+batch_size]
+        print(f"\n📦 Generating batch {i//batch_size + 1}/{(len(all_tasks) + batch_size - 1)//batch_size}")
+        
+        # Generate ideas concurrently in this batch
+        batch_results = await asyncio.gather(
+            *[generate_idea_with_gemini(chat, num, cat) for chat, num, cat in batch],
+            return_exceptions=True
+        )
+        
+        for result in batch_results:
+            if result and not isinstance(result, Exception):
+                ideas.append(result)
+        
+        # Small delay between batches
+        await asyncio.sleep(1)
     
     print(f"\n✨ Successfully generated {len(ideas)} ideas!")
     return ideas
