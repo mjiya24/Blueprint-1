@@ -509,7 +509,7 @@ async def get_personalized_ideas(user_id: str):
     if count == 0:
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
     
-    ideas = await db.ideas.find().to_list(1000)
+    ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
     
     # Score and rank ideas based on user profile
     scored_ideas = []
