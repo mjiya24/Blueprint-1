@@ -76,7 +76,7 @@ class SavedIdea(BaseModel):
     status: str = "saved"
     notes: str = ""
     saved_at: datetime = Field(default_factory=datetime.utcnow)
-    action_steps: List[ActionStep] = []
+    action_steps: List[Dict[str, Any]] = []
     progress_percentage: int = 0
     earnings_unlocked: bool = False
 
