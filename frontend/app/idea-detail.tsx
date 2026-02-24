@@ -243,10 +243,15 @@ export default function IdeaDetailScreen() {
 
         <View style={styles.mainContent}>
           {/* Category + Title */}
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{idea.category}</Text>
+          <View style={styles.ideaHeader}>
+            <IdeaIcon ideaId={id as string} size={52} />
+            <View style={styles.ideaHeaderText}>
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{idea.category}</Text>
+              </View>
+              <Text style={styles.ideaTitle}>{idea.title}</Text>
+            </View>
           </View>
-          <Text style={styles.ideaTitle}>{idea.title}</Text>
           <Text style={styles.ideaDesc}>{idea.description}</Text>
 
           {/* Meta badges */}
