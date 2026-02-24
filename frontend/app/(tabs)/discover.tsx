@@ -78,10 +78,14 @@ export default function DiscoverScreen() {
       style={styles.ideaCard}
       onPress={() => router.push({ pathname: '/idea-detail', params: { id: item.id } })}
       activeOpacity={0.75}
+      data-testid={`idea-card-${item.id}`}
     >
       <View style={styles.cardTop}>
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryBadgeText}>{item.category}</Text>
+        <View style={styles.cardTopLeft}>
+          <IdeaIcon ideaId={item.id} size={36} />
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryBadgeText}>{item.category}</Text>
+          </View>
         </View>
         {item.match_score !== undefined && user && !user.is_guest && (
           <View style={[styles.matchBadge, { borderColor: getMatchColor(item.match_score) + '40' }]}>
