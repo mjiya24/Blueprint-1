@@ -555,7 +555,7 @@ async def get_personalized_ideas(user_id: str):
 
 @api_router.get("/ideas/{idea_id}")
 async def get_idea(idea_id: str):
-    idea = await db.ideas.find_one({"id": idea_id})
+    idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
     return idea
