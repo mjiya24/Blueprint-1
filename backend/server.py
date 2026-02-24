@@ -601,10 +601,139 @@ async def save_idea(saved: SavedIdea):
     })
     
     if existing:
-        return {"message": "Idea already saved", "id": existing["_id"]}
+        return {"message": "Idea already saved", "id": str(existing["_id"])}
+    
+    # Get idea details to populate action steps
+    idea = await db.ideas.find_one({"id": saved.idea_id})
+    if idea and "action_steps" in idea:
+        # Convert action steps to trackable format
+        # Mark first 2-3 steps as quick wins (Path to First $50)
+        action_steps = []
+        for i, step_text in enumerate(idea["action_steps"]):
+            # Identify "scary" steps that deserve big celebration
+            is_scary = any(keyword in step_text.lower() for keyword in [
+                "publish", "register", "launch", "go live", "first", "contact", "post", "list"
+            ])
+            
+            action_steps.append({
+                "step_number": i + 1,
+                "text": step_text,
+                "completed": False,
+                "completed_at": None,
+                "is_scary_step": is_scary
+            })
+        
+        saved.action_steps = action_steps
     
     result = await db.saved_ideas.insert_one(saved.dict())
     return {"message": "Idea saved successfully", "id": str(result.inserted_id)}
+
+@api_router.post("/saved-ideas/{user_id}/{idea_id}/complete-step")
+async def complete_step(user_id: str, idea_id: str, step_number: int):
+    """Mark a step as complete and calculate progress"""
+    
+    # Find the saved idea
+    saved_idea = await db.saved_ideas.find_one({
+        "user_id": user_id,
+        "idea_id": idea_id
+    })
+    
+    if not saved_idea:
+        raise HTTPException(status_code=404, detail="Saved idea not found")
+    
+    # Update the specific step
+    action_steps = saved_idea.get("action_steps", [])
+    step_found = False
+    is_scary_step = False
+    
+    for step in action_steps:
+        if step["step_number"] == step_number and not step["completed"]:
+            step["completed"] = True
+            step["completed_at"] = datetime.utcnow()
+            step_found = True
+            is_scary_step = step.get("is_scary_step", False)
+            break
+    
+    if not step_found:
+        raise HTTPException(status_code=400, detail="Step already completed or not found")
+    
+    # Calculate progress
+    total_steps = len(action_steps)
+    completed_steps = sum(1 for step in action_steps if step["completed"])
+    progress_percentage = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
+    
+    # Check if earnings are unlocked (first 3 steps = setup phase)
+    earnings_unlocked = completed_steps >= min(3, total_steps)
+    
+    # Update status
+    status = "in-progress" if completed_steps < total_steps else "completed"
+    
+    # Update in database
+    await db.saved_ideas.update_one(
+        {"user_id": user_id, "idea_id": idea_id},
+        {
+            "$set": {
+                "action_steps": action_steps,
+                "progress_percentage": progress_percentage,
+                "earnings_unlocked": earnings_unlocked,
+                "status": status
+            }
+        }
+    )
+    
+    return {
+        "message": "Step completed successfully",
+        "progress_percentage": progress_percentage,
+        "earnings_unlocked": earnings_unlocked,
+        "status": status,
+        "is_scary_step": is_scary_step,
+        "trigger_celebration": is_scary_step or progress_percentage == 100
+    }
+
+@api_router.post("/saved-ideas/{user_id}/{idea_id}/uncomplete-step")
+async def uncomplete_step(user_id: str, idea_id: str, step_number: int):
+    """Unmark a step (for mistakes)"""
+    
+    saved_idea = await db.saved_ideas.find_one({
+        "user_id": user_id,
+        "idea_id": idea_id
+    })
+    
+    if not saved_idea:
+        raise HTTPException(status_code=404, detail="Saved idea not found")
+    
+    # Update the specific step
+    action_steps = saved_idea.get("action_steps", [])
+    
+    for step in action_steps:
+        if step["step_number"] == step_number:
+            step["completed"] = False
+            step["completed_at"] = None
+            break
+    
+    # Recalculate progress
+    total_steps = len(action_steps)
+    completed_steps = sum(1 for step in action_steps if step["completed"])
+    progress_percentage = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
+    earnings_unlocked = completed_steps >= min(3, total_steps)
+    status = "saved" if completed_steps == 0 else "in-progress"
+    
+    await db.saved_ideas.update_one(
+        {"user_id": user_id, "idea_id": idea_id},
+        {
+            "$set": {
+                "action_steps": action_steps,
+                "progress_percentage": progress_percentage,
+                "earnings_unlocked": earnings_unlocked,
+                "status": status
+            }
+        }
+    )
+    
+    return {
+        "message": "Step uncompleted",
+        "progress_percentage": progress_percentage
+    }
 
 @api_router.get("/saved-ideas/{user_id}")
 async def get_saved_ideas(user_id: str):
