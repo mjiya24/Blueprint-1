@@ -43,8 +43,10 @@ export default function DiscoverScreen() {
 
   const fetchAllIdeas = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/ideas`);
-      setIdeas(response.data);
+      const response = await axios.get(`${API_URL}/api/ideas`, {
+        params: { limit: 100 }
+      });
+      setIdeas(response.data.ideas || response.data);
     } catch (error) {
       console.error('Error fetching ideas:', error);
     } finally {
