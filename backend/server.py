@@ -75,12 +75,22 @@ class Idea(BaseModel):
     difficulty: str  # beginner, intermediate, advanced
     tags: List[str]
 
+class ActionStep(BaseModel):
+    step_number: int
+    text: str
+    completed: bool = False
+    completed_at: Optional[datetime] = None
+    is_scary_step: bool = False  # Triggers big celebration animation
+
 class SavedIdea(BaseModel):
     user_id: str
     idea_id: str
     status: str = "saved"  # saved, in-progress, completed
     notes: str = ""
     saved_at: datetime = Field(default_factory=datetime.utcnow)
+    action_steps: List[ActionStep] = []
+    progress_percentage: int = 0
+    earnings_unlocked: bool = False  # True when setup steps complete
 
 # ============= Helper Functions =============
 
