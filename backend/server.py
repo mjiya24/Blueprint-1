@@ -636,6 +636,59 @@ async def update_saved_idea(user_id: str, idea_id: str, update_data: Dict[str, A
     
     return {"message": "Saved idea updated successfully"}
 
+# ============= Affiliate Redirect Service =============
+
+class AffiliateLink(BaseModel):
+    original_url: str
+    affiliate_tag: str = ""
+    click_count: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+@api_router.post("/affiliate/create")
+async def create_affiliate_link(link_data: AffiliateLink):
+    """Create a tracked affiliate link"""
+    result = await db.affiliate_links.insert_one(link_data.dict())
+    return {"link_id": str(result.inserted_id), "message": "Affiliate link created"}
+
+@api_router.get("/redirect/{link_id}")
+async def redirect_with_tracking(link_id: str):
+    """Redirect through our server for affiliate tracking"""
+    from fastapi.responses import RedirectResponse
+    
+    # Find the link
+    link = await db.affiliate_links.find_one({"_id": link_id})
+    
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    
+    # Increment click count
+    await db.affiliate_links.update_one(
+        {"_id": link_id},
+        {"$inc": {"click_count": 1}}
+    )
+    
+    # Build final URL with affiliate tag
+    final_url = link["original_url"]
+    if link.get("affiliate_tag"):
+        separator = "&" if "?" in final_url else "?"
+        final_url = f"{final_url}{separator}{link['affiliate_tag']}"
+    
+    # Redirect user
+    return RedirectResponse(url=final_url, status_code=307)
+
+@api_router.get("/affiliate/stats")
+async def get_affiliate_stats():
+    """Get affiliate link statistics"""
+    links = await db.affiliate_links.find().to_list(1000)
+    
+    total_clicks = sum(link.get("click_count", 0) for link in links)
+    
+    return {
+        "total_links": len(links),
+        "total_clicks": total_clicks,
+        "links": links
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
