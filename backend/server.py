@@ -576,12 +576,12 @@ async def save_idea(saved: SavedIdea):
 
 @api_router.get("/saved-ideas/{user_id}")
 async def get_saved_ideas(user_id: str):
-    saved = await db.saved_ideas.find({"user_id": user_id}).to_list(1000)
+    saved = await db.saved_ideas.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
     
     # Get full idea details
     result = []
     for item in saved:
-        idea = await db.ideas.find_one({"id": item["idea_id"]})
+        idea = await db.ideas.find_one({"id": item["idea_id"]}, {"_id": 0})
         if idea:
             idea["saved_status"] = item["status"]
             idea["saved_notes"] = item.get("notes", "")
