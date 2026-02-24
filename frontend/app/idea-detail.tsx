@@ -10,6 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import EarningsProgressBar from '../components/EarningsProgressBar';
 import CelebrationAnimation from '../components/CelebrationAnimation';
+import { MarketPulse } from '../components/MarketPulse';
+import { BlueprintVeterans } from '../components/BlueprintVeterans';
+import { IdeaIcon } from '../components/icons';
 import { useLocalSearchParams } from 'expo-router';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
