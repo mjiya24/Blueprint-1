@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Money-making ideas app with backend API for authentication, user profiles, ideas management, and saved ideas functionality"
+user_problem_statement: "Blueprint - Premium fintech aggregator app for personalized income ideas. Features: Fintech Dark Mode UI (Blueprint branding with Electric Mint #00D95F), 4-step questionnaire onboarding (environment/social/assets/interests), Match Probability Engine (0-100% match scores), 3-tier gamification animations (first-step checkmark / 50% momentum bars / 100% blueprint-complete ring), interactive action checklist with progress tracking, guest vs auth gating, push notifications on milestones, 20+ categorized ideas (Gig Economy/Local/Digital/Passive). Tagline: Blueprint: Architect Your Income."
 
 backend:
   - task: "User Authentication - Signup"
