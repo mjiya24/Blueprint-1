@@ -752,7 +752,7 @@ async def create_guest():
 @api_router.put("/users/{user_id}/profile")
 async def update_profile(user_id: str, profile: UserProfile):
     result = await db.users.update_one({"id": user_id}, {"$set": {"profile": profile.dict()}})
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Profile updated successfully"}
 
