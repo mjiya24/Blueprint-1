@@ -222,7 +222,7 @@ export default function IdeaDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Match Score Banner */}
-        {!user?.is_guest ? (
+        {(user && !user.is_guest) ? (
           <View style={[styles.matchBanner, { borderColor: getMatchColor(matchScore) + '40' }]}>
             <View style={[styles.matchDot, { backgroundColor: getMatchColor(matchScore) }]} />
             <Text style={[styles.matchBannerText, { color: getMatchColor(matchScore) }]}>
