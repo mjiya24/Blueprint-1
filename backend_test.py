@@ -17,9 +17,9 @@ def get_backend_url():
                 if line.startswith('EXPO_PUBLIC_BACKEND_URL='):
                     base_url = line.split('=', 1)[1].strip()
                     return f"{base_url}/api"
-        return "https://revenue-brainstorm.preview.emergentagent.com/api"
+        return "https://side-hustle-hub-13.preview.emergentagent.com/api"
     except:
-        return "https://revenue-brainstorm.preview.emergentagent.com/api"
+        return "https://side-hustle-hub-13.preview.emergentagent.com/api"
 
 BASE_URL = get_backend_url()
 print(f"Testing backend at: {BASE_URL}")
