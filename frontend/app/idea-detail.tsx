@@ -15,6 +15,7 @@ import { BlueprintVeterans } from '../components/BlueprintVeterans';
 import { IdeaIcon } from '../components/icons';
 import { useLocalSearchParams } from 'expo-router';
 
+// Sprint 1: MarketPulse, BlueprintVeterans, IdeaIcon components loaded
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 const calcMatchScore = (profile: any, idea: any): number => {
