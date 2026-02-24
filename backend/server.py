@@ -486,14 +486,36 @@ async def get_profile(user_id: str):
     return user.get("profile", {})
 
 @api_router.get("/ideas")
-async def get_all_ideas():
+async def get_all_ideas(
+    skip: int = 0,
+    limit: int = 100,
+    category: str = None,
+    difficulty: str = None,
+    cost: str = None
+):
     # Check if ideas exist in DB, if not populate
     count = await db.ideas.count_documents({})
     if count == 0:
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
     
-    ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
-    return ideas
+    # Build filter query
+    query = {}
+    if category and category != "All":
+        query["category"] = category
+    if difficulty and difficulty != "all":
+        query["difficulty"] = difficulty
+    if cost and cost != "all":
+        query["startup_cost"] = cost
+    
+    ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    total = await db.ideas.count_documents(query)
+    
+    return {
+        "ideas": ideas,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 @api_router.get("/ideas/personalized/{user_id}")
 async def get_personalized_ideas(user_id: str):
