@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
   listContainer: { paddingHorizontal: 24, paddingBottom: 32 },
   ideaCard: { backgroundColor: '#1A1C23', borderRadius: 16, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: '#2A2C35' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   categoryBadge: { backgroundColor: '#00D95F12', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   categoryBadgeText: { fontSize: 11, color: '#00D95F', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   matchBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#1A1C23', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
