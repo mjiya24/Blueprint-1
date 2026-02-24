@@ -99,6 +99,23 @@ export default function QuestionnaireScreen() {
     return (val as string[]).length > 0;
   };
 
+  const registerPushToken = async (userId: string) => {
+    try {
+      const { status: existing } = await Notifications.getPermissionsAsync();
+      let finalStatus = existing;
+      if (existing !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') return;
+      const tokenData = await Notifications.getExpoPushTokenAsync();
+      await axios.post(`${API_URL}/api/users/${userId}/push-token`, { push_token: tokenData.data });
+    } catch (e) {
+      // Silently fail — push token is non-critical (web/simulator may not support it)
+      console.log('Push token registration skipped:', (e as any)?.message);
+    }
+  };
+
   const handleNext = async () => {
     if (currentStep < STEP_CONFIG.length - 1) {
       setCurrentStep(s => s + 1);
@@ -120,8 +137,10 @@ export default function QuestionnaireScreen() {
         assets: answers.assets,
         questionnaire_interests: answers.questionnaire_interests,
       };
-      // Save to backend
+      // Save profile to backend
       await axios.put(`${API_URL}/api/users/${user.id}/profile`, updatedProfile);
+      // Register push notifications (non-blocking)
+      registerPushToken(user.id);
       // Update local storage
       const updatedUser = { ...user, profile: updatedProfile };
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
