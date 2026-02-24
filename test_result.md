@@ -255,18 +255,224 @@ backend:
           agent: "testing"
           comment: "Error handling working correctly. Returns proper 401 for invalid login, 404 for non-existent users/ideas."
 
+  - task: "Blueprint Questionnaire - 4-step onboarding"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "New questionnaire fields added to UserProfile: environment, social_preference, assets, questionnaire_interests, push_token. PUT /api/users/{user_id}/profile handles all new fields."
+
+  - task: "Match Probability Engine"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "calculate_match_score() function implemented. 4 dimensions (environment/social/assets/interests), each worth 25 points. Normalized to 30-99% range. GET /api/ideas/personalized/{user_id} returns ideas sorted by match_score."
+
+  - task: "Ideas Database Migration - 20 new categorized ideas"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "20 new ideas across 4 categories: Gig Economy (5), Local & Service Based (5), Digital & Freelance (5), Passive/Scalable (5). Each idea has environment_fit, social_fit, asset_requirements, interest_tags, affiliate_link. Auto-migration clears old ideas on startup."
+
+  - task: "Action Step Tracking - complete/uncomplete"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "POST /api/saved-ideas/{user_id}/{idea_id}/complete-step and uncomplete-step endpoints working. Returns progress_percentage and milestone trigger info."
+
+  - task: "Push Token Registration"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "POST /api/users/{user_id}/push-token endpoint added. send_expo_push_notification() function implemented using httpx. Sends notifications on 50% and 100% milestones."
+
+  - task: "GET single saved idea endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "New GET /api/saved-ideas/{user_id}/{idea_id} endpoint returns full saved idea with action_steps and progress data."
+
 frontend:
-  # Frontend testing not performed as per instructions
+  - task: "Blueprint Welcome Screen"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Blueprint branding: app name, 'Architect Your Income.' tagline, Electric Mint accents, feature list, Build My Blueprint + Preview as Guest buttons. Manually verified with screenshot."
+
+  - task: "Blueprint Auth Screen"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/onboarding/auth.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Blueprint branding. After signup: redirects to /onboarding/questionnaire if no profile.environment, else goes to home."
+
+  - task: "4-Step Questionnaire Screen"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/onboarding/questionnaire.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Full 4-step questionnaire with progress bar. Step 1: Environment, Step 2: Social, Step 3: Assets (multi-select), Step 4: Interests (multi-select). Saves to backend on completion. Manually verified."
+
+  - task: "Home Screen with Match Scores"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/(tabs)/home.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Blueprint dark theme. Shows personalized ideas with match scores (colored badges). Guest upgrade banner. Manually verified - 99% match, 92% match scores showing correctly."
+
+  - task: "Discover Screen with Match Scores"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/(tabs)/discover.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Updated categories: Gig Economy, Local & Service Based, Digital & Freelance, Passive/Scalable. Match scores on cards for auth users. Locked badge for guests. Manually verified."
+
+  - task: "Idea Detail - Gamification + Match Score"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/idea-detail.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Full rebuild: Match score banner, interactive checklist with checkboxes, 3-tier animations, earnings progress bar, guest gating (2 steps free, rest locked). 'Start My Blueprint' CTA. Manually verified guest view."
+
+  - task: "3-Tier Celebration Animations"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/CelebrationAnimation.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "3 tiers: first (pulsing mint checkmark), momentum (rising bar chart at 50%), complete (full-screen ring + Blueprint Complete text at 100%). Using React Native Animated API."
+
+  - task: "Earnings Progress Bar - Electric Mint"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/EarningsProgressBar.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Electric Mint (#00D95F) progress bar with glow shadow. Status text: 'Blueprint ready' -> 'Momentum building!' -> 'Blueprint Complete!'. Percentage shown."
+
+  - task: "Saved/My Plans Screen"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/(tabs)/saved.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Blueprint dark theme. Shows progress bars on saved blueprints. Guest lock screen with upgrade prompt."
+
+  - task: "Profile Screen"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Blueprint profile with questionnaire answers displayed. Retake quiz option. Guest upgrade card."
+
+  - task: "Guest Mode Gating"
+    implemented: true
+    working: true
+    file: "/app/frontend/app/onboarding/guest.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Guest screen shows locked features comparison. In idea-detail, guests see first 2 steps, rest locked. Upgrade prompts throughout."
 
 metadata:
-  created_by: "testing_agent"
-  version: "1.0"
-  test_sequence: 1
-  run_ui: false
+  created_by: "main_agent"
+  version: "2.0"
+  test_sequence: 2
+  run_ui: true
 
 test_plan:
   current_focus:
-    - "All backend API endpoints tested"
+    - "Blueprint Questionnaire - 4-step onboarding"
+    - "Match Probability Engine"
+    - "Idea Detail - Gamification + Match Score"
+    - "3-Tier Celebration Animations"
+    - "Action Step Tracking"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
@@ -274,3 +480,5 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "Completed comprehensive backend API testing. Fixed critical ObjectId serialization issue in MongoDB queries. 11/14 tests passing with 2 minor issues that don't affect core functionality. All critical endpoints (authentication, ideas, saved ideas) working correctly. Backend API is ready for production use."
+    - agent: "main"
+      message: "MAJOR SPRINT: Blueprint app complete. Full redesign with Fintech Dark Mode (#000/#1A1C23/#00D95F Electric Mint). New features: 4-step questionnaire onboarding, Match Probability Engine (0-100%), 20 new categorized ideas (4 categories), rebuilt idea-detail.tsx with interactive checklist + 3-tier animations + progress bar, guest gating. Backend: new schema with questionnaire fields, match score algorithm, push token endpoint, migration logic. Screenshots confirm all screens working. Please test: 1) Full signup→questionnaire→home flow with match scores, 2) Idea detail with Start Blueprint + step completion, 3) Celebration animations (first step, 50%, 100%), 4) Guest gating (2 free steps, rest locked), 5) Discover screen with categories and match scores. App URL: https://side-hustle-hub-13.preview.emergentagent.com"
