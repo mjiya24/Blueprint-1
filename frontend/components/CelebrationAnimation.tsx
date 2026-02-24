@@ -107,7 +107,7 @@ function CompleteAnim({ onDone }: { onDone: () => void }) {
 export default function CelebrationAnimation({ tier, onDone }: Props) {
   if (!tier) return null;
   return (
-    <View style={styles.overlay} pointerEvents="none">
+    <View style={[styles.overlay, { pointerEvents: 'none' } as any]}>
       {tier === 'first' && <FirstStepAnim onDone={onDone} />}
       {tier === 'momentum' && <MomentumAnim onDone={onDone} />}
       {tier === 'complete' && <CompleteAnim onDone={onDone} />}
