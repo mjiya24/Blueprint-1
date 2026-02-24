@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -16,13 +18,11 @@ export default function WelcomeScreen() {
     try {
       const user = await AsyncStorage.getItem('user');
       if (user) {
-        // User is already logged in, go to main app
         router.replace('/(tabs)/home');
       } else {
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error checking auth:', error);
+    } catch {
       setIsLoading(false);
     }
   };
@@ -30,53 +30,82 @@ export default function WelcomeScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <View style={styles.logoMark}>
+          <Ionicons name="grid" size={32} color="#00D95F" />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="cash" size={60} color="#10B981" />
+        <View style={styles.logoRow}>
+          <View style={styles.logoIcon}>
+            <Ionicons name="grid" size={28} color="#00D95F" />
+          </View>
+          <Text style={styles.appName}>Blueprint</Text>
         </View>
-        <Text style={styles.title}>Money Ideas</Text>
-        <Text style={styles.subtitle}>Discover personalized ways to make money</Text>
+        <View style={styles.taglineContainer}>
+          <Text style={styles.tagline}>Architect Your Income.</Text>
+        </View>
+        <Text style={styles.subtitle}>
+          A personalized roadmap to every income stream that fits your life.
+        </Text>
       </View>
 
       <View style={styles.features}>
-        <View style={styles.featureItem}>
-          <Ionicons name="trending-up" size={24} color="#10B981" />
-          <Text style={styles.featureText}>Curated money-making ideas</Text>
+        <View style={styles.featureRow}>
+          <View style={styles.featureIcon}>
+            <Ionicons name="analytics" size={20} color="#00D95F" />
+          </View>
+          <View style={styles.featureContent}>
+            <Text style={styles.featureTitle}>Personalized Match Scores</Text>
+            <Text style={styles.featureDesc}>Ideas ranked by how well they fit your life</Text>
+          </View>
         </View>
-        <View style={styles.featureItem}>
-          <Ionicons name="location" size={24} color="#10B981" />
-          <Text style={styles.featureText}>Location-based opportunities</Text>
+        <View style={styles.featureRow}>
+          <View style={styles.featureIcon}>
+            <Ionicons name="checkmark-done" size={20} color="#00D95F" />
+          </View>
+          <View style={styles.featureContent}>
+            <Text style={styles.featureTitle}>Step-by-Step Action Plans</Text>
+            <Text style={styles.featureDesc}>Track every move from idea to first dollar</Text>
+          </View>
         </View>
-        <View style={styles.featureItem}>
-          <Ionicons name="person" size={24} color="#10B981" />
-          <Text style={styles.featureText}>Personalized to your skills</Text>
+        <View style={styles.featureRow}>
+          <View style={styles.featureIcon}>
+            <Ionicons name="flash" size={20} color="#00D95F" />
+          </View>
+          <View style={styles.featureContent}>
+            <Text style={styles.featureTitle}>Gig to Passive — All Categories</Text>
+            <Text style={styles.featureDesc}>DoorDash, freelancing, digital products & more</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
+      <View style={styles.footer}>
+        <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => router.push('/onboarding/auth')}
         >
-          <Text style={styles.primaryButtonText}>Get Started</Text>
+          <Text style={styles.primaryButtonText}>Build My Blueprint</Text>
+          <Ionicons name="arrow-forward" size={20} color="#000" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/onboarding/guest')}
         >
-          <Text style={styles.secondaryButtonText}>Continue as Guest</Text>
+          <Text style={styles.secondaryButtonText}>Preview as Guest</Text>
         </TouchableOpacity>
+
+        <Text style={styles.disclaimer}>
+          No credit card required · Free forever
+        </Text>
       </View>
     </View>
   );
@@ -85,84 +114,124 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#000000',
     padding: 24,
     justifyContent: 'space-between',
   },
-  loadingText: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  header: {
+  logoMark: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 40,
   },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#1E293B',
+  header: {
+    marginTop: 48,
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 8,
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#00D95F15',
+    borderWidth: 1,
+    borderColor: '#00D95F40',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#10B981',
+    marginRight: 12,
   },
-  title: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#fff',
+  appName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  taglineContainer: {
     marginBottom: 12,
+  },
+  tagline: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 36,
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
-    paddingHorizontal: 32,
+    color: '#8E8E8E',
+    lineHeight: 24,
   },
   features: {
     marginVertical: 32,
   },
-  featureItem: {
+  featureRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
-    paddingHorizontal: 8,
   },
-  featureText: {
-    fontSize: 16,
-    color: '#E2E8F0',
-    marginLeft: 16,
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#00D95F10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    marginTop: 2,
   },
-  buttonContainer: {
+  featureContent: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  featureDesc: {
+    fontSize: 13,
+    color: '#8E8E8E',
+    lineHeight: 18,
+  },
+  footer: {
     marginBottom: 32,
   },
   primaryButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00D95F',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   primaryButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    color: '#000000',
+    fontSize: 17,
+    fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#1A1C23',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#334155',
+    borderWidth: 1,
+    borderColor: '#2A2C35',
+    marginBottom: 16,
   },
   secondaryButtonText: {
-    color: '#E2E8F0',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '600',
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: '#4A4A4A',
+    textAlign: 'center',
   },
 });

@@ -16,9 +16,9 @@ export default function GuestScreen() {
     try {
       const response = await axios.post(`${API_URL}/api/auth/guest`);
       await AsyncStorage.setItem('user', JSON.stringify(response.data));
-      router.replace('/onboarding/interests');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create guest account');
+      router.replace('/(tabs)/home');
+    } catch {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -26,57 +26,54 @@ export default function GuestScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={22} color="#fff" />
+      </TouchableOpacity>
 
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="person-outline" size={80} color="#10B981" />
+        <View style={styles.iconRing}>
+          <Ionicons name="eye-outline" size={48} color="#00D95F" />
         </View>
-        
-        <Text style={styles.title}>Continue as Guest</Text>
+
+        <Text style={styles.title}>Preview Mode</Text>
         <Text style={styles.description}>
-          You can browse ideas without creating an account. However, you won't be able to save ideas or track your progress.
+          Explore Blueprint ideas before committing. A free account unlocks your personalized match scores and action tracking.
         </Text>
 
-        <View style={styles.infoBox}>
-          <View style={styles.infoItem}>
-            <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-            <Text style={styles.infoText}>Browse all money-making ideas</Text>
+        <View style={styles.comparisonCard}>
+          <View style={styles.compRow}>
+            <Ionicons name="checkmark-circle" size={20} color="#00D95F" />
+            <Text style={styles.compText}>Browse all 20+ income blueprints</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="close-circle" size={24} color="#EF4444" />
-            <Text style={styles.infoText}>Can't save favorite ideas</Text>
+          <View style={styles.divider} />
+          <View style={styles.compRow}>
+            <Ionicons name="lock-closed" size={20} color="#4A4A4A" />
+            <Text style={[styles.compText, styles.compTextLocked]}>Personalized match scores locked</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="close-circle" size={24} color="#EF4444" />
-            <Text style={styles.infoText}>Limited personalization</Text>
+          <View style={styles.compRow}>
+            <Ionicons name="lock-closed" size={20} color="#4A4A4A" />
+            <Text style={[styles.compText, styles.compTextLocked]}>Action step progress tracking locked</Text>
+          </View>
+          <View style={styles.compRow}>
+            <Ionicons name="lock-closed" size={20} color="#4A4A4A" />
+            <Text style={[styles.compText, styles.compTextLocked]}>Save your blueprints locked</Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={[styles.continueButton, isLoading && styles.disabledButton]}
+          style={[styles.guestButton, isLoading && styles.disabledButton]}
           onPress={handleContinueAsGuest}
           disabled={isLoading}
         >
-          <Text style={styles.continueButtonText}>
-            {isLoading ? 'Loading...' : 'Continue as Guest'}
-          </Text>
+          <Text style={styles.guestButtonText}>{isLoading ? 'Loading...' : 'Continue as Guest'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.signUpButton}
-          onPress={() => router.replace('/onboarding/auth')}
-        >
-          <Text style={styles.signUpButtonText}>Create Account Instead</Text>
+        <TouchableOpacity style={styles.accountButton} onPress={() => router.replace('/onboarding/auth')}>
+          <Text style={styles.accountButtonText}>
+            Create Free Account <Text style={styles.accountButtonBold}>— Unlock Everything</Text>
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -84,92 +81,31 @@ export default function GuestScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-    padding: 24,
-  },
-  header: {
-    marginTop: 40,
-  },
+  container: { flex: 1, backgroundColor: '#000000', padding: 24 },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 52, width: 40, height: 40, borderRadius: 10,
+    backgroundColor: '#1A1C23', justifyContent: 'center', alignItems: 'center', marginBottom: 24,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  iconRing: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: '#00D95F10', borderWidth: 1, borderColor: '#00D95F30',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 28,
   },
-  iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#1E293B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-    borderWidth: 2,
-    borderColor: '#10B981',
+  title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 12 },
+  description: { fontSize: 15, color: '#8E8E8E', textAlign: 'center', lineHeight: 22, marginBottom: 28, paddingHorizontal: 8 },
+  comparisonCard: { width: '100%', backgroundColor: '#1A1C23', borderRadius: 16, padding: 20, marginBottom: 28, borderWidth: 1, borderColor: '#2A2C35' },
+  compRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
+  compText: { fontSize: 14, color: '#FFFFFF', marginLeft: 12, flex: 1 },
+  compTextLocked: { color: '#4A4A4A' },
+  divider: { height: 1, backgroundColor: '#2A2C35', marginVertical: 4 },
+  guestButton: {
+    width: '100%', backgroundColor: '#1A1C23', padding: 17, borderRadius: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: '#2A2C35', marginBottom: 14,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
-  },
-  description: {
-    fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 16,
-    lineHeight: 24,
-  },
-  infoBox: {
-    width: '100%',
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 32,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#E2E8F0',
-    marginLeft: 12,
-    flex: 1,
-  },
-  continueButton: {
-    backgroundColor: '#10B981',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '100%',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  signUpButton: {
-    marginTop: 16,
-    padding: 16,
-  },
-  signUpButtonText: {
-    color: '#10B981',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  disabledButton: { opacity: 0.5 },
+  guestButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  accountButton: { padding: 8 },
+  accountButtonText: { fontSize: 14, color: '#8E8E8E', textAlign: 'center' },
+  accountButtonBold: { color: '#00D95F', fontWeight: '700' },
 });

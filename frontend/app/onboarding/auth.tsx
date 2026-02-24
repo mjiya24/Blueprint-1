@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
-  StatusBar,
+  View, Text, TextInput, StyleSheet, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView, Alert, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
@@ -25,25 +17,28 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleAuth = async () => {
     if (!email || !password || (!isLogin && !name)) {
-      Alert.alert('Error', 'Please fill all fields');
+      Alert.alert('Missing Fields', 'Please fill in all fields');
       return;
     }
 
     setIsLoading(true);
-
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
       const payload = isLogin ? { email, password } : { email, password, name };
-
       const response = await axios.post(`${API_URL}${endpoint}`, payload);
-      
       await AsyncStorage.setItem('user', JSON.stringify(response.data));
-      
-      // Navigate to interests screen
-      router.replace('/onboarding/interests');
+
+      // Check if user has completed questionnaire
+      const profile = response.data.profile || {};
+      if (profile.environment) {
+        router.replace('/(tabs)/home');
+      } else {
+        router.replace('/onboarding/questionnaire');
+      }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Authentication failed');
     } finally {
@@ -56,29 +51,34 @@ export default function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
+
+          <View style={styles.logoRow}>
+            <Ionicons name="grid" size={24} color="#00D95F" />
+            <Text style={styles.appName}>Blueprint</Text>
+          </View>
+
+          <Text style={styles.title}>
+            {isLogin ? 'Welcome back.' : 'Create your account.'}
+          </Text>
           <Text style={styles.subtitle}>
-            {isLogin ? 'Sign in to continue' : 'Join us to discover money-making ideas'}
+            {isLogin ? 'Sign in to your Blueprint.' : 'Start architecting your income.'}
           </Text>
         </View>
 
         <View style={styles.form}>
           {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Name</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your name"
-                placeholderTextColor="#64748B"
+                placeholder="John Doe"
+                placeholderTextColor="#4A4A4A"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -86,29 +86,36 @@ export default function AuthScreen() {
             </View>
           )}
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#64748B"
+              placeholder="you@example.com"
+              placeholderTextColor="#4A4A4A"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#64748B"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Min. 8 characters"
+                placeholderTextColor="#4A4A4A"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#8E8E8E" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -117,19 +124,14 @@ export default function AuthScreen() {
             disabled={isLoading}
           >
             <Text style={styles.submitButtonText}>
-              {isLoading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
+              {isLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() => setIsLogin(!isLogin)}
-          >
-            <Text style={styles.switchButtonText}>
+          <TouchableOpacity style={styles.switchButton} onPress={() => setIsLogin(!isLogin)}>
+            <Text style={styles.switchText}>
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={styles.switchButtonTextBold}>
-                {isLogin ? 'Sign Up' : 'Sign In'}
-              </Text>
+              <Text style={styles.switchTextBold}>{isLogin ? 'Sign Up' : 'Sign In'}</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -139,83 +141,38 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  header: {
-    marginTop: 40,
-    marginBottom: 40,
-  },
+  container: { flex: 1, backgroundColor: '#000000' },
+  scrollContent: { flexGrow: 1, padding: 24 },
+  header: { marginTop: 48, marginBottom: 40 },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+    width: 40, height: 40, borderRadius: 10,
+    backgroundColor: '#1A1C23', justifyContent: 'center', alignItems: 'center', marginBottom: 28,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#94A3B8',
-  },
-  form: {
-    flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    marginBottom: 8,
-  },
+  logoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 8 },
+  appName: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+  title: { fontSize: 30, fontWeight: '700', color: '#FFFFFF', marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#8E8E8E' },
+  form: { flex: 1 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 13, fontWeight: '600', color: '#8E8E8E', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   input: {
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#1A1C23', borderRadius: 12, padding: 16,
+    fontSize: 16, color: '#fff', borderWidth: 1, borderColor: '#2A2C35',
   },
+  passwordContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#1A1C23', borderRadius: 12,
+    borderWidth: 1, borderColor: '#2A2C35', paddingRight: 12,
+  },
+  passwordInput: { flex: 1, padding: 16, fontSize: 16, color: '#fff' },
+  eyeButton: { padding: 4 },
   submitButton: {
-    backgroundColor: '#10B981',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
+    backgroundColor: '#00D95F', padding: 18, borderRadius: 14,
+    alignItems: 'center', marginTop: 8, marginBottom: 24,
   },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  switchButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  switchButtonText: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  switchButtonTextBold: {
-    color: '#10B981',
-    fontWeight: '600',
-  },
+  disabledButton: { opacity: 0.5 },
+  submitButtonText: { color: '#000', fontSize: 17, fontWeight: '700' },
+  switchButton: { alignItems: 'center', padding: 8 },
+  switchText: { fontSize: 14, color: '#8E8E8E' },
+  switchTextBold: { color: '#00D95F', fontWeight: '600' },
 });
