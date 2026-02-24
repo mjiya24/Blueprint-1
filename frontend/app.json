@@ -13,7 +13,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Find local money-making opportunities near you",
         "NSLocationAlwaysUsageDescription": "Find local money-making opportunities near you"
-      }
+      },
+      "bundleIdentifier": "com.moneyideas.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,8 +24,11 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "package": "com.moneyideas.app"
     },
     "web": {
       "bundler": "metro",
