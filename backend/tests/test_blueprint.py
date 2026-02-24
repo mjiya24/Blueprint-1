@@ -397,6 +397,43 @@ class TestSavedIdeas:
         print("PASS: Idea deleted and verified via GET")
 
 
+# ============ PUSH TOKEN TESTS ============
+
+class TestPushToken:
+    """Sprint 1: Push token registration endpoint"""
+
+    def test_push_token_updates_profile(self, api_client, auth_user):
+        """POST /api/users/{user_id}/push-token stores token in profile"""
+        user_id = auth_user["id"]
+        resp = api_client.post(f"{BASE_URL}/api/users/{user_id}/push-token",
+                               json={"push_token": "ExponentPushToken[TEST_token_abc123]"})
+        assert resp.status_code == 200, f"Push token update failed: {resp.text}"
+        data = resp.json()
+        assert "message" in data
+        # Verify token was persisted in profile
+        profile_resp = api_client.get(f"{BASE_URL}/api/users/{user_id}/profile")
+        assert profile_resp.status_code == 200
+        profile = profile_resp.json()
+        assert profile.get("push_token") == "ExponentPushToken[TEST_token_abc123]", \
+            f"Push token not persisted. Profile: {profile}"
+        print(f"PASS: Push token stored in profile: {profile.get('push_token')}")
+
+    def test_push_token_empty_string(self, api_client, auth_user):
+        """Empty push token should succeed (web doesn't support push tokens)"""
+        user_id = auth_user["id"]
+        resp = api_client.post(f"{BASE_URL}/api/users/{user_id}/push-token",
+                               json={"push_token": ""})
+        assert resp.status_code == 200, f"Empty push token failed: {resp.text}"
+        print("PASS: Empty push token accepted (web fallback)")
+
+    def test_push_token_nonexistent_user_returns_404(self, api_client):
+        """Push token for nonexistent user returns 404"""
+        resp = api_client.post(f"{BASE_URL}/api/users/fake-user-999/push-token",
+                               json={"push_token": "ExponentPushToken[some_token]"})
+        assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
+        print("PASS: Nonexistent user push-token returns 404")
+
+
 # ============ CLEANUP ============
 
 @pytest.fixture(scope="module", autouse=True)
