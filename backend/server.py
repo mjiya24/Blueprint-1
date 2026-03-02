@@ -946,6 +946,272 @@ async def affiliate_redirect(url: str):
         raise HTTPException(status_code=400, detail="URL required")
     return RedirectResponse(url=url, status_code=307)
 
+# ============= Sprint 2: Architect Tier & AI Features =============
+
+# High-ticket blueprint IDs (locked behind Architect tier)
+HIGH_TICKET_IDS = {"digital-001", "digital-005", "passive-002", "passive-003", "passive-004"}
+
+# Pricing packages (server-side only)
+ARCHITECT_PLANS = {
+    "monthly": {"amount": 14.99, "currency": "usd", "label": "Monthly"},
+    "annual":  {"amount": 99.00, "currency": "usd", "label": "Annual"},
+}
+
+# --- New Models ---
+class CheckoutRequest(BaseModel):
+    plan_type: str  # "monthly" or "annual"
+    user_id: str
+    origin_url: str
+
+class ChatRequest(BaseModel):
+    message: str
+    idea_id: str  # active blueprint context
+
+# --- Subscription helpers ---
+async def get_architect_status(user_id: str) -> bool:
+    """Returns True if user has an active Architect subscription"""
+    txn = await db.payment_transactions.find_one(
+        {"user_id": user_id, "payment_status": "paid"},
+        sort=[("created_at", -1)]
+    )
+    return txn is not None
+
+# --- Stripe Payment Routes ---
+
+@api_router.post("/payments/checkout")
+async def create_checkout(data: CheckoutRequest, request: Request):
+    if data.plan_type not in ARCHITECT_PLANS:
+        raise HTTPException(status_code=400, detail="Invalid plan type")
+    plan = ARCHITECT_PLANS[data.plan_type]
+    stripe_key = os.environ["STRIPE_API_KEY"]
+    host_url = str(request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+    success_url = f"{data.origin_url}?session_id={{CHECKOUT_SESSION_ID}}&payment=success"
+    cancel_url = f"{data.origin_url}?payment=cancelled"
+    metadata = {"user_id": data.user_id, "plan_type": data.plan_type}
+    checkout_req = CheckoutSessionRequest(
+        amount=plan["amount"],
+        currency=plan["currency"],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata,
+    )
+    session = await stripe.create_checkout_session(checkout_req)
+    # Create pending transaction record
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "user_id": data.user_id,
+        "plan_type": data.plan_type,
+        "amount": plan["amount"],
+        "currency": plan["currency"],
+        "payment_status": "pending",
+        "status": "initiated",
+        "created_at": datetime.utcnow().isoformat(),
+    })
+    return {"url": session.url, "session_id": session.session_id}
+
+@api_router.get("/payments/status/{session_id}")
+async def get_payment_status(session_id: str):
+    # Prevent double-processing
+    existing = await db.payment_transactions.find_one({"session_id": session_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if existing.get("payment_status") == "paid":
+        return {"payment_status": "paid", "status": "complete", "is_architect": True}
+    stripe_key = os.environ["STRIPE_API_KEY"]
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url="")
+    result = await stripe.get_checkout_status(session_id)
+    if result.payment_status == "paid":
+        user_id = existing.get("user_id")
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"payment_status": "paid", "status": "complete", "paid_at": datetime.utcnow().isoformat()}}
+        )
+        if user_id:
+            await db.users.update_one({"id": user_id}, {"$set": {"is_architect": True}})
+    return {
+        "payment_status": result.payment_status,
+        "status": result.status,
+        "is_architect": result.payment_status == "paid",
+    }
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    stripe_key = os.environ["STRIPE_API_KEY"]
+    host_url = str(request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+    body = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    try:
+        event = await stripe.handle_webhook(body, sig)
+        if event.payment_status == "paid":
+            meta = event.metadata or {}
+            user_id = meta.get("user_id")
+            session_id = event.session_id
+            existing = await db.payment_transactions.find_one({"session_id": session_id, "payment_status": "paid"})
+            if not existing:
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {"payment_status": "paid", "status": "complete", "paid_at": datetime.utcnow().isoformat()}}
+                )
+                if user_id:
+                    await db.users.update_one({"id": user_id}, {"$set": {"is_architect": True}})
+    except Exception as e:
+        logger.warning(f"Webhook error: {e}")
+    return {"received": True}
+
+@api_router.get("/payments/subscription/{user_id}")
+async def get_subscription_status(user_id: str):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    is_architect = user.get("is_architect", False)
+    return {"is_architect": is_architect, "user_id": user_id}
+
+# --- High-Ticket Blueprints Route ---
+
+@api_router.get("/ideas/high-ticket")
+async def get_high_ticket_ideas():
+    await ensure_ideas_seeded()
+    ideas = await db.ideas.find({"id": {"$in": list(HIGH_TICKET_IDS)}}, {"_id": 0}).to_list(10)
+    return ideas
+
+# --- Blueprint Guide (AI Accountability Coach) ---
+
+@api_router.post("/blueprint-guide/chat/{user_id}")
+async def blueprint_guide_chat(user_id: str, data: ChatRequest):
+    # Verify user and architect status
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.get("is_architect", False):
+        raise HTTPException(status_code=403, detail="Architect tier required")
+    # Get the active blueprint context
+    saved_idea = await db.saved_ideas.find_one({"user_id": user_id, "idea_id": data.idea_id})
+    idea = await db.ideas.find_one({"id": data.idea_id}, {"_id": 0})
+    if not idea:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    completed_steps = 0
+    total_steps = 0
+    progress = 0
+    if saved_idea:
+        steps = saved_idea.get("action_steps", [])
+        total_steps = len(steps)
+        completed_steps = sum(1 for s in steps if s.get("completed"))
+        progress = saved_idea.get("progress_percentage", 0)
+    profile = user.get("profile", {})
+    system_message = f"""You are Blueprint Guide, an AI accountability coach inside the Blueprint income app. 
+You help users succeed with their active income blueprints through personalized, motivating advice.
+
+CURRENT USER CONTEXT:
+- Blueprint: {idea['title']} ({idea['category']})
+- Progress: {progress}% complete ({completed_steps}/{total_steps} steps done)
+- Earnings Potential: {idea.get('potential_earnings', 'varies')}
+- User Environment: {profile.get('environment', 'not specified')}
+- User Assets: {', '.join(profile.get('assets', [])) or 'none specified'}
+- User Interests: {', '.join(profile.get('questionnaire_interests', [])) or 'none specified'}
+
+GUIDELINES:
+- Be direct, motivating, and actionable. No fluff.
+- Reference their specific blueprint and progress when relevant.
+- Give concrete next steps, not generic advice.
+- Keep responses under 200 words unless detail is needed.
+- Speak like an experienced mentor who has done this before.
+- Address them as a fellow entrepreneur."""
+    llm_key = os.environ["EMERGENT_LLM_KEY"]
+    session_id = f"blueprint-guide-{user_id}-{data.idea_id}"
+    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message=system_message)
+    chat.with_model("gemini", "gemini-3-flash-preview")
+    # Load prior messages for session continuity
+    prior = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("created_at", 1).to_list(20)
+    for msg in prior:
+        chat.add_message_to_history(msg["role"], msg["content"])
+    response = await chat.send_message(UserMessage(text=data.message))
+    # Store messages
+    ts = datetime.utcnow().isoformat()
+    await db.chat_messages.insert_many([
+        {"session_id": session_id, "user_id": user_id, "idea_id": data.idea_id,
+         "role": "user", "content": data.message, "created_at": ts},
+        {"session_id": session_id, "user_id": user_id, "idea_id": data.idea_id,
+         "role": "assistant", "content": response, "created_at": ts},
+    ])
+    return {"response": response, "session_id": session_id}
+
+@api_router.get("/blueprint-guide/history/{user_id}/{idea_id}")
+async def get_chat_history(user_id: str, idea_id: str):
+    user = await db.users.find_one({"id": user_id})
+    if not user or not user.get("is_architect", False):
+        raise HTTPException(status_code=403, detail="Architect tier required")
+    session_id = f"blueprint-guide-{user_id}-{idea_id}"
+    messages = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("created_at", 1).to_list(50)
+    return messages
+
+# --- Troubleshooting Matrix ---
+
+@api_router.post("/troubleshoot/{user_id}/{idea_id}/{step_number}")
+async def get_troubleshoot(user_id: str, idea_id: str, step_number: int):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.get("is_architect", False):
+        raise HTTPException(status_code=403, detail="Architect tier required")
+    idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
+    if not idea:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    steps = idea.get("action_steps", [])
+    step_text = steps[step_number - 1] if 0 < step_number <= len(steps) else "this step"
+    profile = user.get("profile", {})
+    prompt = f"""A Blueprint user is stuck on a specific action step. Generate a Troubleshooting Matrix with exactly 3 practical workarounds.
+
+BLUEPRINT: {idea['title']}
+STUCK ON STEP {step_number}: "{step_text}"
+USER CONTEXT: Environment={profile.get('environment','any')}, Assets={', '.join(profile.get('assets', ['none']))}
+
+Return EXACTLY this JSON format (no markdown, no extra text):
+{{
+  "step_summary": "brief restatement of what the user is trying to do",
+  "workarounds": [
+    {{
+      "title": "Workaround 1 title (max 6 words)",
+      "description": "2-3 sentences of actionable advice",
+      "difficulty": "easy|medium|hard",
+      "time_to_implement": "e.g. 30 minutes"
+    }},
+    {{
+      "title": "Workaround 2 title",
+      "description": "2-3 sentences of actionable advice",
+      "difficulty": "easy|medium|hard",
+      "time_to_implement": "e.g. 1 day"
+    }},
+    {{
+      "title": "Workaround 3 title",
+      "description": "2-3 sentences of actionable advice",
+      "difficulty": "easy|medium|hard",
+      "time_to_implement": "e.g. 2 hours"
+    }}
+  ]
+}}"""
+    llm_key = os.environ["EMERGENT_LLM_KEY"]
+    session_id = f"troubleshoot-{uuid.uuid4()}"  # Fresh each time
+    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are the Blueprint Troubleshooting Matrix AI. Return only valid JSON.")
+    chat.with_model("gemini", "gemini-3-flash-preview")
+    response_text = await chat.send_message(UserMessage(text=prompt))
+    import json, re
+    try:
+        # Strip any markdown code blocks if present
+        clean = re.sub(r"```json\n?|```\n?", "", response_text).strip()
+        matrix = json.loads(clean)
+    except Exception:
+        matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": response_text, "difficulty": "medium", "time_to_implement": "varies"}]}
+    return matrix
+
 # Include the router
 app.include_router(api_router)
 
