@@ -1127,12 +1127,15 @@ GUIDELINES:
     session_id = f"blueprint-guide-{user_id}-{data.idea_id}"
     chat = LlmChat(api_key=llm_key, session_id=session_id, system_message=system_message)
     chat.with_model("gemini", "gemini-3-flash-preview")
-    # Load prior messages for session continuity
+    # Restore prior conversation from MongoDB (for persistence across server restarts)
     prior = await db.chat_messages.find(
         {"session_id": session_id}, {"_id": 0}
     ).sort("created_at", 1).to_list(20)
     for msg in prior:
-        chat.add_message_to_history(msg["role"], msg["content"])
+        if msg["role"] == "user":
+            chat._add_user_message(msg["content"])
+        elif msg["role"] == "assistant":
+            chat._add_assistant_message(msg["content"])
     response = await chat.send_message(UserMessage(text=data.message))
     # Store messages
     ts = datetime.utcnow().isoformat()
