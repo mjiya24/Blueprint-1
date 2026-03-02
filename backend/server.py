@@ -1072,8 +1072,10 @@ async def get_subscription_status(user_id: str):
     return {"is_architect": is_architect, "user_id": user_id}
 
 # --- High-Ticket Blueprints Route ---
+# NOTE: This must be defined BEFORE /api/ideas/{idea_id} to avoid route conflict.
+# We use /api/high-ticket-ideas to be safe.
 
-@api_router.get("/ideas/high-ticket")
+@api_router.get("/high-ticket-ideas")
 async def get_high_ticket_ideas():
     await ensure_ideas_seeded()
     ideas = await db.ideas.find({"id": {"$in": list(HIGH_TICKET_IDS)}}, {"_id": 0}).to_list(10)
