@@ -9,6 +9,8 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { IdeaIcon } from '../../components/icons';
 
+const HIGH_TICKET_IDS = new Set(['digital-001', 'digital-005', 'passive-002', 'passive-003', 'passive-004']);
+
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 const CATEGORIES = ['All', 'Gig Economy', 'Local & Service Based', 'Digital & Freelance', 'Passive/Scalable'];
@@ -114,6 +116,12 @@ export default function DiscoverScreen() {
           <View style={[styles.pill, { backgroundColor: '#3B82F618' }]}>
             <Text style={[styles.pillText, { color: '#3B82F6' }]}>{item.startup_cost} cost</Text>
           </View>
+          {HIGH_TICKET_IDS.has(item.id) && (
+            <View style={styles.highTicketBadge}>
+              <Ionicons name="diamond" size={10} color="#F59E0B" />
+              <Text style={styles.highTicketText}>High-Ticket</Text>
+            </View>
+          )}
         </View>
         <Text style={styles.earnings}>{item.potential_earnings}</Text>
       </View>
@@ -270,9 +278,15 @@ const styles = StyleSheet.create({
   ideaTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 6 },
   ideaDesc: { fontSize: 13, color: '#8E8E8E', lineHeight: 18, marginBottom: 12 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pillsRow: { flexDirection: 'row', gap: 6 },
+  pillsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', flex: 1 },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   pillText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  highTicketBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F59E0B18', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+    borderWidth: 1, borderColor: '#F59E0B30',
+  },
+  highTicketText: { fontSize: 10, color: '#F59E0B', fontWeight: '700' },
   earnings: { fontSize: 14, fontWeight: '700', color: '#00D95F' },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyText: { fontSize: 16, color: '#8E8E8E', fontWeight: '600', marginTop: 16 },

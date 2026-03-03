@@ -102,6 +102,26 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Architect upgrade banner (logged in, not architect) */}
+        {!user?.is_guest && !user?.is_architect && (
+          <TouchableOpacity
+            style={styles.architectBanner}
+            onPress={() => router.push('/architect-upgrade')}
+            data-testid="architect-banner"
+          >
+            <View style={styles.architectBannerLeft}>
+              <View style={styles.architectBannerBadge}>
+                <Ionicons name="flash" size={12} color="#000" />
+              </View>
+              <View>
+                <Text style={styles.architectBannerTitle}>Architect Tier Available</Text>
+                <Text style={styles.architectBannerSub}>AI coaching · Workarounds · $14.99/mo</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#00D95F" />
+          </TouchableOpacity>
+        )}
+
         {/* Stats row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -213,6 +233,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#00D95F0A', borderRadius: 12, borderWidth: 1, borderColor: '#00D95F30',
   },
   upgradeText: { flex: 1, fontSize: 13, color: '#00D95F', fontWeight: '600' },
+  architectBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 24, marginBottom: 16, padding: 14,
+    backgroundColor: '#1A1C23', borderRadius: 12, borderWidth: 1, borderColor: '#00D95F30',
+  },
+  architectBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  architectBannerBadge: {
+    width: 30, height: 30, borderRadius: 8, backgroundColor: '#00D95F',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  architectBannerTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  architectBannerSub: { fontSize: 11, color: '#4A4A4A', marginTop: 2 },
   statsRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 10, marginBottom: 28 },
   statCard: { flex: 1, backgroundColor: '#1A1C23', borderRadius: 12, padding: 16, alignItems: 'center' },
   statNum: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },

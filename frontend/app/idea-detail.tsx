@@ -13,10 +13,12 @@ import CelebrationAnimation from '../components/CelebrationAnimation';
 import { MarketPulse } from '../components/MarketPulse';
 import { BlueprintVeterans } from '../components/BlueprintVeterans';
 import { IdeaIcon } from '../components/icons';
+import { ArchitectPaywall } from '../components/ArchitectPaywall';
+import { TroubleshootModal } from '../components/TroubleshootModal';
 import { useLocalSearchParams } from 'expo-router';
 
-// Sprint 1: MarketPulse, BlueprintVeterans, IdeaIcon components loaded
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const HIGH_TICKET_IDS = new Set(['digital-001', 'digital-005', 'passive-002', 'passive-003', 'passive-004']);
 
 const calcMatchScore = (profile: any, idea: any): number => {
   if (!profile?.environment && !profile?.social_preference &&
@@ -54,6 +56,10 @@ export default function IdeaDetailScreen() {
   const [celebrationTier, setCelebrationTier] = useState<'first' | 'momentum' | 'complete' | null>(null);
   const [shownMilestones, setShownMilestones] = useState(new Set<string>());
   const [matchScore, setMatchScore] = useState(50);
+  // Sprint 2 state
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  const [troubleshootStep, setTroubleshootStep] = useState<{ number: number; text: string } | null>(null);
 
   useEffect(() => { if (id) loadData(); }, [id]);
 
@@ -308,27 +314,46 @@ export default function IdeaDetailScreen() {
 
             {/* Interactive steps (started) */}
             {isStarted && actionSteps.map((step: any, idx: number) => (
-              <TouchableOpacity
-                key={step.step_number}
-                style={[styles.stepRow, step.completed && styles.stepRowCompleted]}
-                onPress={() => handleStepToggle(step.step_number, step.completed)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.stepCheckbox, step.completed && styles.stepCheckboxCompleted]}>
-                  {step.completed && <Ionicons name="checkmark" size={14} color="#000" />}
-                </View>
-                <View style={styles.stepContent}>
-                  <Text style={[styles.stepNum]}>Step {step.step_number}</Text>
-                  <Text style={[styles.stepText, step.completed && styles.stepTextCompleted]}>
-                    {step.text}
-                  </Text>
-                </View>
-                {step.is_scary_step && !step.completed && (
-                  <View style={styles.keyStepBadge}>
-                    <Ionicons name="key" size={12} color="#F59E0B" />
+              <View key={step.step_number}>
+                <TouchableOpacity
+                  style={[styles.stepRow, step.completed && styles.stepRowCompleted]}
+                  onPress={() => handleStepToggle(step.step_number, step.completed)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.stepCheckbox, step.completed && styles.stepCheckboxCompleted]}>
+                    {step.completed && <Ionicons name="checkmark" size={14} color="#000" />}
                   </View>
+                  <View style={styles.stepContent}>
+                    <Text style={[styles.stepNum]}>Step {step.step_number}</Text>
+                    <Text style={[styles.stepText, step.completed && styles.stepTextCompleted]}>
+                      {step.text}
+                    </Text>
+                  </View>
+                  {step.is_scary_step && !step.completed && (
+                    <View style={styles.keyStepBadge}>
+                      <Ionicons name="key" size={12} color="#F59E0B" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {/* Stuck? button — only on uncompleted steps */}
+                {!step.completed && !user?.is_guest && (
+                  <TouchableOpacity
+                    style={styles.stuckBtn}
+                    onPress={() => {
+                      if (user?.is_architect) {
+                        setTroubleshootStep({ number: step.step_number, text: step.text });
+                        setShowTroubleshoot(true);
+                      } else {
+                        setShowPaywall(true);
+                      }
+                    }}
+                    data-testid={`stuck-btn-${step.step_number}`}
+                  >
+                    <Ionicons name="construct-outline" size={12} color="#00D95F" />
+                    <Text style={styles.stuckBtnText}>Stuck? Get Workaround ⚡</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             ))}
 
             {/* Preview steps (not started) */}
@@ -403,9 +428,91 @@ export default function IdeaDetailScreen() {
           {/* Blueprint Veterans */}
           <BlueprintVeterans ideaId={id as string} />
 
+          {/* Architect Feature Section */}
+          {!user?.is_guest && isStarted && (
+            <View style={styles.architectSection}>
+              <View style={styles.architectHeader}>
+                <View style={styles.architectBadge}>
+                  <Ionicons name="flash" size={13} color="#000" />
+                  <Text style={styles.architectBadgeText}>ARCHITECT TOOLS</Text>
+                </View>
+              </View>
+              {/* Blueprint Guide CTA */}
+              <TouchableOpacity
+                style={styles.architectCard}
+                onPress={() => {
+                  if (user?.is_architect) {
+                    router.push({ pathname: '/blueprint-guide', params: { idea_id: id, idea_title: idea.title } });
+                  } else {
+                    setShowPaywall(true);
+                  }
+                }}
+                data-testid="blueprint-guide-btn"
+              >
+                <View style={[styles.architectCardIcon, { backgroundColor: '#00D95F18' }]}>
+                  <Ionicons name="chatbubble-ellipses" size={22} color="#00D95F" />
+                </View>
+                <View style={styles.architectCardText}>
+                  <Text style={styles.architectCardTitle}>Blueprint Guide</Text>
+                  <Text style={styles.architectCardDesc}>Ask your AI accountability coach anything</Text>
+                </View>
+                {user?.is_architect
+                  ? <Ionicons name="arrow-forward" size={18} color="#00D95F" />
+                  : <View style={styles.lockBadge}><Ionicons name="lock-closed" size={12} color="#4A4A4A" /></View>
+                }
+              </TouchableOpacity>
+              {/* Troubleshooting Matrix CTA */}
+              <TouchableOpacity
+                style={styles.architectCard}
+                onPress={() => user?.is_architect ? null : setShowPaywall(true)}
+                data-testid="troubleshoot-matrix-btn"
+              >
+                <View style={[styles.architectCardIcon, { backgroundColor: '#F59E0B18' }]}>
+                  <Ionicons name="construct" size={22} color="#F59E0B" />
+                </View>
+                <View style={styles.architectCardText}>
+                  <Text style={styles.architectCardTitle}>Troubleshooting Matrix</Text>
+                  <Text style={styles.architectCardDesc}>Tap "Stuck?" on any step above to generate workarounds</Text>
+                </View>
+                {user?.is_architect
+                  ? <Ionicons name="checkmark-circle" size={18} color="#00D95F" />
+                  : <View style={styles.lockBadge}><Ionicons name="lock-closed" size={12} color="#4A4A4A" /></View>
+                }
+              </TouchableOpacity>
+              {!user?.is_architect && (
+                <TouchableOpacity
+                  style={styles.upgradePrompt}
+                  onPress={() => router.push('/architect-upgrade')}
+                  data-testid="upgrade-to-architect-btn"
+                >
+                  <Text style={styles.upgradePromptText}>Unlock Architect Tier — $14.99/mo</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#000" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
+
+      {/* Sprint 2 Modals */}
+      <ArchitectPaywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature="Architect Tools"
+      />
+      {troubleshootStep && (
+        <TroubleshootModal
+          visible={showTroubleshoot}
+          onClose={() => { setShowTroubleshoot(false); setTroubleshootStep(null); }}
+          userId={user?.id || ''}
+          ideaId={id as string}
+          ideaTitle={idea.title}
+          stepNumber={troubleshootStep.number}
+          stepText={troubleshootStep.text}
+        />
+      )}
 
       {/* Bottom CTA */}
       {!isStarted && (
@@ -498,7 +605,36 @@ const styles = StyleSheet.create({
   earningsValue: { fontSize: 22, fontWeight: '700', color: '#00D95F' },
   earningsIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#00D95F15', justifyContent: 'center', alignItems: 'center' },
   progressSection: { marginBottom: 16 },
-  stepsSection: { marginBottom: 20 },
+  stuckBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    marginLeft: 52, marginTop: 2, marginBottom: 6,
+    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: '#00D95F08', borderRadius: 8,
+    borderWidth: 1, borderColor: '#00D95F25', alignSelf: 'flex-start',
+  },
+  stuckBtnText: { fontSize: 11, color: '#00D95F', fontWeight: '600' },
+  architectSection: { marginBottom: 20, backgroundColor: '#0D0E14', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#2A2C35' },
+  architectHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  architectBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#00D95F', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+  },
+  architectBadgeText: { fontSize: 10, fontWeight: '800', color: '#000', letterSpacing: 1 },
+  architectCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#1A1C23', borderRadius: 12, padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: '#2A2C35',
+  },
+  architectCardIcon: { width: 44, height: 44, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  architectCardText: { flex: 1 },
+  architectCardTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginBottom: 3 },
+  architectCardDesc: { fontSize: 12, color: '#4A4A4A' },
+  lockBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#1A1C23', borderWidth: 1, borderColor: '#2A2C35', justifyContent: 'center', alignItems: 'center' },
+  upgradePrompt: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#00D95F', borderRadius: 12, padding: 14, marginTop: 4,
+  },
+  upgradePromptText: { fontSize: 14, fontWeight: '700', color: '#000' },
   stepsTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
   stepsSubtitle: { fontSize: 13, color: '#8E8E8E', marginBottom: 14 },
   stepRow: {

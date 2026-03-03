@@ -1,0 +1,64 @@
+{
+  "summary": "Sprint 2 full testing: Backend 17/17 tests passed. All frontend Sprint 2 features working after Metro bundle cache was cleared (cache had old pre-Sprint2 bundle). All features confirmed: Architect banner, High-Ticket badges, Architect Upgrade screen, Blueprint Guide, Stuck buttons, Architect Tools section, ArchitectPaywall modal.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/auth/login",
+        "issue": "Login response does not include `is_architect` field. Architect users who log out and log back in will have `is_architect=undefined` in AsyncStorage, causing them to see the 'Architect Tier Available' banner even though they're already subscribers. Fix: add `is_architect: user.get('is_architect', False)` to login and signup responses.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "GET /api/blueprint-guide/history/{user_id}/{idea_id}",
+        "issue": "Non-architect history call during page load returns 403 which is caught silently - this is correct behavior but worth noting.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "BlueprintGuideScreen",
+        "issue": "If user navigates directly to /blueprint-guide without ?idea_id=, API gets called with idea_id=undefined (omitted from JSON). Pydantic returns 422 before architect check, so UI shows 'Something went wrong' instead of 'Architect tier required'. Normal navigation flow always passes idea_id from idea-detail.tsx (line 445). Minor UX issue.",
+        "selector": "/blueprint-guide",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "All Sprint 2 screens",
+        "issues": ["Design looks clean and consistent with Sprint 1 dark theme. No contrast/spacing issues found."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_sprint2.py",
+    "/app/test_reports/pytest/pytest_sprint2_results.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Add `is_architect` field to login (and signup) API responses in server.py. Currently `return {\"id\": user[\"id\"], \"email\": user[\"email\"], \"name\": user[\"name\"], \"is_guest\": False, \"profile\": user.get(\"profile\", {})}` — add `\"is_architect\": user.get(\"is_architect\", False)`. Without this, architect users see the upgrade banner after re-login.",
+    "LOW: Remove unused `get_architect_status()` helper function at line 971 of server.py — it is defined but never called.",
+    "LOW: Consider modularizing server.py (1237 lines) into separate modules for maintainability.",
+    "LOW: Handle missing idea_id in blueprint-guide.tsx more gracefully — if ideaId is undefined, show a message asking user to start from an idea page instead of calling the API with undefined."
+  ],
+  "critical_code_review_comments": [
+    "BUG: Login/signup endpoints do not return `is_architect` field — architect users lose their status on re-login (AsyncStorage overwritten with data lacking is_architect). Fix in server.py login endpoint (line ~746): add `is_architect: user.get('is_architect', False)` to return dict.",
+    "DEAD CODE: `get_architect_status()` helper defined at line 971 is never used — subscription endpoint uses `user.get('is_architect', False)` directly.",
+    "IMPORTANT: Metro bundle had stale cache during initial testing. Sprint 2 code was not bundled. Required cache clear + server restart. This may indicate Metro cache invalidation issue in CI/deployment workflow.",
+    "LOW: Blueprint Guide 422 vs 403 when navigating without idea_id context"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sprint2.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "100% (all 14 Sprint 2 frontend scenarios verified)"
+  },
+  "test_credentials": "tester@blueprint.com / TestPass123 (user_id: 64c59c73-18f1-4778-bf6e-b553af870ab5)",
+  "seed_data_creation": "No new seed data created. Used existing tester account which already has digital-001 blueprint started.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Sprint 2 backend and frontend tested and working. IMPORTANT: Metro bundle cache was stale and needed to be cleared (`rm -rf /app/frontend/.metro-cache/cache && sudo supervisorctl restart expo`). If you see Sprint 2 features missing from the UI, try this fix. Main outstanding issue: login API doesn't return is_architect, so architect users will see the upgrade banner after re-login. Test user: tester@blueprint.com / TestPass123 has digital-001 (Freelance Web Designer) started at 14% progress. To test Architect-only features you need a user with is_architect=true in MongoDB (or use the DB directly to set it).",
+  "rca_of_issue": "Metro bundle cache issue: The Expo Metro bundler had a stale cache from before Sprint 2 code was added. The /app/frontend/.metro-cache/cache directory (81MB) contained old compiled module files. When Metro served the bundle, it used cached versions that didn't include the Sprint 2 code (architectBanner, is_architect checks, etc.). Fix: Clear cache dir and restart. The login API missing is_architect: Home screen condition `!user?.is_architect` evaluates to `!undefined = true` for architect users who re-logged in, incorrectly showing the upgrade banner. The login endpoint explicitly constructs the return dict without is_architect: `return {\"id\": user[\"id\"], \"email\": user[\"email\"], \"name\": user[\"name\"], \"is_guest\": False, \"profile\": user.get(\"profile\", {})}` on line ~746."
+}
