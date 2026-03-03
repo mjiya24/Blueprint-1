@@ -1,139 +1,136 @@
 # Blueprint — Product Requirements Document
 
-## App Identity
-- **App Name**: Blueprint
-- **Tagline**: "Blueprint: Architect Your Income."
-- **Category**: Fintech / Gig Economy / Personal Finance
-- **Platform**: React Native / Expo (iOS + Android + Web)
+## Original Problem Statement
+Build a premium, highly personalized fintech mobile app named "Blueprint" with the tagline "Architect Your Income." The app uses a "Fintech Dark Mode" theme (black backgrounds, charcoal cards, Electric Mint #00D95F accents). Users complete a 4-step questionnaire which feeds a Match Probability Engine that scores income-generating ideas for them.
 
-## Problem Statement
-Users want to earn more money but feel overwhelmed by the options and don't know where to start. Most "side hustle" content is generic and not personalized to the user's specific environment, skills, and assets.
+## Core Requirements
+- **Branding**: Blueprint / "Architect Your Income" / Electric Mint fintech dark mode
+- **Onboarding**: 4-step questionnaire (work environment, social preferences, assets, interests)
+- **Match Engine**: Backend algorithm scores each idea 30–99% based on user profile
+- **Gamification**: Interactive checklist, progress bar, Lottie milestone animations (First Step, 50%, 100%)
+- **Content**: 20 ideas across 4 categories (Gig Economy, Local, Digital, Passive) with Smart Logos
+- **Social Proof**: "Market Pulse" news snippets + "Blueprint Veterans" testimonials per idea
+- **Monetization**: "Architect Tier" ($14.99/mo or $99/yr via Stripe) with AI tools
+- **AI Support**: "Blueprint Guide" chatbot (Gemini 3 Flash) + "Troubleshooting Matrix"
 
-## Solution
-A premium, highly personalized income aggregator app that:
-1. Matches users to their best-fit income opportunities via a questionnaire
-2. Provides step-by-step action plans for each opportunity
-3. Tracks progress with gamification mechanics (progress bars, milestone animations)
-4. Covers all categories: Gig Economy, Local Services, Digital Freelancing, Passive Income
+## Architecture
 
-## Design System (Fintech Dark Mode)
-- Background: `#000000` (Pitch Black)
-- Cards: `#1A1C23` (Sleek Charcoal)
-- Accent: `#00D95F` (Electric Mint)
-- Text Primary: `#FFFFFF`
-- Text Secondary: `#8E8E8E`
-- Border: `#2A2C35`
+### Tech Stack
+- **Frontend**: React Native (Expo), Expo Router, Lottie, expo-notifications, @expo/vector-icons
+- **Backend**: FastAPI (Python), MongoDB (Motor async), JWT auth
+- **AI**: emergentintegrations (Gemini 3 Flash via Emergent LLM Key)
+- **Payments**: emergentintegrations (Stripe via Emergent test key)
 
-## Technical Architecture
-- **Frontend**: React Native + Expo Router (file-based routing)
-- **Backend**: FastAPI (Python) — port 8001
-- **Database**: MongoDB
-- **Auth**: Custom JWT (bcrypt)
+### File Structure
+```
+/app
+├── backend/
+│   ├── .env (MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, STRIPE_API_KEY)
+│   ├── server.py (main FastAPI app, all routes)
+│   └── tests/test_sprint2.py
+└── frontend/
+    ├── app/
+    │   ├── (tabs)/home.tsx, discover.tsx, saved.tsx, profile.tsx
+    │   ├── auth/login.tsx, signup.tsx
+    │   ├── onboarding/questionnaire.tsx
+    │   ├── idea-detail.tsx
+    │   ├── architect-upgrade.tsx (NEW - Sprint 2)
+    │   └── blueprint-guide.tsx (NEW - Sprint 2)
+    └── components/
+        ├── icons/index.tsx (Smart Logos)
+        ├── MarketPulse.tsx
+        ├── BlueprintVeterans.tsx
+        ├── ArchitectPaywall.tsx (NEW - Sprint 2)
+        ├── TroubleshootModal.tsx (NEW - Sprint 2)
+        ├── EarningsProgressBar.tsx
+        └── CelebrationAnimation.tsx
+```
 
-## Core User Flows
-1. Welcome → Sign Up → 4-Step Questionnaire → Personalized Home
-2. Welcome → Preview as Guest → Home (limited features)
-3. Home/Discover → Idea Detail → Start Blueprint → Track Steps → Completion
+### Key DB Collections
+- `users`: { id, email, hashed_password, name, profile, is_architect, push_token }
+- `ideas`: { id, title, description, category, tags, action_steps, ... }
+- `saved_ideas`: { user_id, idea_id, action_steps (with completion), progress_percentage }
+- `payment_transactions`: { session_id, user_id, plan_type, amount, payment_status }
+- `chat_messages`: { session_id, user_id, idea_id, role, content, created_at }
 
-## Features Implemented (v2.0 — Blueprint Sprint)
+### Key API Endpoints
+| Endpoint | Method | Description |
+|---|---|---|
+| /api/signup | POST | Register user |
+| /api/login | POST | Login, returns is_architect |
+| /api/users/{id}/profile | PUT | Save questionnaire answers |
+| /api/users/{id}/push-token | POST | Register push token |
+| /api/ideas | GET | All ideas (20) |
+| /api/ideas/personalized/{user_id} | GET | Match-scored ideas |
+| /api/ideas/{id} | GET | Single idea detail |
+| /api/saved-ideas/{user_id} | GET | User's saved ideas |
+| /api/saved-ideas/{user_id}/{idea_id}/complete-step | POST | Mark step complete |
+| /api/payments/checkout | POST | Create Stripe checkout session |
+| /api/payments/status/{session_id} | GET | Poll payment status |
+| /api/payments/subscription/{user_id} | GET | Check architect status |
+| /api/webhook/stripe | POST | Stripe webhook handler |
+| /api/high-ticket-ideas | GET | 5 premium blueprint ideas |
+| /api/blueprint-guide/chat/{user_id} | POST | AI chat (Architect only) |
+| /api/blueprint-guide/history/{user_id}/{idea_id} | GET | Chat history |
+| /api/troubleshoot/{user_id}/{idea_id}/{step_number} | POST | Get AI workarounds |
 
-### Branding
-- [x] App name: Blueprint
-- [x] Tagline: "Architect Your Income."
-- [x] Fintech Dark Mode across all screens
+## What's Been Implemented
 
-### Authentication
-- [x] Signup → redirects to questionnaire (if first time)
-- [x] Login → redirects to questionnaire (if no profile) or home
-- [x] Guest mode with feature limitations
+### Sprint 0 — V1 MVP (Complete)
+- Auth (signup/login/guest mode), tab navigation, idea browsing
 
-### 4-Step Questionnaire Onboarding
-- [x] Step 1: Work Environment (home / office / outdoor)
-- [x] Step 2: Social Preference (solo / small-team / customer-facing)
-- [x] Step 3: Assets (car, laptop, $100+ investment) — multi-select
-- [x] Step 4: Interests (tech, fitness, pets, real-estate, creative, finance) — multi-select
-- [x] Saves to backend on completion
+### Blueprint Sprint (Complete)
+- Full rebranding to Blueprint + Fintech Dark Mode theme
+- 4-step onboarding questionnaire
+- Backend Match Probability Engine (30–99% scoring)
+- Full gamification: checklist, progress bar, Lottie animations
+- 27/27 backend tests passing
 
-### Match Probability Engine
-- [x] Algorithm: 4 dimensions × 25 points each, normalized to 30–99% range
-- [x] `GET /api/ideas/personalized/{user_id}` returns ideas sorted by match_score
-- [x] UI: colored match badges (green ≥75%, amber ≥50%, red <50%)
-- [x] Home screen: top 6 personalized ideas
-- [x] Discover screen: all 20 ideas with match scores
-- [x] Idea detail: match score banner
+### Sprint 1 — Polish & Retention (Complete, Feb 2026)
+- Smart Logos (IdeaIcon component) on discover cards + idea detail header
+- Market Pulse (mocked news per idea) on idea detail
+- Blueprint Veterans (mocked testimonials per idea) on idea detail
+- Push token registration (expo-notifications) on questionnaire completion
 
-### Ideas Database (20 Ideas, 4 Categories)
-- [x] Gig Economy (5): DoorDash, Uber/Lyft, Instacart, TaskRabbit, Amazon Flex
-- [x] Local & Service Based (5): Fitness Trainer, Dog Walker, Car Detailing, House Sitter, Lawn Care
-- [x] Digital & Freelance (5): Web Designer, VA, UGC Creator, Social Media Manager, AI Copywriter
-- [x] Passive/Scalable (5): Print-on-Demand, Domain Flipping, Vending Machines, Digital Course, Retail Arbitrage
-- [x] Each idea has: environment_fit, social_fit, asset_requirements, interest_tags, affiliate_link
-
-### Gamification (idea-detail.tsx)
-- [x] "Start My Blueprint" button — saves idea and reveals interactive checklist
-- [x] Interactive action step checkboxes with Electric Mint completion state
-- [x] Earnings Progress Bar (animated, Electric Mint)
-- [x] 3-Tier celebration animations:
-  - Tier 1 (First step): Pulsing Electric Mint checkmark + haptic light
-  - Tier 2 (50%): Rising bar chart "Momentum!" notification + haptic medium
-  - Tier 3 (100%): Full-screen "Blueprint Complete!" overlay + haptic heavy
-- [x] Status tracking: not-started → in-progress → completed
-
-### Guest Gating
-- [x] Guests see first 2 action steps
-- [x] Steps 3+ locked with "Unlock with free account" message
-- [x] Match scores shown as locked for guests
-- [x] Upgrade prompts throughout the app
-
-### Push Notifications (Backend)
-- [x] `POST /api/users/{user_id}/push-token` endpoint
-- [x] `send_expo_push_notification()` function using Expo Push API
-- [x] Triggered on 50% milestone ("You're on a roll! 📈")
-- [x] Triggered on 100% completion ("Blueprint Complete! 💰")
-- [ ] Frontend push token registration (pending)
-
-## Key API Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/auth/signup | Create account |
-| POST | /api/auth/login | Login |
-| POST | /api/auth/guest | Create guest session |
-| PUT | /api/users/{id}/profile | Update questionnaire + profile |
-| GET | /api/ideas | Get all ideas (pagination + filters) |
-| GET | /api/ideas/personalized/{user_id} | Get ideas with match scores |
-| GET | /api/ideas/{idea_id} | Get single idea |
-| POST | /api/saved-ideas | Save/start a blueprint |
-| GET | /api/saved-ideas/{user_id}/{idea_id} | Get single saved idea |
-| POST | /api/saved-ideas/{user_id}/{idea_id}/complete-step | Complete a step |
-| POST | /api/saved-ideas/{user_id}/{idea_id}/uncomplete-step | Uncomplete a step |
-| GET | /api/saved-ideas/{user_id} | Get all saved ideas |
-| POST | /api/users/{user_id}/push-token | Store push token |
+### Sprint 2 — Monetization & AI (Complete, Mar 2026)
+- **Architect Tier**: Stripe subscription ($14.99/mo or $99/yr)
+  - Checkout session creation + payment polling
+  - Stripe webhook handler
+  - `is_architect` field on user, returned in login/signup responses
+- **High-Ticket Blueprints**: 5 ideas marked with gold "High-Ticket" badge
+  - IDs: digital-001, digital-005, passive-002, passive-003, passive-004
+- **Architect Upgrade Screen** (`/architect-upgrade`): Full plan selection + Stripe redirect + success state
+- **Blueprint Guide** (`/blueprint-guide`): AI chat accountability coach (Gemini 3 Flash, Architect-only)
+  - Context-aware: reads user's active blueprint + progress
+  - Session persistence via MongoDB + in-memory LlmChat sessions
+- **Troubleshooting Matrix**: AI-generated 3 workarounds per stuck step (Architect-only)
+  - "Stuck? Get Workaround ⚡" button on each uncompleted step
+  - TroubleshootModal shows difficulty + time-to-implement for each workaround
+- **ArchitectPaywall modal**: Shown when non-Architect tries to access locked features
+- **Architect Banner** on Home: Shown to logged-in non-Architect users
+- **Testing**: 17/17 backend tests + 14/14 frontend Sprint 2 scenarios verified
 
 ## Prioritized Backlog
 
-### P0 (Critical Next)
-- Push notification registration in frontend (questionnaire.tsx → expo-notifications)
-- Login with persistent session restore (re-fetch user profile from backend)
+### P0 — Next Sprint
+- None currently (all sprints complete)
 
-### P1 (High Value)
-- Social Proof: Review/rating system on idea pages
-- Success Stories: User testimonials for each idea category
-- Discover Screen: Sort by "Highest Match" or "Lowest Cost"
+### P1 — High Priority
+- **Sprint 3: Retention & Analytics**
+  - Streak system (daily check-ins)
+  - Push notification triggers on milestone completion
+  - User analytics dashboard (total progress, earnings unlocked)
+- **Real Stripe webhook** (currently using test key — needs live key for production)
 
-### P2 (Medium Value)
-- Monetization: Premium tier (Stripe/RevenueCat) with paywall for top-ranked ideas
-- Live Data Pipeline: Real Fiverr/Upwork job listings via APIs
-- Analytics: Mixpanel or Amplitude integration
+### P2 — Medium Priority
+- Live data integration (Fiverr/Upwork APIs for real listings)
+- Persistent login session restore (currently AsyncStorage only)
+- Social sharing (share blueprint progress)
+- Referral program
 
-### P3 (Nice to Have)
-- Referral program: share your blueprint progress
-- Community: discussion threads per idea category
-- Streak system: daily check-in rewards
-
-## Test Credentials
-- Email: tester@blueprint.com
-- Password: TestPass123
-- Profile: Home environment, Solo preference, Laptop asset, Tech + Finance interests
-
-## App URL
-https://blueprint-sprint1.preview.emergentagent.com
+### P3 — Backlog / Future
+- Architect cancellation flow (subscription management)
+- Mixpanel/Amplitude analytics
+- Native app build (iOS/Android) for real push notifications
+- Admin dashboard for content management
+- A/B testing framework for paywall conversion

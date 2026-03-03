@@ -736,14 +736,14 @@ async def signup(user_data: UserSignup):
     password_hash = hash_password(user_data.password)
     user = User(email=user_data.email, name=user_data.name, password_hash=password_hash)
     await db.users.insert_one(user.dict())
-    return {"id": user.id, "email": user.email, "name": user.name, "is_guest": False, "profile": user.profile.dict()}
+    return {"id": user.id, "email": user.email, "name": user.name, "is_guest": False, "is_architect": False, "profile": user.profile.dict()}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email})
     if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "is_guest": False, "profile": user.get("profile", {})}
+    return {"id": user["id"], "email": user["email"], "name": user["name"], "is_guest": False, "is_architect": user.get("is_architect", False), "profile": user.get("profile", {})}
 
 @api_router.post("/auth/guest")
 async def create_guest():
