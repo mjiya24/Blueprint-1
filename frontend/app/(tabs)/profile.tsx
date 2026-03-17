@@ -103,7 +103,6 @@ export default function ProfileScreen() {
         {!user?.is_guest && user?.id && arcLoaded && (() => {
           const lvl = getArcLevel(arcBalance);
           const nextM = getNextMilestone(arcBalance);
-          const progress = arcBalance >= 1000 ? 1 : (arcBalance % (nextM - (ARC_LEVELS.find(l => nextM === l.max + 1 || nextM === l.max)?.min ?? 0) || 1)) / (nextM - (ARC_LEVELS.find(l => nextM === l.max + 1 || nextM === l.max)?.min ?? 0) || 1);
           const progressPct = Math.min(100, Math.round((arcBalance / nextM) * 100));
           return (
             <View style={styles.section}>
@@ -165,7 +164,7 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.storeArcTag}>
                     <Ionicons name="lock-closed" size={10} color="#4A4A4A" />
-                    <Text style={styles.storeArcCost}>{item.arc}</Text>
+                    <Text style={styles.storeArcCost}>{item.arc} ARC</Text>
                   </View>
                 </View>
               ))}

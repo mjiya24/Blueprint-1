@@ -160,6 +160,7 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 | Sprint 4 | v2 Discovery (Netflix carousels), Daily Blueprint Widget, Blurred Paywall | ✅ Done | Mar 2026 |
 | Sprint 5 | Rescue Mode (AI Quick-Cash), Location Detection (GPS+IP proxy), Local Market Pulse Widget, Market Viability Badge | ✅ Done | Mar 2026 |
 | Sprint 6 | Theme Engine (Dark/Light toggle), Victory Lap Modal (percentile + earnings log), Completion Engine backend | ✅ Done | Mar 2026 |
+| Sprint 7A | ROI Clock (paywall risk-reversal), ARC Credits System (earn/display + store teaser), Flex Card Generator (shareable social proof achievement card) | ✅ Done | Mar 2026 |
 
 ---
 
@@ -167,22 +168,26 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 
 ### P0 — Critical for Revenue
 - [ ] **Stripe Live Key:** Swap test Stripe key for production live key. User must provide live secret key. Without this, no real payments can be processed.
+- [ ] **Firebase Phone OTP:** Identity verification for Blueprint Squads. User must provide Firebase config JSON.
 
 ### P1 — High Impact
+- [ ] **Blueprint Squads:** Social collaboration feature (group feeds, peer tips, Squad tab). Requires Phone OTP first.
+- [ ] **ARC Redemption Store:** Unlock the locked store items; build redemption logic + content (PDF downloads, etc.)
 - [ ] **Push Notification Nudges:** AI-driven proactive re-engagement (e.g., "The Guide found a shortcut for Step 8")
-- [ ] **Questionnaire Persistence:** AsyncStorage clears on web page reload; should persist session server-side
+- [ ] **ARC Deduplication:** Add per-event rate limiting to prevent ARC farming (e.g., max 1 step_complete award per step per day)
 
 ### P2 — Improvements
 - [ ] **Quick Wins Carousel Diversity:** Currently shows mostly AI & Automation blueprints. Add cross-category filtering
 - [ ] **Live Community Wins:** Replace mocked Community Wins with real user submissions
 - [ ] **Live Market Pulse:** Replace mocked news with real RSS/API data
+- [ ] **Daily Login ARC:** Award +5 ARC on daily streak check-in
 
 ### P3 — Future Backlog
 - [ ] Blueprint library expansion to 500+ (re-run generation script)
+- [ ] Plaid/Open Banking integration for real income tracking
 - [ ] User referral/sharing system
 - [ ] Revenue tracking dashboard for users
-- [ ] Onboarding A/B testing
-- [ ] server.py refactor — split into modular route files (approaching 1700+ lines)
+- [ ] server.py refactor — split into modular route files (now 1870+ lines)
 
 ---
 
@@ -193,4 +198,5 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 - **Stripe:** Test mode (`sk_test_emergent`) — needs live key
 
 ## Test Credentials
-- Test user created during Sprint 4 testing: `TEST_sprint4_tester@blueprint.com` / `TestPass123`
+- Sprint 4: `TEST_sprint4_tester@blueprint.com` / `TestPass123`
+- Sprint 7A: `arctest2@blueprint.com` / `Test123!` (user_id: 513e003a-15e7-4222-bf27-d5a6fc17ae87)
