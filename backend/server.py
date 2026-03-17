@@ -1217,6 +1217,185 @@ Return EXACTLY this JSON format (no markdown, no extra text):
         matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": response_text, "difficulty": "medium", "time_to_implement": "varies"}]}
     return matrix
 
+# ============= Sprint 3: Community Wins, Streak System, Content Engine =============
+
+from content_engine import run_generation, NICHES
+from fastapi import BackgroundTasks
+
+# --- Seeded Community Wins ---
+SEEDED_WINS = [
+    {"user_name": "Sarah M.", "user_initials": "SM", "user_color": "#8B5CF6", "blueprint_title": "No-Code SaaS Builder for Shopify Merchants", "category": "No-Code & SaaS", "earnings_amount": 3200, "earnings_period": "per month", "weeks_to_earn": 6, "quote": "Followed every step. My first Shopify client paid $1,200. I now have 3 retainers. The locked steps are worth every penny of Architect.", "verified": True, "upvotes": 47},
+    {"user_name": "Alex K.", "user_initials": "AK", "user_color": "#6366F1", "blueprint_title": "AI Automation Agency for Local Law Firms", "category": "AI & Automation", "earnings_amount": 5800, "earnings_period": "per month", "weeks_to_earn": 8, "quote": "Cold-emailed 20 law firms. 3 responded. 2 became clients at $2,900/mo each. The AI builds the automations, I do the relationship work.", "verified": True, "upvotes": 62},
+    {"user_name": "James T.", "user_initials": "JT", "user_color": "#F59E0B", "blueprint_title": "Faceless YouTube Automation (Personal Finance)", "category": "Digital & Content", "earnings_amount": 2100, "earnings_period": "per month", "weeks_to_earn": 12, "quote": "Took 12 weeks to hit monetization threshold. Month 4 I cleared $2,100 from AdSense + sponsorships. Pure passive now.", "verified": True, "upvotes": 38},
+    {"user_name": "Diana C.", "user_initials": "DC", "user_color": "#EC4899", "blueprint_title": "Fractional CMO Service for E-commerce Brands", "category": "Agency & B2B", "earnings_amount": 4400, "earnings_period": "per month", "weeks_to_earn": 10, "quote": "I was already doing marketing. This blueprint helped me package it as a Fractional CMO offer. Doubled my rates overnight.", "verified": True, "upvotes": 55},
+    {"user_name": "Marcus R.", "user_initials": "MR", "user_color": "#10B981", "blueprint_title": "Automated Etsy AI Art & Digital Downloads", "category": "Passive & Investment", "earnings_amount": 1800, "earnings_period": "per month", "weeks_to_earn": 8, "quote": "Set it up over one weekend. Now it earns while I sleep. The AI art angle was genius — no skills needed, just system.", "verified": True, "upvotes": 41},
+    {"user_name": "Lisa H.", "user_initials": "LH", "user_color": "#00D95F", "blueprint_title": "High-Ticket Ghostwriting for LinkedIn Executives", "category": "Digital & Content", "earnings_amount": 7200, "earnings_period": "per month", "weeks_to_earn": 6, "quote": "Found my first client on LinkedIn within 48 hours of setting up my profile the Blueprint way. $3,500/mo retainer locked in week 2.", "verified": True, "upvotes": 89},
+    {"user_name": "Kevin P.", "user_initials": "KP", "user_color": "#EF4444", "blueprint_title": "Pressure Washing Business", "category": "Local & Service", "earnings_amount": 3500, "earnings_period": "per month", "weeks_to_earn": 4, "quote": "Rented a $300 pressure washer for the first 2 jobs. Made $1,100 that weekend. Bought my own machine in week 3. Best ROI of my life.", "verified": True, "upvotes": 33},
+    {"user_name": "Yara T.", "user_initials": "YT", "user_color": "#3B82F6", "blueprint_title": "B2B Cold Email Outreach Agency", "category": "Agency & B2B", "earnings_amount": 2800, "earnings_period": "per month", "weeks_to_earn": 7, "quote": "Sent 500 cold emails using the exact template in the blueprint. 11 replies. 4 calls. 2 clients. $1,400/mo each.", "verified": True, "upvotes": 44},
+    {"user_name": "Will C.", "user_initials": "WC", "user_color": "#F97316", "blueprint_title": "Amazon FBA Private Label Brand Builder", "category": "Passive & Investment", "earnings_amount": 9400, "earnings_period": "per month", "weeks_to_earn": 14, "quote": "Slow build but the compounding is insane. Month 4 I hit $9.4K. The sourcing and PPC steps in the blueprint are GOLD.", "verified": False, "upvotes": 71},
+    {"user_name": "Nina W.", "user_initials": "NW", "user_color": "#A78BFA", "blueprint_title": "Bubble.io App Developer for Startups", "category": "No-Code & SaaS", "earnings_amount": 4100, "earnings_period": "per month", "weeks_to_earn": 9, "quote": "Charged $5K for my first Bubble app. Client referred me to two friends. I now have a waitlist. No-code is the great equalizer.", "verified": True, "upvotes": 58},
+]
+
+async def seed_wins_if_empty():
+    count = await db.community_wins.count_documents({})
+    if count == 0:
+        ts_base = datetime.utcnow()
+        for i, w in enumerate(SEEDED_WINS):
+            from datetime import timedelta
+            w_copy = {**w, "id": str(uuid.uuid4()), "user_id": "seeded", "created_at": (ts_base - timedelta(hours=i * 3)).isoformat()}
+            await db.community_wins.insert_one({k: v for k, v in w_copy.items() if k != "_id"})
+
+class WinSubmission(BaseModel):
+    user_id: str
+    blueprint_title: str
+    category: str
+    earnings_amount: float
+    earnings_period: str
+    weeks_to_earn: int = 0
+    quote: str
+
+USER_COLORS = ["#00D95F", "#6366F1", "#F59E0B", "#EC4899", "#3B82F6", "#10B981", "#EF4444", "#8B5CF6", "#F97316", "#A78BFA"]
+
+@api_router.get("/wins")
+async def get_wins(category: str = None, limit: int = 50):
+    await seed_wins_if_empty()
+    query = {}
+    if category and category != "All":
+        query["category"] = category
+    wins = await db.community_wins.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return wins
+
+@api_router.get("/wins/stats")
+async def get_wins_stats():
+    await seed_wins_if_empty()
+    pipeline = [{"$group": {"_id": None, "total_wins": {"$sum": 1}, "total_earned": {"$sum": "$earnings_amount"}, "verified_count": {"$sum": {"$cond": ["$verified", 1, 0]}}}}]
+    result = await db.community_wins.aggregate(pipeline).to_list(1)
+    if result:
+        r = result[0]
+        return {"total_wins": r["total_wins"], "total_earned": int(r["total_earned"]), "verified_count": r["verified_count"]}
+    return {"total_wins": 0, "total_earned": 0, "verified_count": 0}
+
+@api_router.post("/wins")
+async def submit_win(data: WinSubmission):
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.get("is_architect", False):
+        raise HTTPException(status_code=403, detail="Architect tier required to post wins")
+    import random
+    color = random.choice(USER_COLORS)
+    name = user.get("name", "Anonymous")
+    initials = "".join([p[0].upper() for p in name.split()[:2]]) if name else "??"
+    win = {
+        "id": str(uuid.uuid4()),
+        "user_id": data.user_id,
+        "user_name": name,
+        "user_initials": initials,
+        "user_color": color,
+        "blueprint_title": data.blueprint_title,
+        "category": data.category,
+        "earnings_amount": data.earnings_amount,
+        "earnings_period": data.earnings_period,
+        "weeks_to_earn": data.weeks_to_earn,
+        "quote": data.quote,
+        "verified": False,
+        "upvotes": 0,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    await db.community_wins.insert_one({k: v for k, v in win.items() if k != "_id"})
+    return {"id": win["id"], "message": "Win posted successfully"}
+
+@api_router.post("/wins/{win_id}/upvote")
+async def upvote_win(win_id: str):
+    result = await db.community_wins.update_one({"id": win_id}, {"$inc": {"upvotes": 1}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Win not found")
+    updated = await db.community_wins.find_one({"id": win_id}, {"_id": 0, "upvotes": 1})
+    return {"upvotes": updated.get("upvotes", 0)}
+
+# --- Streak System ---
+
+@api_router.post("/users/{user_id}/streak/checkin")
+async def streak_checkin(user_id: str):
+    from datetime import date, timedelta
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    today = date.today().isoformat()
+    last_action = user.get("streak_last_action")
+    current_streak = user.get("streak_current", 0)
+    longest_streak = user.get("streak_longest", 0)
+    is_new_day = False
+    if last_action == today:
+        return {"streak_current": current_streak, "streak_longest": longest_streak, "is_new_day": False, "message": "Already checked in today"}
+    elif last_action == (date.today() - timedelta(days=1)).isoformat():
+        current_streak += 1
+        is_new_day = True
+    else:
+        current_streak = 1
+        is_new_day = True
+    if current_streak > longest_streak:
+        longest_streak = current_streak
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"streak_current": current_streak, "streak_last_action": today, "streak_longest": longest_streak}}
+    )
+    return {"streak_current": current_streak, "streak_longest": longest_streak, "is_new_day": is_new_day, "message": f"Streak: {current_streak} days!"}
+
+@api_router.get("/users/{user_id}/streak")
+async def get_streak(user_id: str):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "streak_current": user.get("streak_current", 0),
+        "streak_longest": user.get("streak_longest", 0),
+        "streak_last_action": user.get("streak_last_action"),
+    }
+
+# --- Content Engine: Blueprint Generation ---
+
+_generation_status: Dict[str, Any] = {}
+
+async def _run_generation_task(job_id: str, limit: int):
+    _generation_status[job_id] = {"status": "running", "done": 0, "total": min(limit, len(NICHES)), "success": 0, "fail": 0}
+    async def progress(done, total, success, fail):
+        _generation_status[job_id].update({"done": done, "total": total, "success": success, "fail": fail})
+    try:
+        s, f = await run_generation(batch_size=5, limit=limit, progress_callback=progress)
+        _generation_status[job_id].update({"status": "complete", "success": s, "fail": f})
+    except Exception as e:
+        _generation_status[job_id].update({"status": "error", "error": str(e)})
+
+@api_router.post("/admin/generate-blueprints")
+async def trigger_blueprint_generation(background_tasks: BackgroundTasks, limit: int = 100):
+    job_id = str(uuid.uuid4())[:8]
+    background_tasks.add_task(_run_generation_task, job_id, limit)
+    return {"job_id": job_id, "message": f"Generation started for up to {limit} blueprints", "status_url": f"/api/admin/generate-blueprints/{job_id}"}
+
+@api_router.get("/admin/generate-blueprints/{job_id}")
+async def get_generation_status(job_id: str):
+    status = _generation_status.get(job_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return status
+
+@api_router.get("/blueprints")
+async def get_blueprints(category: str = None, limit: int = 50, skip: int = 0):
+    query = {"version": "2.0"}
+    if category and category != "All":
+        query["category"] = category
+    total = await db.blueprints.count_documents(query)
+    items = await db.blueprints.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).to_list(limit)
+    return {"blueprints": items, "total": total, "has_more": skip + limit < total}
+
+@api_router.get("/blueprints/{blueprint_id}")
+async def get_blueprint(blueprint_id: str):
+    bp = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    return bp
+
 # Include the router
 app.include_router(api_router)
 

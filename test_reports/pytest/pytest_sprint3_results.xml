@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="14" skipped="8" tests="34" time="942.739" timestamp="2026-03-03T07:53:18.799759+00:00" hostname="agent-env-5d299614-78e0-491e-8bbd-1e7fc197d159"><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_returns_200" time="4.237" /><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_returns_list" time="60.046"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:54: in test_get_wins_returns_list
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_returns_10_seeded_wins" time="60.144"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:61: in test_get_wins_returns_10_seeded_wins
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_wins_have_required_fields" time="60.140"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:68: in test_wins_have_required_fields
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_category_filter" time="60.121"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:79: in test_get_wins_category_filter
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_stats_returns_200" time="60.143"><failure message="AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.&#10;  &#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:88: in test_get_wins_stats_returns_200
+    assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
+E   AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.
+E     
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_get_wins_stats_correct_structure" time="60.047"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:93: in test_get_wins_stats_correct_structure
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_wins_stats_total_wins_ge_10" time="60.154"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:102: in test_wins_stats_total_wins_ge_10
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_wins_stats_total_earned_positive" time="60.155"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:109: in test_wins_stats_total_earned_positive
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_wins_stats_verified_count_gt_0" time="60.153"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:116: in test_wins_stats_verified_count_gt_0
+    assert res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_upvote_win" time="60.140"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:124: in test_upvote_win
+    assert wins_res.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_upvote_nonexistent_win_returns_404" time="60.131"><failure message="AssertionError: Expected 404, got 502&#10;assert 502 == 404&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:138: in test_upvote_nonexistent_win_returns_404
+    assert res.status_code == 404, f"Expected 404, got {res.status_code}"
+E   AssertionError: Expected 404, got 502
+E   assert 502 == 404
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestWinsAPI" name="test_submit_win_requires_architect" time="60.132"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:140: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_checkin_returns_200" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:160: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_checkin_returns_correct_fields" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:165: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_checkin_current_ge_1" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:175: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_checkin_already_today" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:182: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_get_streak_returns_200" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:191: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_get_streak_correct_fields" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:196: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_data_persistence" time="0.000"><skipped type="pytest.skip" message="Auth failed: 502 - The preview environment is not responding. It may be starting up.">/app/backend/tests/test_sprint3.py:207: Auth failed: 502 - The preview environment is not responding. It may be starting up.</skipped></testcase><testcase classname="backend.tests.test_sprint3.TestStreakSystem" name="test_streak_checkin_unknown_user_returns_404" time="60.129"><failure message="AssertionError: Expected 404, got 502&#10;assert 502 == 404&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:220: in test_streak_checkin_unknown_user_returns_404
+    assert res.status_code == 404, f"Expected 404, got {res.status_code}"
+E   AssertionError: Expected 404, got 502
+E   assert 502 == 404
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestBlueprintGeneration" name="test_trigger_generation_returns_200" time="60.142"><failure message="AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.&#10;  &#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_sprint3.py:231: in test_trigger_generation_returns_200
+    assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
+E   AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.
+E     
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_sprint3.TestBlueprintGeneration" name="test_trigger_generation_returns_valid_job_id" time="60.149"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:976: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_sprint3.py:239: in test_trigger_generation_returns_valid_job_id
+    data = res.json()
+           ^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:980: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="backend.tests.test_sprint3.TestBlueprintGeneration" name="test_get_known_job_status" time="34.841" /><testcase classname="backend.tests.test_sprint3.TestBlueprintGeneration" name="test_trigger_and_check_new_job" time="0.775" /><testcase classname="backend.tests.test_sprint3.TestBlueprintGeneration" name="test_get_nonexistent_job_returns_404" time="0.044" /><testcase classname="backend.tests.test_sprint3.TestBlueprintsAPI" name="test_get_blueprints_returns_200" time="0.093" /><testcase classname="backend.tests.test_sprint3.TestBlueprintsAPI" name="test_get_blueprints_has_required_fields" time="0.072" /><testcase classname="backend.tests.test_sprint3.TestBlueprintsAPI" name="test_blueprints_list_is_list" time="0.071" /><testcase classname="backend.tests.test_sprint3.TestBlueprintsAPI" name="test_blueprints_if_exists_have_fields" time="0.066" /><testcase classname="backend.tests.test_sprint3.TestBlueprintsAPI" name="test_blueprints_category_filter" time="0.055" /><testcase classname="backend.tests.test_sprint3.TestExistingFeatures" name="test_ideas_load" time="0.048" /><testcase classname="backend.tests.test_sprint3.TestExistingFeatures" name="test_login_still_works" time="0.270" /><testcase classname="backend.tests.test_sprint3.TestExistingFeatures" name="test_idea_detail_loads" time="0.045" /></testsuite></testsuites>

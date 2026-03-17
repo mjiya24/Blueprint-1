@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { StreakBadge } from '../../components/StreakBadge';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -27,6 +28,7 @@ export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [streak, setStreak] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
@@ -41,8 +43,12 @@ export default function HomeScreen() {
           const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 6 } });
           setIdeas((res.data.ideas || []).slice(0, 6));
         } else {
-          const res = await axios.get(`${API_URL}/api/ideas/personalized/${u.id}`);
-          setIdeas(res.data.slice(0, 6));
+          const [ideasRes, streakRes] = await Promise.all([
+            axios.get(`${API_URL}/api/ideas/personalized/${u.id}`),
+            axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`).catch(() => ({ data: { streak_current: 0 } })),
+          ]);
+          setIdeas(ideasRes.data.slice(0, 6));
+          setStreak(streakRes.data.streak_current || 0);
         }
       }
     } catch (e) {
@@ -88,8 +94,11 @@ export default function HomeScreen() {
               {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized income roadmap."}
             </Text>
           </View>
-          <TouchableOpacity style={styles.notifBtn}>
-            <Ionicons name="notifications-outline" size={22} color="#8E8E8E" />
+          <TouchableOpacity style={styles.notifBtn} data-testid="notif-btn">
+            {streak > 0 && !user?.is_guest
+              ? <StreakBadge streak={streak} isToday={true} />
+              : <Ionicons name="notifications-outline" size={22} color="#8E8E8E" />
+            }
           </TouchableOpacity>
         </View>
 
