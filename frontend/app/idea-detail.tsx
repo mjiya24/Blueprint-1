@@ -16,6 +16,7 @@ import { IdeaIcon } from '../components/icons';
 import { ArchitectPaywall } from '../components/ArchitectPaywall';
 import { TroubleshootModal } from '../components/TroubleshootModal';
 import { useLocalSearchParams } from 'expo-router';
+import { RescueModeModal } from '../components/RescueModeModal';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const HIGH_TICKET_IDS = new Set(['digital-001', 'digital-005', 'passive-002', 'passive-003', 'passive-004']);
@@ -60,6 +61,22 @@ export default function IdeaDetailScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showTroubleshoot, setShowTroubleshoot] = useState(false);
   const [troubleshootStep, setTroubleshootStep] = useState<{ number: number; text: string } | null>(null);
+  // Sprint 5: Rescue Mode
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
+
+  const checkIfStuck = (saved: any) => {
+    if (!saved) return false;
+    const steps = saved.action_steps || [];
+    const completedTimes = steps
+      .filter((s: any) => s.completed && s.completed_at)
+      .map((s: any) => new Date(s.completed_at).getTime());
+    const savedAtTime = new Date(saved.saved_at).getTime();
+    const lastActivity = Math.max(savedAtTime, ...(completedTimes.length ? completedTimes : [0]));
+    const hoursSince = (Date.now() - lastActivity) / (1000 * 60 * 60);
+    const hasUncompletedSteps = steps.some((s: any) => !s.completed);
+    return hoursSince >= 72 && hasUncompletedSteps && steps.length > 0;
+  };
 
   useEffect(() => { if (id) loadData(); }, [id]);
 
@@ -79,6 +96,7 @@ export default function IdeaDetailScreen() {
         if (savedRes.data) {
           setSavedIdea(savedRes.data);
           setIsSaved(true);
+          setIsStuck(checkIfStuck(savedRes.data));
           // Restore shown milestones
           const progress = savedRes.data.progress_percentage || 0;
           const shown = new Set<string>();
@@ -437,6 +455,25 @@ export default function IdeaDetailScreen() {
                   <Text style={styles.architectBadgeText}>ARCHITECT TOOLS</Text>
                 </View>
               </View>
+              {/* Rescue Mode CTA — shown when stuck >72h */}
+              {isStuck && (
+                <TouchableOpacity
+                  style={[styles.architectCard, styles.rescueCard]}
+                  onPress={() => setShowRescueModal(true)}
+                  data-testid="rescue-mode-btn"
+                >
+                  <View style={[styles.architectCardIcon, { backgroundColor: '#00D95F18' }]}>
+                    <Ionicons name="flash" size={22} color="#00D95F" />
+                  </View>
+                  <View style={styles.architectCardText}>
+                    <Text style={styles.architectCardTitle}>Quick-Cash Rescue</Text>
+                    <Text style={styles.architectCardDesc}>3 tasks to earn $50-$200 in 48h</Text>
+                  </View>
+                  <View style={styles.rescuePulseBadge}>
+                    <Text style={styles.rescuePulseText}>STUCK</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
               {/* Blueprint Guide CTA */}
               <TouchableOpacity
                 style={styles.architectCard}
@@ -513,6 +550,16 @@ export default function IdeaDetailScreen() {
           stepText={troubleshootStep.text}
         />
       )}
+
+      {/* Sprint 5: Rescue Mode Modal */}
+      <RescueModeModal
+        visible={showRescueModal}
+        onClose={() => setShowRescueModal(false)}
+        userId={user?.id || ''}
+        ideaId={id as string}
+        isArchitect={user?.is_architect || false}
+        onUpgrade={() => router.push('/architect-upgrade')}
+      />
 
       {/* Bottom CTA */}
       {!isStarted && (
@@ -629,6 +676,15 @@ const styles = StyleSheet.create({
   architectCardText: { flex: 1 },
   architectCardTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginBottom: 3 },
   architectCardDesc: { fontSize: 12, color: '#4A4A4A' },
+  // Sprint 5: Rescue Card styles
+  rescueCard: {
+    borderWidth: 1, borderColor: '#00D95F40',
+    backgroundColor: '#00D95F06',
+  },
+  rescuePulseBadge: {
+    backgroundColor: '#00D95F', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+  },
+  rescuePulseText: { fontSize: 9, fontWeight: '900', color: '#000', letterSpacing: 0.8 },
   lockBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#1A1C23', borderWidth: 1, borderColor: '#2A2C35', justifyContent: 'center', alignItems: 'center' },
   upgradePrompt: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

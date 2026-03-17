@@ -48,6 +48,13 @@ class UserProfile(BaseModel):
     assets: List[str] = []         # car, laptop, investment
     questionnaire_interests: List[str] = []  # tech, fitness, pets, real-estate, creative, finance
     push_token: str = ""           # Expo push notification token
+    # Sprint 5: Geolocation
+    city: str = ""
+    state: str = ""
+    country: str = ""
+    country_code: str = ""
+    currency_code: str = ""
+    currency_symbol: str = ""
 
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -726,6 +733,21 @@ PRE_POPULATED_IDEAS = [
     }
 ]
 
+# ============= Sprint 5: Currency & Location Constants =============
+
+CURRENCY_MAP: Dict[str, Dict[str, str]] = {
+    "US": {"code": "USD", "symbol": "$"}, "GB": {"code": "GBP", "symbol": "£"},
+    "DE": {"code": "EUR", "symbol": "€"}, "FR": {"code": "EUR", "symbol": "€"},
+    "ES": {"code": "EUR", "symbol": "€"}, "IT": {"code": "EUR", "symbol": "€"},
+    "CA": {"code": "CAD", "symbol": "CA$"}, "AU": {"code": "AUD", "symbol": "A$"},
+    "IN": {"code": "INR", "symbol": "₹"}, "BR": {"code": "BRL", "symbol": "R$"},
+    "MX": {"code": "MXN", "symbol": "MX$"}, "KE": {"code": "KES", "symbol": "KSh"},
+    "NG": {"code": "NGN", "symbol": "₦"}, "ZA": {"code": "ZAR", "symbol": "R"},
+    "PH": {"code": "PHP", "symbol": "₱"}, "SG": {"code": "SGD", "symbol": "S$"},
+    "AE": {"code": "AED", "symbol": "AED"}, "ID": {"code": "IDR", "symbol": "Rp"},
+    "NZ": {"code": "NZD", "symbol": "NZ$"}, "JP": {"code": "JPY", "symbol": "¥"},
+}
+
 # ============= Routes =============
 
 @api_router.post("/auth/signup")
@@ -772,6 +794,25 @@ async def update_push_token(user_id: str, token_data: Dict[str, Any]):
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Push token updated"}
+
+@api_router.put("/users/{user_id}/location")
+async def update_user_location(user_id: str, location_data: Dict[str, Any]):
+    """Sprint 5: Store user's geo-location for local market features."""
+    city = location_data.get("city", "")
+    country_code = location_data.get("country_code", "US")
+    currency = CURRENCY_MAP.get(country_code, {"code": "USD", "symbol": "$"})
+    update_fields = {
+        "profile.city": city,
+        "profile.state": location_data.get("state", ""),
+        "profile.country": location_data.get("country", ""),
+        "profile.country_code": country_code,
+        "profile.currency_code": location_data.get("currency_code") or currency["code"],
+        "profile.currency_symbol": location_data.get("currency_symbol") or currency["symbol"],
+    }
+    result = await db.users.update_one({"id": user_id}, {"$set": update_fields})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Location updated", "city": city, "currency": currency}
 
 async def ensure_ideas_seeded():
     """Seed ideas if DB is empty or if ideas lack new schema fields"""
@@ -1518,6 +1559,158 @@ async def search_blueprints(q: str = "", category: str = None, difficulty: str =
             bp["match_score"] = calculate_blueprint_match(bp, user_profile)
         all_bps.sort(key=lambda x: x.get("match_score", 0), reverse=True)
     return all_bps[:limit]
+
+@api_router.get("/blueprints/local-trending")
+async def get_local_trending(city: str = "", country_code: str = "US", user_id: str = None):
+    """Sprint 5: Returns 3 top blueprints tailored to user's region."""
+    REGION_CATS = {
+        "US": ["AI & Automation", "Agency & B2B", "Digital & Content"],
+        "GB": ["AI & Automation", "Agency & B2B", "Digital & Content"],
+        "CA": ["AI & Automation", "Digital & Content", "Agency & B2B"],
+        "AU": ["AI & Automation", "Digital & Content", "Passive & Investment"],
+        "IN": ["Digital & Content", "No-Code & SaaS", "AI & Automation"],
+        "BR": ["Digital & Content", "Local & Service", "Agency & B2B"],
+        "NG": ["Digital & Content", "Agency & B2B", "No-Code & SaaS"],
+        "KE": ["Digital & Content", "Local & Service", "No-Code & SaaS"],
+    }
+    cats = REGION_CATS.get(country_code, ["AI & Automation", "Digital & Content", "Passive & Investment"])
+    user_profile = {}
+    if user_id:
+        u = await db.users.find_one({"id": user_id})
+        if u:
+            user_profile = u.get("profile", {})
+    result = []
+    for cat in cats[:3]:
+        bps = await db.blueprints.find({"category": cat, "version": "2.0"}, {"_id": 0}).to_list(20)
+        if bps:
+            if user_profile:
+                for bp in bps:
+                    bp["match_score"] = calculate_blueprint_match(bp, user_profile)
+                bps.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+            result.append(bps[0])
+    return {"city": city, "country_code": country_code, "blueprints": result}
+
+@api_router.get("/blueprints/{blueprint_id}/viability")
+async def get_blueprint_viability(blueprint_id: str, city: str = "", country_code: str = "US", country: str = ""):
+    """Sprint 5: AI-powered local market viability assessment for a blueprint."""
+    bp = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not bp:
+        bp = await db.ideas.find_one({"id": blueprint_id}, {"_id": 0})
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    location_str = f"{city}, {country or country_code}" if city else (country or country_code or "United States")
+    prompt = f"""Analyze the market viability of this income blueprint for someone in {location_str}.
+
+Blueprint: {bp['title']}
+Category: {bp.get('category', '')}
+Description: {bp.get('description', '')}
+
+Return EXACTLY this JSON (no markdown, no extra text):
+{{
+  "score": 78,
+  "demand_level": "High",
+  "reason": "2-3 sentences explaining viability in {location_str}",
+  "local_tip": "One specific actionable insight for {location_str}",
+  "local_tools": ["tool1", "tool2"]
+}}"""
+    try:
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"viability-{blueprint_id}-{city}-{country_code}"
+        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a local market analyst. Always return valid JSON.")
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        match = _re.search(r'\{.*\}', response, _re.DOTALL)
+        if match:
+            return _json.loads(match.group())
+    except Exception as e:
+        logger.error(f"Viability generation error: {e}")
+    return {"score": 72, "demand_level": "Medium", "reason": f"Market data for {location_str} is currently being analyzed.", "local_tip": "Research local demand before launching.", "local_tools": []}
+
+@api_router.post("/rescue/{user_id}/{idea_id}")
+async def generate_rescue_tasks(user_id: str, idea_id: str):
+    """Sprint 5: Architect-only. Generates 3 AI-powered Quick-Cash tasks for stuck users."""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.get("is_architect", False):
+        raise HTTPException(status_code=403, detail="Architect tier required for Rescue Mode")
+    bp = await db.blueprints.find_one({"id": idea_id}, {"_id": 0})
+    if not bp:
+        bp = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    saved_idea = await db.saved_ideas.find_one({"user_id": user_id, "idea_id": idea_id}, {"_id": 0})
+    stuck_step_text = "getting started"
+    stuck_step_num = 1
+    if saved_idea:
+        for step in saved_idea.get("action_steps", []):
+            if not step.get("completed"):
+                stuck_step_text = step.get("text", "getting started")
+                stuck_step_num = step.get("step_number", 1)
+                break
+    profile = user.get("profile", {})
+    city = profile.get("city", "")
+    country = profile.get("country", "")
+    location_ctx = f"in {city}, {country}" if city else "remotely"
+    assets = ", ".join(profile.get("assets", [])) or "none"
+    prompt = f"""You are Blueprint Rescue AI. A user is stuck on their income blueprint and needs 3 quick-cash tasks completable in 48 hours to earn $50-$200 immediately.
+
+CONTEXT:
+- Blueprint: {bp['title']} ({bp.get('category', '')})
+- Stuck on Step {stuck_step_num}: "{stuck_step_text}"
+- Location: {location_ctx}
+- Available assets: {assets}
+
+Generate EXACTLY 3 "Quick-Cash Sprint" tasks that:
+1. Take 24-48 hours to complete
+2. Require zero upfront cost
+3. Leverage skills directly from this blueprint
+4. Can realistically earn $50-$200 today
+
+Return EXACTLY this JSON (no markdown):
+{{
+  "rescue_message": "One energizing sentence acknowledging their situation and why this works",
+  "tasks": [
+    {{
+      "title": "Task name under 6 words",
+      "description": "Exactly what to do — step by step (2 sentences)",
+      "estimated_earn": "$X-$Y",
+      "time_required": "X-Y hours",
+      "action_label": "2-3 word CTA"
+    }},
+    {{
+      "title": "Task 2",
+      "description": "What to do",
+      "estimated_earn": "$X-$Y",
+      "time_required": "X-Y hours",
+      "action_label": "Short CTA"
+    }},
+    {{
+      "title": "Task 3",
+      "description": "What to do",
+      "estimated_earn": "$X-$Y",
+      "time_required": "X-Y hours",
+      "action_label": "Short CTA"
+    }}
+  ]
+}}"""
+    try:
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"rescue-{user_id}-{idea_id}-{datetime.now().strftime('%Y%m%d')}"
+        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a financial rescue specialist. Always return valid JSON only.")
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        match = _re.search(r'\{.*\}', response, _re.DOTALL)
+        if match:
+            result = _json.loads(match.group())
+            result["stuck_step"] = stuck_step_text
+            result["stuck_step_num"] = stuck_step_num
+            return result
+    except Exception as e:
+        logger.error(f"Rescue generation error: {e}")
+    raise HTTPException(status_code=500, detail="Failed to generate rescue tasks")
 
 @api_router.get("/blueprints/{blueprint_id}")
 async def get_blueprint(blueprint_id: str):

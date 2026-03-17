@@ -30,13 +30,23 @@ export default function BlueprintDetailScreen() {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [viability, setViability] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem('user').then(d => d && setUser(JSON.parse(d))),
+      AsyncStorage.getItem('user').then(d => { if (d) setUser(JSON.parse(d)); }),
       axios.get(`${API_URL}/api/blueprints/${id}`).then(r => setBlueprint(r.data)),
     ]).finally(() => setIsLoading(false));
   }, [id]);
+
+  // Load viability when both blueprint and user location are available
+  useEffect(() => {
+    if (blueprint && user && user.profile?.city && !user.is_guest) {
+      axios.get(`${API_URL}/api/blueprints/${blueprint.id}/viability`, {
+        params: { city: user.profile.city, country_code: user.profile.country_code || 'US', country: user.profile.country || '' }
+      }).then(r => setViability(r.data)).catch(() => {});
+    }
+  }, [blueprint, user]);
 
   if (isLoading) return (
     <View style={styles.loading}>
@@ -86,6 +96,40 @@ export default function BlueprintDetailScreen() {
           </View>
           <Text style={styles.title}>{blueprint.title}</Text>
           <Text style={styles.description}>{blueprint.description}</Text>
+
+          {/* Local Market Signal — Sprint 5 */}
+          {viability && (
+            <View style={[styles.viabilityCard, {
+              borderColor: viability.demand_level === 'High' ? '#00D95F30' :
+                viability.demand_level === 'Medium' ? '#F59E0B30' : '#FF6B6B30'
+            }]} data-testid="viability-badge">
+              <View style={styles.viabilityHeader}>
+                <Ionicons name="location" size={13} color="#00D95F" />
+                <Text style={styles.viabilityHeaderText}>LOCAL MARKET — {user?.profile?.city?.toUpperCase()}</Text>
+                <View style={[styles.demandBadge, {
+                  backgroundColor: viability.demand_level === 'High' ? '#00D95F18' :
+                    viability.demand_level === 'Medium' ? '#F59E0B18' : '#FF6B6B18'
+                }]}>
+                  <Text style={[styles.demandText, {
+                    color: viability.demand_level === 'High' ? '#00D95F' :
+                      viability.demand_level === 'Medium' ? '#F59E0B' : '#FF6B6B'
+                  }]}>{viability.demand_level}</Text>
+                </View>
+              </View>
+              <View style={styles.viabilityBody}>
+                <Text style={[styles.viabilityScore, {
+                  color: viability.score >= 75 ? '#00D95F' : viability.score >= 50 ? '#F59E0B' : '#FF6B6B'
+                }]}>{viability.score}%</Text>
+                <Text style={styles.viabilityReason} numberOfLines={3}>{viability.reason}</Text>
+              </View>
+              {viability.local_tip && (
+                <View style={styles.localTip}>
+                  <Ionicons name="flash" size={11} color="#F59E0B" />
+                  <Text style={styles.localTipText}>{viability.local_tip}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Stats row */}
           <View style={styles.statsRow}>
@@ -319,4 +363,25 @@ const styles = StyleSheet.create({
   guideBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   guideBtnTitle: { fontSize: 15, fontWeight: '700', color: '#000' },
   guideBtnSub: { fontSize: 11, color: '#000', opacity: 0.7 },
+  // Sprint 5: Viability badge
+  viabilityCard: {
+    backgroundColor: '#1A1C23', borderRadius: 16, padding: 14,
+    marginBottom: 14, borderWidth: 1,
+  },
+  viabilityHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  viabilityHeaderText: {
+    fontSize: 10, color: '#4A4A4A', fontWeight: '700',
+    letterSpacing: 0.8, flex: 1,
+  },
+  demandBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  demandText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  viabilityBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 8 },
+  viabilityScore: { fontSize: 28, fontWeight: '800', lineHeight: 32 },
+  viabilityReason: { flex: 1, fontSize: 12, color: '#8E8E8E', lineHeight: 17 },
+  localTip: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    backgroundColor: '#F59E0B0A', borderRadius: 8, padding: 8,
+    borderWidth: 1, borderColor: '#F59E0B20',
+  },
+  localTipText: { flex: 1, fontSize: 11, color: '#F59E0B', lineHeight: 15 },
 });

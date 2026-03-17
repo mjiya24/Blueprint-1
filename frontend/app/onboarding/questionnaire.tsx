@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Alert, ActivityIndicator
+  StatusBar, Alert, ActivityIndicator, TextInput
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
@@ -63,6 +64,14 @@ const STEP_CONFIG = [
       { id: 'finance', label: 'Finance & Investing', desc: 'Money, markets, business', icon: 'trending-up' },
     ],
   },
+  {
+    step: 5,
+    title: 'Where are you based?',
+    subtitle: 'Unlocks "Trending in [Your City]" — personalized local market data.',
+    type: 'location',
+    field: 'location',
+    options: [],
+  },
 ];
 
 export default function QuestionnaireScreen() {
@@ -75,6 +84,42 @@ export default function QuestionnaireScreen() {
     questionnaire_interests: [],
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [locationData, setLocationData] = useState<{ city: string; state: string; country: string; country_code: string } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const detectLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const coords = await Location.getCurrentPositionAsync({});
+        const geocode = await Location.reverseGeocodeAsync(coords.coords);
+        if (geocode.length > 0) {
+          const g = geocode[0];
+          setLocationData({
+            city: g.city || g.subregion || 'Unknown',
+            state: g.region || '',
+            country: g.country || '',
+            country_code: g.isoCountryCode || 'US',
+          });
+          return;
+        }
+      }
+      // IP fallback
+      const res = await fetch('https://ipapi.co/json/');
+      const data = await res.json();
+      setLocationData({
+        city: data.city || '',
+        state: data.region || '',
+        country: data.country_name || '',
+        country_code: data.country_code || 'US',
+      });
+    } catch (e) {
+      console.error('Location detection failed:', e);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const config = STEP_CONFIG[currentStep];
   const progress = ((currentStep + 1) / STEP_CONFIG.length) * 100;
@@ -94,6 +139,7 @@ export default function QuestionnaireScreen() {
   };
 
   const canProceed = (): boolean => {
+    if (config.type === 'location') return true; // Location is optional
     const val = answers[config.field];
     if (config.type === 'single') return !!val;
     return (val as string[]).length > 0;
@@ -136,9 +182,20 @@ export default function QuestionnaireScreen() {
         social_preference: answers.social_preference,
         assets: answers.assets,
         questionnaire_interests: answers.questionnaire_interests,
+        // Sprint 5: location
+        ...(locationData ? {
+          city: locationData.city,
+          state: locationData.state,
+          country: locationData.country,
+          country_code: locationData.country_code,
+        } : {}),
       };
       // Save profile to backend
       await axios.put(`${API_URL}/api/users/${user.id}/profile`, updatedProfile);
+      // Save location separately if detected
+      if (locationData) {
+        axios.put(`${API_URL}/api/users/${user.id}/location`, locationData).catch(() => {});
+      }
       // Register push notifications (non-blocking)
       registerPushToken(user.id);
       // Update local storage
@@ -188,6 +245,55 @@ export default function QuestionnaireScreen() {
       </View>
 
       {/* Options */}
+      {/* Options or Location step */}
+      {config.type === 'location' ? (
+        <ScrollView style={styles.options} showsVerticalScrollIndicator={false}>
+          {/* Location icon */}
+          <View style={styles.locationCard}>
+            <View style={styles.locationIconWrap}>
+              <Ionicons name="location" size={40} color="#00D95F" />
+            </View>
+            <Text style={styles.locationBenefit}>
+              Unlocks "Trending in [Your City]" feed — hyper-local market data for your area
+            </Text>
+          </View>
+          {/* Detected location display */}
+          {locationData ? (
+            <View style={styles.locationDetected}>
+              <View style={styles.locationDetectedLeft}>
+                <Ionicons name="checkmark-circle" size={22} color="#00D95F" />
+                <View>
+                  <Text style={styles.locationCity}>{locationData.city}{locationData.state ? `, ${locationData.state}` : ''}</Text>
+                  <Text style={styles.locationCountry}>{locationData.country}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setLocationData(null)}>
+                <Text style={styles.changeLocation}>Change</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.detectBtn, locationLoading && styles.detectBtnLoading]}
+              onPress={detectLocation}
+              disabled={locationLoading}
+              data-testid="detect-location-btn"
+            >
+              {locationLoading ? (
+                <>
+                  <ActivityIndicator color="#000" size="small" />
+                  <Text style={styles.detectBtnText}>Detecting your location...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={18} color="#000" />
+                  <Text style={styles.detectBtnText}>Unlock Local Market Data</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      ) : (
       <ScrollView style={styles.options} showsVerticalScrollIndicator={false}>
         {config.options.map((option) => {
           const selected = isSelected(option.id);
@@ -220,6 +326,7 @@ export default function QuestionnaireScreen() {
         })}
         <View style={{ height: 24 }} />
       </ScrollView>
+      )} {/* end config.type === 'location' ternary */}
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -282,6 +389,32 @@ const styles = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12,
     backgroundColor: '#00D95F', justifyContent: 'center', alignItems: 'center',
   },
+  // Location step styles
+  locationCard: {
+    backgroundColor: '#1A1C23', borderRadius: 18, padding: 28,
+    alignItems: 'center', borderWidth: 1, borderColor: '#00D95F20', marginBottom: 16,
+  },
+  locationIconWrap: {
+    width: 72, height: 72, borderRadius: 20,
+    backgroundColor: '#00D95F15', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#00D95F30', marginBottom: 14,
+  },
+  locationBenefit: { fontSize: 14, color: '#8E8E8E', textAlign: 'center', lineHeight: 20 },
+  detectBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#00D95F', paddingVertical: 16, borderRadius: 14, marginBottom: 12,
+  },
+  detectBtnLoading: { opacity: 0.7 },
+  detectBtnText: { fontSize: 16, fontWeight: '700', color: '#000' },
+  locationDetected: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#00D95F0A', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#00D95F30', marginBottom: 16,
+  },
+  locationDetectedLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  locationCity: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  locationCountry: { fontSize: 12, color: '#4A4A4A', marginTop: 2 },
+  changeLocation: { fontSize: 13, color: '#00D95F', fontWeight: '600' },
   footer: {
     flexDirection: 'row', gap: 12,
     padding: 24, paddingBottom: 40,

@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { StreakBadge } from '../../components/StreakBadge';
 import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
+import { LocalMarketPulseWidget } from '../../components/LocalMarketPulseWidget';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -135,6 +136,15 @@ export default function HomeScreen() {
         {/* Daily Blueprint Widget (logged-in only) */}
         {user && !user.is_guest && (
           <DailyBlueprintWidget userId={user.id} profile={user.profile} />
+        )}
+
+        {/* Local Market Pulse Widget (if user has location) */}
+        {user && !user.is_guest && user.profile?.city && (
+          <LocalMarketPulseWidget
+            userId={user.id}
+            city={user.profile.city}
+            countryCode={user.profile.country_code || 'US'}
+          />
         )}
 
         {/* Stats row */}
