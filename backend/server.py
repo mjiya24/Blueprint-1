@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import bcrypt
 from bson import ObjectId
 import httpx
@@ -1738,6 +1738,59 @@ async def get_blueprint(blueprint_id: str):
     if not bp:
         raise HTTPException(status_code=404, detail="Blueprint not found")
     return bp
+
+# ============= Sprint 6: Victory Lap / Completion Engine =============
+
+@api_router.get("/completions/percentile/{idea_id}")
+async def get_completion_percentile(idea_id: str, days: float = 0):
+    """Calculate where this completion speed ranks among all finishers."""
+    all_completions = await db.completions.find({"idea_id": idea_id}, {"_id": 0, "completion_days": 1}).to_list(1000)
+    total = len(all_completions)
+    if total == 0:
+        return {"percentile": 50, "total_completions": 1, "completion_days": days}
+    faster_count = sum(1 for c in all_completions if c.get("completion_days", 9999) > days)
+    percentile = round((faster_count / total) * 100)
+    return {"percentile": percentile, "total_completions": total + 1, "completion_days": days}
+
+@api_router.post("/completions/{user_id}/{idea_id}")
+async def save_completion(user_id: str, idea_id: str, data: Dict[str, Any]):
+    """Sprint 6: Save a user's blueprint completion record with earnings + strategy."""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    record = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "idea_id": idea_id,
+        "earnings": float(data.get("earnings", 0)),
+        "strategy": data.get("strategy", ""),
+        "tricky_step": data.get("tricky_step", ""),
+        "improvement_tip": data.get("improvement_tip", ""),
+        "completion_days": float(data.get("completion_days", 0)),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "username": user.get("name", ""),
+    }
+    await db.completions.insert_one(record)
+    # Mark the saved_idea as fully complete
+    await db.saved_ideas.update_one(
+        {"user_id": user_id, "idea_id": idea_id},
+        {"$set": {"status": "completed", "progress_percentage": 100, "earnings_unlocked": True}}
+    )
+    # Add a win to the community feed
+    if record["earnings"] > 0:
+        win = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "idea_id": idea_id,
+            "blueprint_title": (await db.ideas.find_one({"id": idea_id}, {"_id": 0, "title": 1}) or
+                                await db.blueprints.find_one({"id": idea_id}, {"_id": 0, "title": 1}) or {}).get("title", ""),
+            "description": data.get("strategy", "Completed the full blueprint!"),
+            "amount": record["earnings"],
+            "created_at": record["completed_at"],
+            "username": record["username"],
+        }
+        await db.community_wins.insert_one(win)
+    return {"message": "Completion saved", "id": record["id"]}
 
 # Include the router
 app.include_router(api_router)

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert,
+  StatusBar, Alert, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ENV_LABELS: Record<string, string> = {
   home: 'Work From Home', office: 'In an Office', outdoor: 'Outdoors'
@@ -17,6 +18,7 @@ const SOCIAL_LABELS: Record<string, string> = {
 export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => { loadUser(); }, []);
 
@@ -144,6 +146,24 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color="#2A2C35" />
           </TouchableOpacity>
 
+          {/* Sprint 6: Theme Toggle */}
+          <View style={styles.menuItem} data-testid="theme-toggle-row">
+            <View style={styles.menuLeft}>
+              <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={isDark ? '#8E8E8E' : '#F59E0B'} />
+              <View>
+                <Text style={styles.menuText}>Architect {isDark ? 'Dark' : 'Light'} Mode</Text>
+                <Text style={styles.menuSubtext}>{isDark ? 'Classic electric mint on black' : 'Clean white — great for daylight'}</Text>
+              </View>
+            </View>
+            <Switch
+              value={!isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#2A2C35', true: '#00D95F40' }}
+              thumbColor={isDark ? '#4A4A4A' : '#00D95F'}
+              data-testid="theme-switch"
+            />
+          </View>
+
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
               <Ionicons name="information-circle-outline" size={22} color="#8E8E8E" />
@@ -221,6 +241,7 @@ const styles = StyleSheet.create({
   },
   menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   menuText: { fontSize: 15, color: '#FFFFFF' },
+  menuSubtext: { fontSize: 11, color: '#4A4A4A', marginTop: 1 },
   logoutButton: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
     backgroundColor: '#1A1C23', padding: 16, borderRadius: 12,

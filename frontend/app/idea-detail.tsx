@@ -16,6 +16,7 @@ import { IdeaIcon } from '../components/icons';
 import { ArchitectPaywall } from '../components/ArchitectPaywall';
 import { TroubleshootModal } from '../components/TroubleshootModal';
 import { useLocalSearchParams } from 'expo-router';
+import { VictoryLapModal } from '../components/VictoryLapModal';
 import { RescueModeModal } from '../components/RescueModeModal';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -61,9 +62,13 @@ export default function IdeaDetailScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showTroubleshoot, setShowTroubleshoot] = useState(false);
   const [troubleshootStep, setTroubleshootStep] = useState<{ number: number; text: string } | null>(null);
-  // Sprint 5: Rescue Mode
+  // Sprint 6: Rescue Mode
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
+  // Sprint 6: Victory Lap
+  const [showVictoryLap, setShowVictoryLap] = useState(false);
+  const [victoryData, setVictoryData] = useState<any>(null);
+  const [completionDays, setCompletionDays] = useState(0);
 
   const checkIfStuck = (saved: any) => {
     if (!saved) return false;
@@ -191,6 +196,17 @@ export default function IdeaDetailScreen() {
           setCelebrationTier('complete');
           setShownMilestones(prev => new Set([...prev, 'complete']));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          // Sprint 6: Trigger Victory Lap after a short delay
+          const savedAt = savedIdea?.saved_at ? new Date(savedIdea.saved_at) : new Date();
+          const days = Math.max(1, Math.round((Date.now() - savedAt.getTime()) / (1000 * 60 * 60 * 24)));
+          setCompletionDays(days);
+          setTimeout(async () => {
+            try {
+              const res = await axios.get(`${API_URL}/api/completions/percentile/${id}?days=${days}`);
+              setVictoryData({ ...res.data, idea_title: idea?.title || '' });
+            } catch {}
+            setShowVictoryLap(true);
+          }, 2000);
         }
       }
     } catch (e) {
@@ -550,6 +566,17 @@ export default function IdeaDetailScreen() {
           stepText={troubleshootStep.text}
         />
       )}
+
+      {/* Sprint 6: Victory Lap Modal */}
+      <VictoryLapModal
+        visible={showVictoryLap}
+        onClose={() => setShowVictoryLap(false)}
+        userId={user?.id || ''}
+        ideaId={id as string}
+        ideaTitle={idea?.title || ''}
+        completionDays={completionDays}
+        victoryData={victoryData}
+      />
 
       {/* Sprint 5: Rescue Mode Modal */}
       <RescueModeModal
