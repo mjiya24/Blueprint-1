@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { FlexCardGenerator } from './FlexCardGenerator';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -25,11 +26,12 @@ interface Props {
   ideaTitle: string;
   completionDays: number;
   victoryData: VictoryData | null;
+  city?: string;
 }
 
 type Stage = 'score' | 'earnings' | 'strategy' | 'celebrate';
 
-export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, completionDays, victoryData }: Props) {
+export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, completionDays, victoryData, city }: Props) {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>('score');
   const [earnings, setEarnings] = useState('');
@@ -49,6 +51,8 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
         improvement_tip: tip,
         completion_days: completionDays,
       });
+      // Award 100 ARC for blueprint completion
+      axios.post(`${API_URL}/api/arc/award`, { user_id: userId, event: 'blueprint_complete' }).catch(() => {});
     } catch (e) {
       console.error('Save completion error:', e);
     } finally {
@@ -212,7 +216,7 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
 
           {/* STAGE: CELEBRATE */}
           {stage === 'celebrate' && (
-            <View style={styles.stageContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.celebrateCenter}>
                 <View style={styles.celebrateRing}>
                   <Ionicons name="checkmark-circle" size={56} color="#00D95F" />
@@ -228,6 +232,34 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
                     <Text style={styles.earningsBannerAmt}>${parseFloat(earnings).toLocaleString()}</Text>
                   </View>
                 ) : null}
+
+                {/* ARC Award Banner */}
+                <View style={styles.arcBanner}>
+                  <View style={styles.arcCoin}>
+                    <Text style={styles.arcCoinText}>A</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.arcBannerTitle}>+100 ARC Earned!</Text>
+                    <Text style={styles.arcBannerSub}>Architect Credits added to your balance</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Flex Card */}
+              <FlexCardGenerator
+                blueprintTitle={ideaTitle}
+                topPercent={100 - (victoryData?.percentile ?? 0)}
+                earnings={parseFloat(earnings) || 0}
+                completionDays={completionDays || victoryData?.completion_days || 1}
+                city={city}
+                percentileLabel={getPercentileLabel()}
+                onShared={() => {
+                  // Award 25 ARC for sharing
+                  axios.post(`${API_URL}/api/arc/award`, { user_id: userId, event: 'share_flex' }).catch(() => {});
+                }}
+              />
+
+              <View style={{ paddingHorizontal: 24, paddingBottom: 40 }}>
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={() => { onClose(); router.push('/(tabs)/discover'); }}
@@ -240,7 +272,7 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
                   <Text style={styles.skipText}>Back to Dashboard</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -318,7 +350,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   // Celebrate stage
-  celebrateCenter: { padding: 24, alignItems: 'center', paddingBottom: 40 },
+  celebrateCenter: { padding: 24, alignItems: 'center', paddingBottom: 8 },
   celebrateRing: {
     width: 100, height: 100, borderRadius: 28,
     backgroundColor: '#00D95F12', justifyContent: 'center', alignItems: 'center',
@@ -329,10 +361,22 @@ const styles = StyleSheet.create({
   earningsBanner: {
     backgroundColor: '#00D95F10', borderRadius: 14, padding: 16,
     alignItems: 'center', borderWidth: 1, borderColor: '#00D95F30',
-    width: '100%', marginBottom: 24,
+    width: '100%', marginBottom: 16,
   },
   earningsBannerLabel: { fontSize: 11, color: '#00D95F', fontWeight: '700', letterSpacing: 0.8 },
   earningsBannerAmt: { fontSize: 36, fontWeight: '900', color: '#00D95F', marginTop: 4 },
+  arcBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F59E0B12', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#F59E0B30', width: '100%', marginBottom: 8,
+  },
+  arcCoin: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#F59E0B',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  arcCoinText: { fontSize: 16, fontWeight: '900', color: '#000' },
+  arcBannerTitle: { fontSize: 15, fontWeight: '700', color: '#F59E0B' },
+  arcBannerSub: { fontSize: 12, color: '#8E8E8E', marginTop: 1 },
   // Shared
   primaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

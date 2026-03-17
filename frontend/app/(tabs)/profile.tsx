@@ -7,6 +7,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import axios from 'axios';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 const ENV_LABELS: Record<string, string> = {
   home: 'Work From Home', office: 'In an Office', outdoor: 'Outdoors'
@@ -15,16 +18,54 @@ const SOCIAL_LABELS: Record<string, string> = {
   solo: 'Solo', 'small-team': 'Small Team', 'customer-facing': 'Customer-Facing'
 };
 
+const ARC_LEVELS = [
+  { min: 0, max: 99, label: 'Apprentice', color: '#8E8E8E' },
+  { min: 100, max: 299, label: 'Builder', color: '#3B82F6' },
+  { min: 300, max: 599, label: 'Strategist', color: '#8B5CF6' },
+  { min: 600, max: 999, label: 'Architect', color: '#00D95F' },
+  { min: 1000, max: Infinity, label: 'Legend', color: '#F59E0B' },
+];
+
+const ARC_STORE_ITEMS = [
+  { title: 'Legal Contract Template', subtitle: 'High-converting freelance contract', arc: 500, icon: 'document-text' },
+  { title: 'Marketing Email Swipe File', subtitle: '30 proven cold outreach templates', arc: 300, icon: 'mail' },
+  { title: 'High-Ticket Pitch Deck', subtitle: 'Close $2K+ clients on first call', arc: 750, icon: 'briefcase' },
+  { title: 'Local Market Report', subtitle: 'Demand analysis for your city', arc: 1000, icon: 'bar-chart' },
+];
+
+function getArcLevel(balance: number) {
+  return ARC_LEVELS.find(l => balance >= l.min && balance <= l.max) || ARC_LEVELS[0];
+}
+
+function getNextMilestone(balance: number): number {
+  for (const m of [100, 300, 600, 1000]) {
+    if (balance < m) return m;
+  }
+  return 1000;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const { isDark, toggleTheme } = useTheme();
+  const [arcBalance, setArcBalance] = useState(0);
+  const [arcLoaded, setArcLoaded] = useState(false);
 
   useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
     const userData = await AsyncStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
+    if (userData) {
+      const u = JSON.parse(userData);
+      setUser(u);
+      if (u?.id && !u?.is_guest) {
+        try {
+          const res = await axios.get(`${API_URL}/api/arc/${u.id}`);
+          setArcBalance(res.data.arc_balance || 0);
+        } catch {}
+        setArcLoaded(true);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -57,6 +98,81 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
+
+        {/* ARC Credits Section — only for logged-in non-guest users */}
+        {!user?.is_guest && user?.id && arcLoaded && (() => {
+          const lvl = getArcLevel(arcBalance);
+          const nextM = getNextMilestone(arcBalance);
+          const progress = arcBalance >= 1000 ? 1 : (arcBalance % (nextM - (ARC_LEVELS.find(l => nextM === l.max + 1 || nextM === l.max)?.min ?? 0) || 1)) / (nextM - (ARC_LEVELS.find(l => nextM === l.max + 1 || nextM === l.max)?.min ?? 0) || 1);
+          const progressPct = Math.min(100, Math.round((arcBalance / nextM) * 100));
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Architect Credits (ARC)</Text>
+              {/* Balance card */}
+              <View style={styles.arcCard} data-testid="arc-balance-card">
+                <View style={styles.arcLeft}>
+                  <View style={[styles.arcCoin, { backgroundColor: lvl.color }]}>
+                    <Text style={styles.arcCoinLetter}>A</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.arcBalance}>{arcBalance.toLocaleString()} ARC</Text>
+                    <View style={[styles.arcLevelBadge, { backgroundColor: lvl.color + '20', borderColor: lvl.color + '50' }]}>
+                      <Text style={[styles.arcLevelText, { color: lvl.color }]}>{lvl.label}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.arcRight}>
+                  <Text style={styles.arcNextLabel}>Next: {nextM} ARC</Text>
+                  <View style={styles.arcProgressBar}>
+                    <View style={[styles.arcProgressFill, { width: `${progressPct}%` as any, backgroundColor: lvl.color }]} />
+                  </View>
+                </View>
+              </View>
+
+              {/* How to earn */}
+              <View style={styles.arcEarnCard}>
+                <Text style={styles.arcEarnTitle}>How to earn ARC</Text>
+                <View style={styles.arcEarnRow}>
+                  <View style={styles.arcEarnDot} />
+                  <Text style={styles.arcEarnItem}>+10 ARC · Complete a step</Text>
+                </View>
+                <View style={styles.arcEarnRow}>
+                  <View style={styles.arcEarnDot} />
+                  <Text style={styles.arcEarnItem}>+100 ARC · Finish a blueprint</Text>
+                </View>
+                <View style={styles.arcEarnRow}>
+                  <View style={styles.arcEarnDot} />
+                  <Text style={styles.arcEarnItem}>+25 ARC · Share your win</Text>
+                </View>
+                <View style={styles.arcEarnRow}>
+                  <View style={styles.arcEarnDot} />
+                  <Text style={styles.arcEarnItem}>+5 ARC · Daily check-in</Text>
+                </View>
+              </View>
+
+              {/* Teaser Store */}
+              <Text style={styles.storeTitle}>Architect Store</Text>
+              {ARC_STORE_ITEMS.map((item, i) => (
+                <View key={i} style={styles.storeItem} data-testid={`arc-store-item-${i}`}>
+                  <View style={styles.storeItemLeft}>
+                    <View style={styles.storeIconBox}>
+                      <Ionicons name={item.icon as any} size={18} color="#4A4A4A" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.storeItemTitle}>{item.title}</Text>
+                      <Text style={styles.storeItemSub}>{item.subtitle}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.storeArcTag}>
+                    <Ionicons name="lock-closed" size={10} color="#4A4A4A" />
+                    <Text style={styles.storeArcCost}>{item.arc}</Text>
+                  </View>
+                </View>
+              ))}
+              <Text style={styles.storeComingSoon}>Store unlocks when you reach 300 ARC</Text>
+            </View>
+          );
+        })()}
 
         {/* Blueprint Profile */}
         {!user?.is_guest && (
@@ -257,4 +373,56 @@ const styles = StyleSheet.create({
   upgradeCardTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   upgradeCardDesc: { fontSize: 12, color: '#8E8E8E' },
   version: { fontSize: 12, color: '#2A2C35', textAlign: 'center', marginBottom: 40 },
+  // ARC Credits Styles
+  arcCard: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#1A1C23', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#F59E0B30', marginBottom: 8,
+  },
+  arcLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  arcCoin: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  arcCoinLetter: { fontSize: 18, fontWeight: '900', color: '#000' },
+  arcBalance: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
+  arcLevelBadge: {
+    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 20, borderWidth: 1,
+  },
+  arcLevelText: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  arcRight: { alignItems: 'flex-end', gap: 6 },
+  arcNextLabel: { fontSize: 11, color: '#4A4A4A' },
+  arcProgressBar: {
+    width: 80, height: 4, backgroundColor: '#2A2C35',
+    borderRadius: 2, overflow: 'hidden',
+  },
+  arcProgressFill: { height: '100%', borderRadius: 2 },
+  arcEarnCard: {
+    backgroundColor: '#1A1C23', borderRadius: 12, padding: 14,
+    marginBottom: 12, borderWidth: 1, borderColor: '#2A2C35',
+  },
+  arcEarnTitle: { fontSize: 12, fontWeight: '700', color: '#4A4A4A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  arcEarnRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  arcEarnDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#00D95F' },
+  arcEarnItem: { fontSize: 13, color: '#FFFFFF' },
+  storeTitle: { fontSize: 14, fontWeight: '700', color: '#4A4A4A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  storeItem: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#1A1C23', borderRadius: 12, padding: 14, marginBottom: 6,
+    borderWidth: 1, borderColor: '#2A2C35',
+  },
+  storeItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
+  storeIconBox: {
+    width: 36, height: 36, borderRadius: 8, backgroundColor: '#2A2C35',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  storeItemTitle: { fontSize: 13, fontWeight: '600', color: '#8E8E8E', marginBottom: 1 },
+  storeItemSub: { fontSize: 11, color: '#4A4A4A' },
+  storeArcTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#2A2C35', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
+  },
+  storeArcCost: { fontSize: 12, fontWeight: '700', color: '#4A4A4A' },
+  storeComingSoon: { fontSize: 11, color: '#2A2C35', textAlign: 'center', marginTop: 4, marginBottom: 4 },
 });

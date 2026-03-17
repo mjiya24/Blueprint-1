@@ -130,6 +130,45 @@ export default function ArchitectUpgradeScreen() {
           </Text>
         </View>
 
+        {/* ROI Clock — Risk Reversal */}
+        <View style={styles.roiSection}>
+          <View style={styles.roiHeader}>
+            <View style={styles.roiIconBox}>
+              <Ionicons name="timer" size={20} color="#F59E0B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.roiTitle}>Pays for itself in 2 hours</Text>
+              <Text style={styles.roiSub}>
+                {user?.profile?.city
+                  ? `Based on Quick-Cash rates in ${user.profile.city}`
+                  : 'Based on Quick-Cash blueprint averages'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.roiCalcRow}>
+            <View style={styles.roiCalcItem}>
+              <Text style={styles.roiCalcNum}>$14.99</Text>
+              <Text style={styles.roiCalcLabel}>Monthly cost</Text>
+            </View>
+            <Ionicons name="remove" size={18} color="#2A2C35" />
+            <View style={styles.roiCalcItem}>
+              <Text style={styles.roiCalcNum}>÷ $8/hr</Text>
+              <Text style={styles.roiCalcLabel}>Quick-Cash floor</Text>
+            </View>
+            <Ionicons name="remove" size={18} color="#2A2C35" />
+            <View style={styles.roiCalcItem}>
+              <Text style={[styles.roiCalcNum, { color: '#00D95F' }]}>~2 hrs</Text>
+              <Text style={styles.roiCalcLabel}>To break even</Text>
+            </View>
+          </View>
+          <View style={styles.guaranteeBadge}>
+            <Ionicons name="shield-checkmark" size={14} color="#00D95F" />
+            <Text style={styles.guaranteeText}>
+              30-Day ROI Guarantee: Earn $14.99+ in your first month using Rescue Mode, or your next month is free.
+            </Text>
+          </View>
+        </View>
+
         {/* Features */}
         <View style={styles.featuresSection}>
           {[
@@ -271,4 +310,29 @@ const styles = StyleSheet.create({
   },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#000' },
   guarantee: { fontSize: 12, color: '#4A4A4A', textAlign: 'center' },
+  // ROI Clock Section
+  roiSection: {
+    marginHorizontal: 20, marginBottom: 20, backgroundColor: '#0F1019',
+    borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#F59E0B30',
+  },
+  roiHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  roiIconBox: {
+    width: 40, height: 40, borderRadius: 10, backgroundColor: '#F59E0B12',
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F59E0B30',
+  },
+  roiTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
+  roiSub: { fontSize: 11, color: '#4A4A4A' },
+  roiCalcRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#1A1C23', borderRadius: 12, padding: 14, marginBottom: 14,
+  },
+  roiCalcItem: { alignItems: 'center', flex: 1 },
+  roiCalcNum: { fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginBottom: 3 },
+  roiCalcLabel: { fontSize: 9, color: '#4A4A4A', textAlign: 'center', letterSpacing: 0.5 },
+  guaranteeBadge: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: '#00D95F08', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#00D95F20',
+  },
+  guaranteeText: { fontSize: 12, color: '#8E8E8E', flex: 1, lineHeight: 17 },
 });

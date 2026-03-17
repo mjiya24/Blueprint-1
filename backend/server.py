@@ -1792,6 +1792,64 @@ async def save_completion(user_id: str, idea_id: str, data: Dict[str, Any]):
         await db.community_wins.insert_one(win)
     return {"message": "Completion saved", "id": record["id"]}
 
+# ============= Sprint 7: ARC Credits System =============
+
+ARC_EVENTS = {
+    "step_complete": 10,
+    "blueprint_complete": 100,
+    "share_flex": 25,
+    "daily_login": 5,
+}
+
+def get_arc_level(balance: int) -> str:
+    if balance >= 1000: return "Legend"
+    if balance >= 600: return "Architect"
+    if balance >= 300: return "Strategist"
+    if balance >= 100: return "Builder"
+    return "Apprentice"
+
+def get_next_arc_milestone(balance: int) -> int:
+    for m in [100, 300, 600, 1000]:
+        if balance < m:
+            return m
+    return 1000
+
+class ARCAwardRequest(BaseModel):
+    user_id: str
+    event: str  # step_complete | blueprint_complete | share_flex | daily_login
+
+@api_router.get("/arc/{user_id}")
+async def get_arc_balance(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "arc_balance": 1, "id": 1})
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    balance = user.get("arc_balance", 0)
+    return {
+        "arc_balance": balance,
+        "level": get_arc_level(balance),
+        "next_milestone": get_next_arc_milestone(balance),
+    }
+
+@api_router.post("/arc/award")
+async def award_arc(data: ARCAwardRequest):
+    amount = ARC_EVENTS.get(data.event, 0)
+    if amount == 0:
+        raise HTTPException(status_code=400, detail="Unknown ARC event")
+    result = await db.users.update_one(
+        {"id": data.user_id},
+        {"$inc": {"arc_balance": amount}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    user = await db.users.find_one({"id": data.user_id}, {"_id": 0, "arc_balance": 1})
+    new_balance = user.get("arc_balance", 0)
+    return {
+        "awarded": amount,
+        "new_balance": new_balance,
+        "level": get_arc_level(new_balance),
+        "event": data.event,
+    }
+
 # Include the router
 app.include_router(api_router)
 

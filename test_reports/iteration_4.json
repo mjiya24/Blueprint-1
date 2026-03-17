@@ -63,7 +63,7 @@
     "ipapi_cors_failure": {
       "component": "questionnaire.tsx detectLocation()",
       "root_cause": "ipapi.co/json endpoint does not include Access-Control-Allow-Origin header for the production domain. Client-side fetch is blocked by browser CORS policy.",
-      "reproduction": "Go to questionnaire step 5, click 'Unlock Local Market Data', observe console error: 'Access to fetch at https://ipapi.co/json/ from origin https://architect-income.preview.emergentagent.com has been blocked by CORS policy'",
+      "reproduction": "Go to questionnaire step 5, click 'Unlock Local Market Data', observe console error: 'Access to fetch at https://ipapi.co/json/ from origin https://architect-income-1.preview.emergentagent.com has been blocked by CORS policy'",
       "mitigation": "Add backend proxy endpoint GET /api/location/ip-detect that calls ipapi.co server-side and returns city/country. Frontend calls the proxy instead of ipapi.co directly."
     },
     "metro_bundle_cache": {

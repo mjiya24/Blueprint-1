@@ -185,6 +185,8 @@ export default function IdeaDetailScreen() {
       );
       if (!isCompleted) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Award 10 ARC silently on step completion
+        axios.post(`${API_URL}/api/arc/award`, { user_id: user.id, event: 'step_complete' }).catch(() => {});
         if (newCompleted === 1 && !shownMilestones.has('first')) {
           setCelebrationTier('first');
           setShownMilestones(prev => new Set([...prev, 'first']));
@@ -576,6 +578,7 @@ export default function IdeaDetailScreen() {
         ideaTitle={idea?.title || ''}
         completionDays={completionDays}
         victoryData={victoryData}
+        city={user?.profile?.city || ''}
       />
 
       {/* Sprint 5: Rescue Mode Modal */}
