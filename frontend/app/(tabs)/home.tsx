@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { StreakBadge } from '../../components/StreakBadge';
+import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -131,6 +132,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Daily Blueprint Widget (logged-in only) */}
+        {user && !user.is_guest && (
+          <DailyBlueprintWidget userId={user.id} profile={user.profile} />
+        )}
+
         {/* Stats row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -138,11 +144,11 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Matched Ideas</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNum}>20+</Text>
-            <Text style={styles.statLabel}>Total Blueprints</Text>
+            <Text style={styles.statNum}>99+</Text>
+            <Text style={styles.statLabel}>Blueprints</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNum}>4</Text>
+            <Text style={styles.statNum}>8</Text>
             <Text style={styles.statLabel}>Categories</Text>
           </View>
         </View>

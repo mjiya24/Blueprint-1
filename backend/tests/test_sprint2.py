@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = "https://blueprint-sprint1.preview.emergentagent.com"
+BASE_URL = "https://architect-income.preview.emergentagent.com"
 
 TEST_EMAIL = "tester@blueprint.com"
 TEST_PASSWORD = "TestPass123"
@@ -143,7 +143,7 @@ class TestCheckout:
         resp = api_client.post(f"{BASE_URL}/api/payments/checkout", json={
             "plan_type": "monthly",
             "user_id": user_id,
-            "origin_url": "https://blueprint-sprint1.preview.emergentagent.com/architect-upgrade"
+            "origin_url": "https://architect-income.preview.emergentagent.com/architect-upgrade"
         })
         assert resp.status_code == 200, f"Checkout failed: {resp.status_code}: {resp.text}"
         data = resp.json()
@@ -158,7 +158,7 @@ class TestCheckout:
         resp = api_client.post(f"{BASE_URL}/api/payments/checkout", json={
             "plan_type": "annual",
             "user_id": user_id,
-            "origin_url": "https://blueprint-sprint1.preview.emergentagent.com/architect-upgrade"
+            "origin_url": "https://architect-income.preview.emergentagent.com/architect-upgrade"
         })
         assert resp.status_code == 200, f"Checkout failed: {resp.status_code}: {resp.text}"
         data = resp.json()
@@ -172,7 +172,7 @@ class TestCheckout:
         resp = api_client.post(f"{BASE_URL}/api/payments/checkout", json={
             "plan_type": "weekly",  # invalid
             "user_id": user_id,
-            "origin_url": "https://blueprint-sprint1.preview.emergentagent.com/architect-upgrade"
+            "origin_url": "https://architect-income.preview.emergentagent.com/architect-upgrade"
         })
         assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.text}"
         print(f"PASS: Invalid plan type returns 400")

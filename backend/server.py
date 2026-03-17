@@ -1389,6 +1389,136 @@ async def get_blueprints(category: str = None, limit: int = 50, skip: int = 0):
     items = await db.blueprints.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).to_list(limit)
     return {"blueprints": items, "total": total, "has_more": skip + limit < total}
 
+# --- Blueprint Carousels & Daily Blueprint (Sprint 4) ---
+# NOTE: Specific routes must come BEFORE parameterized /{blueprint_id} to avoid conflicts
+
+def calculate_blueprint_match(bp: dict, profile: dict) -> int:
+    """Calculate match score for a v2 blueprint against user profile."""
+    score = 40  # base
+    tags = set(t.lower() for t in (bp.get("tags") or []) + (bp.get("match_tags") or []))
+    env = profile.get("environment", "")
+    assets = [a.lower() for a in profile.get("assets", [])]
+    interests = [i.lower() for i in profile.get("questionnaire_interests", [])]
+    social = profile.get("social_preference", "")
+
+    # Environment alignment
+    if env == "remote" and any(t in tags for t in ["digital", "remote", "online", "no-code", "ai", "saas", "content", "freelance", "email"]):
+        score += 18
+    elif env == "flexible" and any(t in tags for t in ["digital", "local", "service", "agency"]):
+        score += 10
+
+    # Asset matching
+    for asset in assets:
+        asset_tag_map = {
+            "laptop": ["digital", "content", "saas", "no-code", "ai"],
+            "car": ["local", "service", "gig", "mobile"],
+            "smartphone": ["ugc", "tiktok", "social-media", "youtube"],
+            "tools": ["handyman", "local", "service"],
+            "money": ["investment", "acquisition", "fba", "passive"],
+            "free time": ["passive", "content", "online"],
+            "skills": ["freelance", "agency", "consulting"],
+        }
+        for tag_list in asset_tag_map.values():
+            if asset in asset_tag_map and any(t in tags for t in asset_tag_map.get(asset, [])):
+                score += 8
+                break
+
+    # Interest matching
+    for interest in interests:
+        if any(interest.lower() in tag for tag in tags):
+            score += 12
+
+    # Social preference
+    if social == "independent" and any(t in tags for t in ["solo", "passive", "digital", "automation", "ai"]):
+        score += 10
+    elif social == "collaborative" and any(t in tags for t in ["agency", "b2b", "client", "community"]):
+        score += 10
+
+    # Difficulty bonus for completeness
+    diff = bp.get("difficulty", "medium")
+    if diff == "easy":
+        score += 5
+    elif diff == "medium":
+        score += 3
+
+    return min(99, max(30, score))
+
+@api_router.get("/blueprints/daily/{user_id}")
+async def get_daily_blueprint(user_id: str):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    from datetime import date as _date
+    today_seed = int(_date.today().strftime("%Y%m%d"))
+    profile = user.get("profile", {})
+    blueprints = await db.blueprints.find({"version": "2.0"}, {"_id": 0}).to_list(200)
+    if not blueprints:
+        raise HTTPException(status_code=404, detail="No blueprints available yet")
+    scored = sorted([(calculate_blueprint_match(bp, profile), bp) for bp in blueprints], key=lambda x: x[0], reverse=True)
+    top = scored[:25]
+    idx = today_seed % len(top)
+    score, daily = top[idx]
+    return {**daily, "match_score": score}
+
+@api_router.get("/blueprints/carousels")
+async def get_blueprint_carousels(user_id: str = None):
+    user_profile = {}
+    if user_id:
+        u = await db.users.find_one({"id": user_id})
+        if u:
+            user_profile = u.get("profile", {})
+
+    async def _fetch(query, limit=12):
+        bps = await db.blueprints.find({**query, "version": "2.0"}, {"_id": 0}).to_list(limit)
+        if user_profile:
+            for bp in bps:
+                bp["match_score"] = calculate_blueprint_match(bp, user_profile)
+        return bps
+
+    ai_bps = await _fetch({"category": "AI & Automation"})
+    passive = await _fetch({"category": "Passive & Investment"})
+    agency = await _fetch({"category": "Agency & B2B"})
+    quick = await _fetch({"startup_cost": {"$in": ["free", "low"]}, "difficulty": {"$in": ["easy", "medium"]}}, limit=10)
+    high = await _fetch({"difficulty": "hard"})
+    digital = await _fetch({"category": "Digital & Content"})
+    local = await _fetch({"category": "Local & Service"})
+    nocode = await _fetch({"category": "No-Code & SaaS"})
+
+    carousels = []
+    if ai_bps: carousels.append({"id": "ai", "title": "Trending in AI", "subtitle": "AI-powered income streams", "icon": "flash", "color": "#6366F1", "blueprints": ai_bps})
+    if high: carousels.append({"id": "high-ticket", "title": "High-Ticket Earners", "subtitle": "High effort, maximum reward", "icon": "diamond", "color": "#F59E0B", "blueprints": high})
+    if quick: carousels.append({"id": "quick-wins", "title": "Quick Wins", "subtitle": "Low cost, fast first dollar", "icon": "timer", "color": "#00D95F", "blueprints": quick})
+    if passive: carousels.append({"id": "passive", "title": "Passive Income", "subtitle": "Build once, earn forever", "icon": "trending-up", "color": "#10B981", "blueprints": passive})
+    if agency: carousels.append({"id": "agency", "title": "Agency Plays", "subtitle": "B2B is where the money is", "icon": "briefcase", "color": "#3B82F6", "blueprints": agency})
+    if digital: carousels.append({"id": "digital", "title": "Digital & Content", "subtitle": "Laptop-friendly income", "icon": "laptop-outline", "color": "#EC4899", "blueprints": digital})
+    if local: carousels.append({"id": "local", "title": "Local Hustle", "subtitle": "Serve your community, earn big", "icon": "location", "color": "#EF4444", "blueprints": local})
+    if nocode: carousels.append({"id": "nocode", "title": "No-Code Builders", "subtitle": "Ship products without code", "icon": "cube", "color": "#8B5CF6", "blueprints": nocode})
+    return carousels
+
+@api_router.get("/blueprints/search")
+async def search_blueprints(q: str = "", category: str = None, difficulty: str = None, startup_cost: str = None, user_id: str = None, limit: int = 30):
+    query: Dict[str, Any] = {"version": "2.0"}
+    if category and category != "All":
+        query["category"] = category
+    if difficulty and difficulty != "all":
+        query["difficulty"] = difficulty
+    if startup_cost and startup_cost != "all":
+        query["startup_cost"] = startup_cost
+    all_bps = await db.blueprints.find(query, {"_id": 0}).to_list(200)
+    if q:
+        q_lower = q.lower()
+        all_bps = [bp for bp in all_bps if q_lower in bp.get("title", "").lower() or q_lower in bp.get("description", "").lower() or any(q_lower in t for t in bp.get("tags", []))]
+    user_profile = {}
+    if user_id:
+        u = await db.users.find_one({"id": user_id})
+        if u:
+            user_profile = u.get("profile", {})
+    if user_profile:
+        for bp in all_bps:
+            bp["match_score"] = calculate_blueprint_match(bp, user_profile)
+        all_bps.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+    return all_bps[:limit]
+
 @api_router.get("/blueprints/{blueprint_id}")
 async def get_blueprint(blueprint_id: str):
     bp = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
