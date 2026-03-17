@@ -795,7 +795,27 @@ async def update_push_token(user_id: str, token_data: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Push token updated"}
 
-@api_router.put("/users/{user_id}/location")
+@api_router.get("/location/ip-detect")
+async def detect_ip_location(request: Request):
+    """Sprint 5: Server-side IP geolocation proxy (avoids CORS)."""
+    try:
+        import httpx
+        # Get real client IP from headers
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        client_ip = forwarded_for.split(",")[0].strip() if forwarded_for else ""
+        url = f"https://ipapi.co/{client_ip}/json/" if client_ip else "https://ipapi.co/json/"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url)
+            data = resp.json()
+        return {
+            "city": data.get("city", ""),
+            "state": data.get("region", ""),
+            "country": data.get("country_name", ""),
+            "country_code": data.get("country_code", "US"),
+        }
+    except Exception as e:
+        logger.error(f"IP detect error: {e}")
+        return {"city": "", "state": "", "country": "", "country_code": "US"}
 async def update_user_location(user_id: str, location_data: Dict[str, Any]):
     """Sprint 5: Store user's geo-location for local market features."""
     city = location_data.get("city", "")

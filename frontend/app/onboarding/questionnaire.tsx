@@ -105,8 +105,8 @@ export default function QuestionnaireScreen() {
           return;
         }
       }
-      // IP fallback
-      const res = await fetch('https://ipapi.co/json/');
+      // IP fallback via backend proxy (avoids CORS)
+      const res = await fetch(`${API_URL}/api/location/ip-detect`);
       const data = await res.json();
       setLocationData({
         city: data.city || '',
@@ -326,7 +326,7 @@ export default function QuestionnaireScreen() {
         })}
         <View style={{ height: 24 }} />
       </ScrollView>
-      )} {/* end config.type === 'location' ternary */}
+      )}
 
       {/* Footer */}
       <View style={styles.footer}>

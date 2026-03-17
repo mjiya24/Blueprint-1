@@ -158,6 +158,7 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 | Sprint 2 | Architect Tier (Stripe), Troubleshoot Matrix, AI Chatbot (Gemini) | ✅ Done | Feb 2026 |
 | Sprint 3 | 99-blueprint content factory, Community Wins Feed, Streak System | ✅ Done | Mar 2026 |
 | Sprint 4 | v2 Discovery (Netflix carousels), Daily Blueprint Widget, Blurred Paywall | ✅ Done | Mar 2026 |
+| Sprint 5 | Rescue Mode (AI Quick-Cash), Location Detection (GPS+IP proxy), Local Market Pulse Widget, Market Viability Badge | ✅ Done | Mar 2026 |
 
 ---
 
@@ -171,16 +172,16 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 - [ ] **Questionnaire Persistence:** AsyncStorage clears on web page reload; should persist session server-side
 
 ### P2 — Improvements
-- [ ] **Quick Wins Carousel Diversity:** Currently shows mostly AI & Automation blueprints. Add cross-category filtering to Quick Wins
+- [ ] **Quick Wins Carousel Diversity:** Currently shows mostly AI & Automation blueprints. Add cross-category filtering
 - [ ] **Live Community Wins:** Replace mocked Community Wins with real user submissions
 - [ ] **Live Market Pulse:** Replace mocked news with real RSS/API data
-- [ ] **Push Notification Delivery:** expo-notifications configured but not sending
 
 ### P3 — Future Backlog
-- [ ] Blueprint library expansion to 500+ (run generation script again)
+- [ ] Blueprint library expansion to 500+ (re-run generation script)
 - [ ] User referral/sharing system
 - [ ] Revenue tracking dashboard for users
 - [ ] Onboarding A/B testing
+- [ ] server.py refactor — split into modular route files (approaching 1700+ lines)
 
 ---
 
