@@ -765,13 +765,56 @@ async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email})
     if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "is_guest": False, "is_architect": user.get("is_architect", False), "profile": user.get("profile", {})}
+    return {
+        "id": user["id"], "email": user["email"], "name": user["name"],
+        "is_guest": False, "is_architect": user.get("is_architect", False),
+        "profile": user.get("profile", {}),
+        "phone_verified": user.get("phone_verified", False),
+        "phone_number": user.get("phone_number", ""),
+    }
 
 @api_router.post("/auth/guest")
 async def create_guest():
     guest = GuestUser()
     await db.users.insert_one(guest.dict())
     return {"id": guest.id, "name": guest.name, "is_guest": True, "profile": guest.profile.dict()}
+
+# ============= Sprint 7B: Firebase Phone Verification =============
+
+class PhoneVerifyRequest(BaseModel):
+    user_id: str
+    firebase_id_token: str
+
+@api_router.post("/auth/verify-phone")
+async def verify_phone(data: PhoneVerifyRequest):
+    """Verify Firebase phone OTP and mark user as phone-verified."""
+    firebase_api_key = os.environ.get("FIREBASE_WEB_API_KEY", "")
+    if not firebase_api_key:
+        raise HTTPException(status_code=500, detail="Firebase not configured")
+    import httpx
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={firebase_api_key}",
+            json={"idToken": data.firebase_id_token}
+        )
+    if resp.status_code != 200:
+        logger.error(f"Firebase token verification failed: {resp.text}")
+        raise HTTPException(status_code=400, detail="Invalid or expired Firebase token")
+    users_data = resp.json().get("users", [])
+    if not users_data:
+        raise HTTPException(status_code=400, detail="No user found for this token")
+    firebase_user = users_data[0]
+    phone_number = firebase_user.get("phoneNumber")
+    if not phone_number:
+        raise HTTPException(status_code=400, detail="Phone number not verified in this token")
+    # Update MongoDB
+    result = await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {"phone_number": phone_number, "phone_verified": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"verified": True, "phone": phone_number}
 
 @api_router.put("/users/{user_id}/profile")
 async def update_profile(user_id: str, profile: UserProfile):
@@ -1401,7 +1444,14 @@ async def streak_checkin(user_id: str):
         {"id": user_id},
         {"$set": {"streak_current": current_streak, "streak_last_action": today, "streak_longest": longest_streak}}
     )
-    return {"streak_current": current_streak, "streak_longest": longest_streak, "is_new_day": is_new_day, "message": f"Streak: {current_streak} days!"}
+    # Award +5 ARC for daily check-in on new days
+    if is_new_day:
+        await db.users.update_one({"id": user_id}, {"$inc": {"arc_balance": 5}})
+    return {
+        "streak_current": current_streak, "streak_longest": longest_streak,
+        "is_new_day": is_new_day, "arc_awarded": 5 if is_new_day else 0,
+        "message": f"Streak: {current_streak} days!" + (" +5 ARC" if is_new_day else ""),
+    }
 
 @api_router.get("/users/{user_id}/streak")
 async def get_streak(user_id: str):

@@ -99,6 +99,49 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Identity Verification Section */}
+        {!user?.is_guest && user?.id && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Identity Verification</Text>
+            {user?.phone_verified ? (
+              <View style={styles.verifiedCard} data-testid="phone-verified-badge">
+                <View style={styles.verifiedLeft}>
+                  <View style={styles.verifiedIconBox}>
+                    <Ionicons name="shield-checkmark" size={22} color="#00D95F" />
+                  </View>
+                  <View>
+                    <Text style={styles.verifiedTitle}>Identity Verified</Text>
+                    <Text style={styles.verifiedPhone}>{user.phone_number}</Text>
+                  </View>
+                </View>
+                <View style={styles.verifiedBadgePill}>
+                  <Text style={styles.verifiedBadgeText}>VERIFIED</Text>
+                </View>
+              </View>
+            ) : (
+              <View>
+                <View style={styles.unverifiedCard}>
+                  <Ionicons name="shield-outline" size={20} color="#F59E0B" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.unverifiedTitle}>Phone Not Verified</Text>
+                    <Text style={styles.unverifiedSub}>
+                      Verify your phone to access Blueprint Squads — the community of verified Architects helping each other win.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.verifyBtn}
+                  onPress={() => router.push('/verify-phone')}
+                  data-testid="verify-phone-btn"
+                >
+                  <Ionicons name="shield-checkmark" size={16} color="#000" />
+                  <Text style={styles.verifyBtnText}>Verify My Identity</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ARC Credits Section — only for logged-in non-guest users */}
         {!user?.is_guest && user?.id && arcLoaded && (() => {
           const lvl = getArcLevel(arcBalance);
@@ -372,6 +415,36 @@ const styles = StyleSheet.create({
   upgradeCardTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   upgradeCardDesc: { fontSize: 12, color: '#8E8E8E' },
   version: { fontSize: 12, color: '#2A2C35', textAlign: 'center', marginBottom: 40 },
+  // Identity Verification Styles
+  verifiedCard: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#00D95F10', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#00D95F30',
+  },
+  verifiedLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  verifiedIconBox: {
+    width: 44, height: 44, borderRadius: 12, backgroundColor: '#00D95F15',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#00D95F30',
+  },
+  verifiedTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
+  verifiedPhone: { fontSize: 12, color: '#8E8E8E' },
+  verifiedBadgePill: {
+    backgroundColor: '#00D95F', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+  },
+  verifiedBadgeText: { fontSize: 10, fontWeight: '800', color: '#000', letterSpacing: 1 },
+  unverifiedCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: '#F59E0B10', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#F59E0B30', marginBottom: 12,
+  },
+  unverifiedTitle: { fontSize: 14, fontWeight: '700', color: '#F59E0B', marginBottom: 3 },
+  unverifiedSub: { fontSize: 12, color: '#8E8E8E', lineHeight: 17 },
+  verifyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#00D95F', borderRadius: 12, paddingVertical: 13,
+  },
+  verifyBtnText: { fontSize: 14, fontWeight: '700', color: '#000' },
   // ARC Credits Styles
   arcCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

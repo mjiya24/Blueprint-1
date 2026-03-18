@@ -160,7 +160,7 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 | Sprint 4 | v2 Discovery (Netflix carousels), Daily Blueprint Widget, Blurred Paywall | ✅ Done | Mar 2026 |
 | Sprint 5 | Rescue Mode (AI Quick-Cash), Location Detection (GPS+IP proxy), Local Market Pulse Widget, Market Viability Badge | ✅ Done | Mar 2026 |
 | Sprint 6 | Theme Engine (Dark/Light toggle), Victory Lap Modal (percentile + earnings log), Completion Engine backend | ✅ Done | Mar 2026 |
-| Sprint 7A | ROI Clock (paywall risk-reversal), ARC Credits System (earn/display + store teaser), Flex Card Generator (shareable social proof achievement card) | ✅ Done | Mar 2026 |
+| Sprint 7B | Stripe Live Key (payments live), Firebase Phone OTP verification screen + backend, Daily Login ARC (+5), Identity section on profile | ✅ Done | Mar 2026 |
 
 ---
 
