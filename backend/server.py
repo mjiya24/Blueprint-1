@@ -730,6 +730,363 @@ PRE_POPULATED_IDEAS = [
         "asset_requirements": ["car", "investment"],
         "interest_tags": ["finance"],
         "affiliate_link": ""
+    },
+    # ============= QUICK WINS — $0 to Start, First $ in <60 min =============
+    {
+        "id": "qw-001",
+        "title": "DataAnnotation Tech — AI Training",
+        "description": "Get paid $20-$40/hr to train AI models by rating responses, writing prompts, and labeling data. No experience needed. DataAnnotation is one of the most legitimate, high-paying platforms for AI workers in 2025-2026. Payments via PayPal within 48 hours.",
+        "category": "Quick Wins",
+        "required_skills": ["Reading", "Critical Thinking", "English"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Go to DataAnnotation.tech and click 'Apply Now' — the form takes 5 minutes",
+            "Complete the short skills assessment (multiple choice, 15 min) — there is no trick, just be honest and careful",
+            "Wait for approval email (usually same day or 1-2 business days)",
+            "Once approved, log in and pick tasks from the task queue — start with 'Conversation Rating' tasks (easiest)",
+            "Complete 5 tasks to get comfortable with the platform and quality expectations",
+            "Submit your first batch — payment is sent to PayPal within 48 hours",
+            "Set a daily goal of 2-3 hours to earn $40-$80/day consistently"
+        ],
+        "potential_earnings": "$20-$40/hour",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "ai-training", "no-cost", "remote", "same-day-pay"],
+        "environment_fit": ["home", "office", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["tech", "finance"],
+        "affiliate_link": "https://www.dataannotation.tech/",
+        "badge": "VERIFIED",
+        "time_to_first_dollar": "24-48 hours",
+        "minimum_payout": "$10"
+    },
+    {
+        "id": "qw-002",
+        "title": "UserInterviews — $75/hr Focus Groups",
+        "description": "Get paid $50-$150 per session to share your opinions in online focus groups and user research studies. UserInterviews connects real people with brands like Google, Microsoft, and Netflix who pay top dollar for genuine feedback. Sessions are 30-90 minutes via Zoom.",
+        "category": "Quick Wins",
+        "required_skills": ["Communication", "Honesty"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Sign up at UserInterviews.com — it's free and takes 3 minutes",
+            "Complete your profile fully (the more detail, the more studies you qualify for)",
+            "Browse open studies and apply to 5-10 that match your demographics",
+            "Once selected, you'll get a confirmation email with Zoom link and payment info",
+            "Show up on time, be genuine and articulate — they pay for honest feedback",
+            "After the session, payment arrives via PayPal or Tremendous gift card within 5-7 days",
+            "Stay active and check back weekly — new studies post constantly"
+        ],
+        "potential_earnings": "$50-$150/session",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "focus-group", "no-cost", "remote", "opinion"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["customer-facing"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["tech", "creative", "finance"],
+        "affiliate_link": "https://www.userinterviews.com/participants",
+        "badge": "VERIFIED",
+        "time_to_first_dollar": "3-7 days",
+        "minimum_payout": "$50"
+    },
+    {
+        "id": "qw-003",
+        "title": "Freecash — Play-to-Earn & Survey Cash",
+        "description": "Freecash is the highest-rated get-paid-to (GPT) platform in 2026. Earn real money by playing mobile games, completing offers, and taking surveys. Top users earn $30+/day. Instant PayPal/Crypto payouts. 4.7 stars on Trustpilot with 150,000+ reviews.",
+        "category": "Quick Wins",
+        "required_skills": ["Patience", "Gaming (optional)"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Sign up at Freecash.com — completely free, takes 2 minutes",
+            "Verify your email and start with the daily free coin claim (instant $0.10-$0.50)",
+            "Go to 'Offers' and sort by 'Highest Payout' — look for app download or game offers",
+            "Install a featured game and reach the target level — this earns $5-$25 per game",
+            "Complete 3-5 survey offers daily ($0.50-$3 each) while your game runs",
+            "Stack coins fast by completing Daily, Weekly, and Monthly missions",
+            "Cash out via PayPal when you hit $1 minimum — arrives in minutes"
+        ],
+        "potential_earnings": "$5-$30/day",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "play-to-earn", "surveys", "no-cost", "instant-payout"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["tech", "finance"],
+        "affiliate_link": "https://freecash.com/",
+        "badge": "TOP RATED",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "$1"
+    },
+    {
+        "id": "qw-004",
+        "title": "Mistplay — Get Paid to Play Mobile Games",
+        "description": "Mistplay is the #1 loyalty app for mobile gamers. Play games, earn Units, and cash out real gift cards. 15 million members globally. Perfect for anyone who already spends time gaming. Earn $10-$50/month passively — more if you are dedicated.",
+        "category": "Quick Wins",
+        "required_skills": ["Gaming", "Patience"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Download Mistplay from the Google Play Store (Android only — iOS users: use Freecash instead)",
+            "Create your free account and browse the game library",
+            "Pick a featured game with high Unit multiplier — prioritize 'New' games (higher bonuses)",
+            "Play for at least 30 minutes to unlock your first Unit rewards",
+            "Complete in-game achievements to earn bonus Units faster",
+            "Reach 1,500 Units to redeem your first $5 Amazon or PayPal gift card",
+            "Maximize by playing during 2x Unit events and referring friends ($5 bonus per referral)"
+        ],
+        "potential_earnings": "$10-$50/month",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "gaming", "passive", "no-cost", "gift-cards"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["tech", "finance"],
+        "affiliate_link": "https://www.mistplay.com/",
+        "badge": "POPULAR",
+        "time_to_first_dollar": "1-3 days",
+        "minimum_payout": "$5"
+    },
+    {
+        "id": "qw-005",
+        "title": "Solitaire Cash — Win Real Money Playing Cards",
+        "description": "Solitaire Cash is a skill-based card game where you compete against real players for cash prizes. Unlike luck-based games, it rewards skill — top players win $50-$200/week. Tournaments start at $1 buy-in. Available in most US states.",
+        "category": "Quick Wins",
+        "required_skills": ["Solitaire", "Strategy", "Speed"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Download Solitaire Cash from the App Store or Google Play",
+            "Play 10 practice rounds (free) to learn the tournament rules and scoring system",
+            "Join a free-roll tournament ($0 entry) to win your first real cash prize",
+            "Once you win $5+, use that to enter $1 cash tournaments — never use outside money until profitable",
+            "Focus on speed AND accuracy — time bonuses are where the big points come from",
+            "Play during off-peak hours (weekday mornings) when competition is lower skill level",
+            "Set a daily win goal of $10 and stop once you hit it to protect your bankroll"
+        ],
+        "potential_earnings": "$20-$200/week",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "skill-game", "cash-prizes", "mobile-game"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["finance"],
+        "affiliate_link": "https://apps.apple.com/us/app/solitaire-cash-win-real-money/id1453031993",
+        "badge": "SKILL-BASED",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "$10"
+    },
+    {
+        "id": "qw-006",
+        "title": "Campus Courier — DoorDash/UberEats 1-Hour Setup",
+        "description": "This is the definitive 1-hour guide to activate your DoorDash or UberEats account and earn your first $25 today. Optimized for college campuses and dense urban areas where orders never stop. Most dashers earn $18-$25/hr during peak hours.",
+        "category": "Quick Wins",
+        "required_skills": ["Navigation", "Reliability"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": True,
+        "is_quick_win": True,
+        "location_types": ["urban", "suburban"],
+        "action_steps": [
+            "Download both the DoorDash Dasher app AND the Uber Eats driver app right now (apply to both)",
+            "Submit your documents: valid ID, driver's license, proof of insurance — takes 10 minutes",
+            "While waiting for approval (usually instant to 24 hours), identify your 3 best local 'Hot Zones' (restaurants + dorms + apartments within 1 mile)",
+            "Once approved, activate your account and schedule your first dash for today's lunch rush (11am-2pm) or dinner rush (5pm-9pm)",
+            "Accept every order above $5 for your first hour to build acceptance rate — don't cherry-pick yet",
+            "Track your earnings and tip rate — after 10 deliveries you will know your best routes and times",
+            "Stack apps: if DoorDash is slow, switch to UberEats — never sit idle during peak hours"
+        ],
+        "potential_earnings": "$15-$25/hour",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "gig-economy", "same-day-pay", "flexible"],
+        "environment_fit": ["outdoor"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["car"],
+        "interest_tags": ["finance"],
+        "affiliate_link": "https://apps.apple.com/us/app/dasher-become-a-doordash-driver/id1037922353",
+        "badge": "SAME-DAY PAY",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "Instant via DasherDirect"
+    },
+    {
+        "id": "qw-007",
+        "title": "Pet Partner — Rover Dog Walking ($0 to Start)",
+        "description": "Become a dog walker on Rover and earn $15-$25/walk with zero startup cost. Rover handles payments, insurance, and client matching. 1-hour setup guide: from zero to booked in under 60 minutes. Perfect for animal lovers in any neighborhood.",
+        "category": "Quick Wins",
+        "required_skills": ["Animal Care", "Reliability"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": True,
+        "is_quick_win": True,
+        "location_types": ["urban", "suburban"],
+        "action_steps": [
+            "Go to Rover.com/become-a-sitter and start your free profile (15 minutes)",
+            "Upload 3-5 high-quality photos: your face clearly visible + any pets you have or know",
+            "Write your bio focusing on reliability and love of animals — mention any pet experience",
+            "Set competitive starting rates: $18/walk (below average) to attract first reviews faster",
+            "Submit your free background check through Rover — this is required and takes 1-2 days",
+            "Once approved, boost discoverability by enabling the 'Available Now' badge in your settings",
+            "Accept your first 3 Meet & Greets (free meetings) this week — at least 1 will book you"
+        ],
+        "potential_earnings": "$800-$2,000/month",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "pets", "local", "no-cost", "recurring"],
+        "environment_fit": ["outdoor"],
+        "social_fit": ["customer-facing"],
+        "asset_requirements": ["none"],
+        "interest_tags": ["pets", "fitness"],
+        "affiliate_link": "https://www.rover.com/become-a-sitter/",
+        "badge": "RECURRING INCOME",
+        "time_to_first_dollar": "3-7 days",
+        "minimum_payout": "$25"
+    },
+    {
+        "id": "qw-008",
+        "title": "BioLife Plasma Donation — $100+ First Week",
+        "description": "Donate plasma at BioLife Plasma Services and earn up to $100 for your first two donations. New donors regularly earn $600-$800 in their first month through new donor promotions. Safe, medically supervised, and you can donate twice per week. Your body replenishes plasma in 48 hours.",
+        "category": "Quick Wins",
+        "required_skills": ["Physical Health", "Commitment"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": True,
+        "is_quick_win": True,
+        "location_types": ["urban", "suburban"],
+        "action_steps": [
+            "Find your nearest BioLife center at BioLifePlasma.com/locations",
+            "Create a free donor account online and schedule your first appointment",
+            "Prepare the day before: drink 6-8 glasses of water, eat a protein-rich meal, avoid alcohol and fatty foods",
+            "Bring valid photo ID and proof of address — your first visit includes a free medical screening",
+            "Your first donation takes 2-3 hours (including screening) — bring headphones and something to watch",
+            "Return within 7 days for your second donation — together the first two pay $100+ via prepaid Visa card",
+            "Set a recurring schedule of every Monday and Thursday to maximize monthly earnings ($200-$400/month ongoing)"
+        ],
+        "potential_earnings": "$200-$400/month",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "plasma", "medical", "local", "recurring"],
+        "environment_fit": ["outdoor", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["none"],
+        "interest_tags": ["finance", "fitness"],
+        "affiliate_link": "https://www.biolifeplasma.com/en/locations.html",
+        "badge": "QUICK $100",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "Paid per donation"
+    },
+    {
+        "id": "qw-009",
+        "title": "FanDuel New User Bonus — Bet $5, Get $200",
+        "description": "FanDuel's new user welcome offer gives you $200 in bonus bets when you place your first $5 wager. This is a legal, verified bonus available in 25+ US states. Strategy: use the bonus bets on high-probability outcomes to maximize your expected return. Legal where sports betting is active.",
+        "category": "Quick Wins",
+        "required_skills": ["Sports Knowledge (optional)", "Discipline"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "requires_state_check": True,
+        "restricted_states": ["CA", "TX", "UT", "HI", "ID", "WI", "GA", "AL", "AK", "MN", "MO", "OK", "MS", "NE", "NM", "ND", "SD", "WA", "SC"],
+        "location_types": ["online"],
+        "action_steps": [
+            "Verify your state is eligible (see list) — if not, see the 'Banking Bonuses' blueprint instead",
+            "Download the FanDuel app or go to FanDuel.com and click 'Sign Up'",
+            "Complete identity verification (required by law) — use your real name and address",
+            "Deposit $10 via debit card or PayPal",
+            "Place your first $5 bet on any sport (moneyline bets on heavy favorites have ~85% win rate)",
+            "You will immediately receive $200 in bonus bets in your account regardless of outcome",
+            "Use bonus bets strategically on favorites with -300 or better odds to convert ~65% to real cash"
+        ],
+        "potential_earnings": "$50-$200 one-time",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "sports-betting", "bonus-hunting", "state-gated"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["none"],
+        "interest_tags": ["finance"],
+        "affiliate_link": "https://www.fanduel.com/join",
+        "badge": "STATE GATED",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "Varies",
+        "requires_state_check": True,
+        "restricted_states": ["CA", "TX", "UT", "HI", "ID", "WI", "GA", "AL", "AK", "MN", "MO", "OK", "MS", "NE", "NM", "ND", "SD", "WA", "SC"]
+    },
+    {
+        "id": "qw-010",
+        "title": "Bank Account Bonus Hunting — $200-$500 Free",
+        "description": "Banks pay new customers $200-$500 just for opening an account and meeting simple requirements like direct deposit. This is 100% legal, risk-free cash. Top 2026 offers: Chase $300 (direct deposit), SoFi $300 (direct deposit), Discover $200 (spend $500). Stack multiple banks for $1,000+ per year.",
+        "category": "Quick Wins",
+        "required_skills": ["Organization", "Basic Budgeting"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Visit BankBonuses.com or DoctorofCredit.com to find the current best bank offers",
+            "Start with Chase Total Checking ($300 bonus) — open account online in 5 minutes",
+            "Set up one direct deposit from your employer or Venmo business (qualifies at most banks)",
+            "Meet minimum deposit requirement (usually $500-$1,000 in first 30 days)",
+            "After receiving your first bonus (4-8 weeks), move to the next bank on your list",
+            "Track all accounts in a spreadsheet: bank name, bonus amount, requirement, deadline",
+            "Never close the account before 6 months (early closure fee can negate the bonus)"
+        ],
+        "potential_earnings": "$200-$1,000/year",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "bank-bonus", "no-risk", "no-cost", "100-percent-legal"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["none"],
+        "interest_tags": ["finance"],
+        "affiliate_link": "https://www.doctorofcredit.com/best-current-bank-account-bonuses/",
+        "badge": "100% RISK-FREE",
+        "time_to_first_dollar": "4-8 weeks",
+        "minimum_payout": "$200"
+    },
+    {
+        "id": "qw-011",
+        "title": "Survey Junkie — $40+/day in Spare Time",
+        "description": "Survey Junkie is the highest-paying legitimate survey platform in 2026. Earn $1-$5 per survey, takes 5-15 minutes each. Cash out via PayPal or e-gift card. 13+ million members. Perfect for dead time: commutes, waiting rooms, lunch breaks. Most users earn $10-$40/day if consistent.",
+        "category": "Quick Wins",
+        "required_skills": ["Honesty", "Consistency"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Sign up at SurveyJunkie.com — completely free, takes 2 minutes",
+            "Complete your full profile immediately — this unlocks higher-paying surveys",
+            "Start with the 'Profile Surveys' first (pays 500-1000 points, quickest)",
+            "Check for new surveys every morning — the best ones close fast",
+            "Stack Survey Junkie with Swagbucks and Prolific for maximum earnings per day",
+            "Refer friends: earn 200 points for every friend who earns their first 1,000 points",
+            "Cash out at $10 minimum via PayPal — arrives in 1-5 business days"
+        ],
+        "potential_earnings": "$5-$40/day",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "surveys", "no-cost", "remote", "spare-time"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["finance"],
+        "affiliate_link": "https://www.surveyjunkie.com/",
+        "badge": "TOP RATED",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "$10"
     }
 ]
 
@@ -878,14 +1235,16 @@ async def update_user_location(user_id: str, location_data: Dict[str, Any]):
     return {"message": "Location updated", "city": city, "currency": currency}
 
 async def ensure_ideas_seeded():
-    """Seed ideas if DB is empty or if ideas lack new schema fields"""
+    """Seed ideas if DB is empty or if ideas lack new schema fields (Sprint 8: Quick Wins)"""
     count = await db.ideas.count_documents({})
     if count == 0:
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
         return
-    # Migration: check if ideas have new fields
+    # Migration: check if ideas have new fields (environment_fit or is_quick_win)
     old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
-    if old_ideas > 0:
+    missing_qw = await db.ideas.count_documents({"is_quick_win": {"$exists": False}, "id": {"$regex": "^qw-"}})
+    qw_count = await db.ideas.count_documents({"is_quick_win": True})
+    if old_ideas > 0 or qw_count == 0:
         await db.ideas.delete_many({})
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
 
@@ -1899,6 +2258,195 @@ async def award_arc(data: ARCAwardRequest):
         "level": get_arc_level(new_balance),
         "event": data.event,
     }
+
+# ============= Sprint 8: Quick Wins & Tactical AI =============
+
+GAMBLING_RESTRICTED_STATES = {
+    "CA", "TX", "UT", "HI", "ID", "WI", "GA", "AL", "AK",
+    "MN", "MO", "OK", "MS", "NE", "NM", "ND", "SD", "WA", "SC"
+}
+
+@api_router.get("/quick-wins")
+async def get_quick_wins(user_state: str = "", user_id: str = None):
+    """Sprint 8: Returns all Quick Win ideas, filtered by state for gambling content."""
+    await ensure_ideas_seeded()
+    ideas = await db.ideas.find({"is_quick_win": True}, {"_id": 0}).to_list(50)
+    user_state_upper = user_state.upper().strip()
+    # Apply state filter for gambling/betting ideas
+    filtered = []
+    for idea in ideas:
+        if idea.get("requires_state_check") and user_state_upper in GAMBLING_RESTRICTED_STATES:
+            continue  # Hide gambling ideas in restricted states
+        filtered.append(idea)
+    # Attach match scores if user_id provided
+    if user_id:
+        user = await db.users.find_one({"id": user_id})
+        if user:
+            profile = user.get("profile", {})
+            for idea in filtered:
+                idea["match_score"] = calculate_match_score(profile, idea)
+    return filtered
+
+class LogWinRequest(BaseModel):
+    user_id: str
+    idea_id: str
+    platform_name: str
+    amount_earned: float
+    note: str = ""
+
+@api_router.post("/quick-wins/log")
+async def log_quick_win(data: LogWinRequest):
+    """Sprint 8: Log a Quick Win earnings entry + award ARC credits."""
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    win_record = {
+        "id": str(uuid.uuid4()),
+        "user_id": data.user_id,
+        "idea_id": data.idea_id,
+        "platform_name": data.platform_name,
+        "amount_earned": data.amount_earned,
+        "note": data.note,
+        "logged_at": datetime.utcnow().isoformat(),
+    }
+    await db.quick_win_logs.insert_one(win_record)
+    # Award ARC for logging a win
+    arc_amount = min(50, max(5, int(data.amount_earned // 2)))
+    await db.users.update_one({"id": data.user_id}, {"$inc": {"arc_balance": arc_amount}})
+    user_updated = await db.users.find_one({"id": data.user_id}, {"_id": 0, "arc_balance": 1})
+    new_balance = user_updated.get("arc_balance", 0)
+    return {
+        "message": "Win logged!",
+        "arc_awarded": arc_amount,
+        "new_arc_balance": new_balance,
+        "arc_level": get_arc_level(new_balance),
+    }
+
+class TacticalAIRequest(BaseModel):
+    user_id: str
+    idea_id: str
+    step_text: str
+    idea_title: str
+    city: str = ""
+    state: str = ""
+    country: str = ""
+
+@api_router.post("/tactical-ai/go-deeper")
+async def tactical_go_deeper(data: TacticalAIRequest):
+    """Sprint 8: Gemini 3 Flash — generates 5 local leads, DM script, and objection guide for any blueprint step."""
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Build location context
+    location_parts = [p for p in [data.city, data.state, data.country] if p]
+    location_str = ", ".join(location_parts) if location_parts else "your city"
+    profile = user.get("profile", {})
+    # Use profile location if not provided in request
+    if not data.city:
+        location_parts = [p for p in [profile.get("city",""), profile.get("state",""), profile.get("country","")] if p]
+        location_str = ", ".join(location_parts) if location_parts else "your city"
+
+    prompt = f"""You are a hyper-tactical business development AI inside the Blueprint income app.
+
+A user is working on this blueprint step:
+BLUEPRINT: "{data.idea_title}"
+STEP: "{data.step_text}"
+THEIR LOCATION: {location_str}
+
+Generate a tactical execution package with EXACTLY this JSON structure (no markdown, no extra text):
+{{
+  "summary": "One sentence tactical overview of exactly what to do right now",
+  "local_leads": [
+    {{
+      "name": "Real business name in {location_str}",
+      "type": "Business type (e.g. Spa, Restaurant, Gym)",
+      "why": "One sentence: why this business specifically needs this service",
+      "google_search_url": "https://www.google.com/search?q=BUSINESS+NAME+{location_str.replace(' ', '+')}",
+      "maps_url": "https://www.google.com/maps/search/BUSINESS+TYPE+near+{location_str.replace(' ', '+')}",
+      "approach": "cold_email|instagram_dm|walk_in|linkedin"
+    }},
+    {{
+      "name": "Second business",
+      "type": "Business type",
+      "why": "Why they need this",
+      "google_search_url": "https://www.google.com/search?q=BUSINESS+NAME+{location_str.replace(' ', '+')}",
+      "maps_url": "https://www.google.com/maps/search/BUSINESS+TYPE+near+{location_str.replace(' ', '+')}",
+      "approach": "instagram_dm"
+    }},
+    {{
+      "name": "Third business",
+      "type": "Business type",
+      "why": "Why they need this",
+      "google_search_url": "https://www.google.com/search?q=BUSINESS+NAME+{location_str.replace(' ', '+')}",
+      "maps_url": "https://www.google.com/maps/search/BUSINESS+TYPE+near+{location_str.replace(' ', '+')}",
+      "approach": "cold_email"
+    }},
+    {{
+      "name": "Fourth business",
+      "type": "Business type",
+      "why": "Why they need this",
+      "google_search_url": "https://www.google.com/search?q=BUSINESS+NAME+{location_str.replace(' ', '+')}",
+      "maps_url": "https://www.google.com/maps/search/BUSINESS+TYPE+near+{location_str.replace(' ', '+')}",
+      "approach": "walk_in"
+    }},
+    {{
+      "name": "Fifth business",
+      "type": "Business type",
+      "why": "Why they need this",
+      "google_search_url": "https://www.google.com/search?q=BUSINESS+NAME+{location_str.replace(' ', '+')}",
+      "maps_url": "https://www.google.com/maps/search/BUSINESS+TYPE+near+{location_str.replace(' ', '+')}",
+      "approach": "instagram_dm"
+    }}
+  ],
+  "dm_script": {{
+    "subject": "Short email subject line or DM opener (max 8 words)",
+    "body": "Hi [Name],\\n\\nFull copy-paste ready message. 3-4 sentences max. Reference their specific business type. End with a clear, low-friction CTA. Sound human, not sales-y.\\n\\n[Your Name]",
+    "follow_up": "A 1-sentence follow-up message to send 3 days later if no reply"
+  }},
+  "objection_guide": [
+    {{
+      "objection": "Most common objection they will hear",
+      "reframe": "Exact words to say back — confident, empathetic, closes the loop"
+    }},
+    {{
+      "objection": "Second common objection",
+      "reframe": "Exact response"
+    }},
+    {{
+      "objection": "Third common objection",
+      "reframe": "Exact response"
+    }}
+  ]
+}}"""
+
+    try:
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"tactical-{data.user_id}-{data.idea_id}-{uuid.uuid4().hex[:8]}"
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=session_id,
+            system_message="You are a tactical business development AI. Always return valid JSON only. No markdown. No explanations outside the JSON."
+        )
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response_text = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        # Extract JSON from response
+        match = _re.search(r'\{.*\}', response_text, _re.DOTALL)
+        if match:
+            result = _json.loads(match.group())
+            return result
+    except Exception as e:
+        logger.error(f"Tactical AI error: {e}")
+    # Fallback response
+    return {
+        "summary": f"To execute '{data.step_text}', focus on identifying the highest-value prospects in {location_str} and reaching out with a direct, specific offer.",
+        "local_leads": [
+            {"name": "Search Google Maps for local businesses", "type": "Various", "why": "Target businesses in your immediate area first for fastest response", "google_search_url": f"https://www.google.com/search?q={data.idea_title.replace(' ', '+')}+{location_str.replace(' ', '+')}", "maps_url": f"https://www.google.com/maps/search/{data.idea_title.replace(' ', '+')}+near+{location_str.replace(' ', '+')}", "approach": "cold_email"}
+        ],
+        "dm_script": {"subject": "Quick question about your business", "body": f"Hi [Name],\n\nI specialize in {data.idea_title} and noticed your business could benefit from this. Would you be open to a 15-minute call this week?\n\n[Your Name]", "follow_up": "Just checking in — did you get a chance to see my previous message?"},
+        "objection_guide": [{"objection": "We don't have the budget right now", "reframe": "That's exactly why I offer a results-first trial — you only pay after you see the value. Can we start small?"}, {"objection": "We already have someone for that", "reframe": "Totally understand. I'm not here to replace anyone — I'm here to add a capability you don't currently have. What gap would be most valuable to fill?"}]
+    }
+
 
 # Include the router
 app.include_router(api_router)

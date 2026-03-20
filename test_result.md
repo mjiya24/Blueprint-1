@@ -460,10 +460,58 @@ frontend:
           agent: "main"
           comment: "Guest screen shows locked features comparison. In idea-detail, guests see first 2 steps, rest locked. Upgrade prompts throughout."
 
+  - task: "Sprint 8 - Quick Wins Hero Banner"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/QuickWinsBanner.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "11 Quick Win cards (DataAnnotation, UserInterviews, Freecash, Mistplay, Solitaire Cash, Campus Courier, Rover, BioLife, FanDuel, Bank Bonuses, Survey Junkie). Animated pulsing QUICK WINS badge. Confirmed working in screenshots."
+
+  - task: "Sprint 8 - Tactical AI Go Deeper Panel"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/TacticalAIPanel.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Go Deeper on ALL steps. Gemini 3 Flash generates 5 local leads, DM Script (copy-paste), Objection Guide. Backend confirmed working via logs."
+
+  - task: "Sprint 8 - State-Level Geo Filter"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "FanDuel hidden for 20 restricted states. CA=10 ideas, NY=11 ideas. Confirmed in curl tests."
+
+  - task: "Sprint 8 - Log a Win Sheet"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/LogWinSheet.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Bottom sheet with dollar input, quick amounts, ARC award animation. Auto-shows after clicking Open Platform."
+
 metadata:
   created_by: "main_agent"
-  version: "2.0"
-  test_sequence: 2
+  version: "3.0"
+  test_sequence: 3
   run_ui: true
 
 test_plan:
@@ -482,3 +530,5 @@ agent_communication:
       message: "Completed comprehensive backend API testing. Fixed critical ObjectId serialization issue in MongoDB queries. 11/14 tests passing with 2 minor issues that don't affect core functionality. All critical endpoints (authentication, ideas, saved ideas) working correctly. Backend API is ready for production use."
     - agent: "main"
       message: "MAJOR SPRINT: Blueprint app complete. Full redesign with Fintech Dark Mode (#000/#1A1C23/#00D95F Electric Mint). New features: 4-step questionnaire onboarding, Match Probability Engine (0-100%), 20 new categorized ideas (4 categories), rebuilt idea-detail.tsx with interactive checklist + 3-tier animations + progress bar, guest gating. Backend: new schema with questionnaire fields, match score algorithm, push token endpoint, migration logic. Screenshots confirm all screens working. Please test: 1) Full signup→questionnaire→home flow with match scores, 2) Idea detail with Start Blueprint + step completion, 3) Celebration animations (first step, 50%, 100%), 4) Guest gating (2 free steps, rest locked), 5) Discover screen with categories and match scores. App URL: https://quick-wins-3.preview.emergentagent.com"
+    - agent: "main"
+      message: "SPRINT 8 COMPLETE - Quick Wins Overhaul: 1) Added 11 Quick Win ideas (DataAnnotation, UserInterviews, Freecash, Mistplay, Solitaire Cash, Campus Courier, Rover, BioLife Plasma, FanDuel, Bank Bonuses, Survey Junkie) - all $0 to start. 2) Quick Wins Hero Banner pinned at top of home screen with scrollable cards, earnings, badges, animated pulse. 3) State geo-filter: FanDuel hidden for CA/TX/GA/AL/HI/etc (20 restricted states). 4) Tactical AI Panel: Go Deeper ⚡ button on ALL steps in every blueprint - uses Gemini 3 Flash to generate 5 local leads with Maps links + DM Script (copy-paste) + Handle-the-No objection guide. 5) Log a Win bottom sheet: after clicking Quick Win link, prompts user to log earnings, awards ARC credits. 6) Quick Win hero in idea-detail for Quick Win category: shows Open Platform + Log a Win CTAs. Backend tests: all 5 Sprint 8 endpoints passing (quick-wins, log win, tactical AI, state filter)."

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StreakBadge } from '../../components/StreakBadge';
 import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
 import { LocalMarketPulseWidget } from '../../components/LocalMarketPulseWidget';
+import { QuickWinsBanner } from '../../components/QuickWinsBanner';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -146,6 +147,12 @@ export default function HomeScreen() {
             countryCode={user.profile.country_code || 'US'}
           />
         )}
+
+        {/* ========== QUICK WINS HERO BANNER (Sprint 8) ========== */}
+        <QuickWinsBanner
+          userState={user?.profile?.state || ''}
+          userId={user?.id || ''}
+        />
 
         {/* Stats row */}
         <View style={styles.statsRow}>

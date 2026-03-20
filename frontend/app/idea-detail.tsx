@@ -15,6 +15,8 @@ import { BlueprintVeterans } from '../components/BlueprintVeterans';
 import { IdeaIcon } from '../components/icons';
 import { ArchitectPaywall } from '../components/ArchitectPaywall';
 import { TroubleshootModal } from '../components/TroubleshootModal';
+import { TacticalAIPanel } from '../components/TacticalAIPanel';
+import { LogWinSheet } from '../components/LogWinSheet';
 import { useLocalSearchParams } from 'expo-router';
 import { VictoryLapModal } from '../components/VictoryLapModal';
 import { RescueModeModal } from '../components/RescueModeModal';
@@ -69,6 +71,11 @@ export default function IdeaDetailScreen() {
   const [showVictoryLap, setShowVictoryLap] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
   const [completionDays, setCompletionDays] = useState(0);
+  // Sprint 8: Tactical AI Panel
+  const [showTactical, setShowTactical] = useState(false);
+  const [tacticalStep, setTacticalStep] = useState<{ number: number; text: string } | null>(null);
+  // Sprint 8: Log a Win sheet (for Quick Win ideas)
+  const [showLogWin, setShowLogWin] = useState(false);
 
   const checkIfStuck = (saved: any) => {
     if (!saved) return false;
@@ -285,6 +292,46 @@ export default function IdeaDetailScreen() {
         )}
 
         <View style={styles.mainContent}>
+          {/* Quick Win Hero Banner — shown for Quick Win category ideas */}
+          {idea.category === 'Quick Wins' && (
+            <View style={styles.quickWinHero}>
+              <View style={styles.quickWinHeroLeft}>
+                <View style={styles.quickWinBadge}>
+                  <Ionicons name="flash" size={11} color="#000" />
+                  <Text style={styles.quickWinBadgeText}>QUICK WIN</Text>
+                </View>
+                <Text style={styles.quickWinHeroTitle}>
+                  {idea.time_to_first_dollar || 'Fast Cash'}
+                </Text>
+                <Text style={styles.quickWinHeroSub}>to your first dollar</Text>
+              </View>
+              <View style={styles.quickWinHeroRight}>
+                {idea.affiliate_link ? (
+                  <TouchableOpacity
+                    style={styles.quickWinLaunchBtn}
+                    onPress={() => {
+                      Linking.openURL(idea.affiliate_link);
+                      // Show Log Win sheet after delay
+                      setTimeout(() => setShowLogWin(true), 3000);
+                    }}
+                  >
+                    <Text style={styles.quickWinLaunchText}>Open Platform</Text>
+                    <Ionicons name="open-outline" size={14} color="#000" />
+                  </TouchableOpacity>
+                ) : null}
+                {isStarted && (
+                  <TouchableOpacity
+                    style={styles.logWinBtn}
+                    onPress={() => setShowLogWin(true)}
+                  >
+                    <Ionicons name="trophy-outline" size={14} color="#00D95F" />
+                    <Text style={styles.logWinBtnText}>Log a Win</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Category + Title */}
           <View style={styles.ideaHeader}>
             <IdeaIcon ideaId={id as string} size={52} />
@@ -371,23 +418,42 @@ export default function IdeaDetailScreen() {
                     </View>
                   )}
                 </TouchableOpacity>
-                {/* Stuck? button — only on uncompleted steps */}
-                {!step.completed && !user?.is_guest && (
-                  <TouchableOpacity
-                    style={styles.stuckBtn}
-                    onPress={() => {
-                      if (user?.is_architect) {
-                        setTroubleshootStep({ number: step.step_number, text: step.text });
-                        setShowTroubleshoot(true);
-                      } else {
-                        setShowPaywall(true);
-                      }
-                    }}
-                    data-testid={`stuck-btn-${step.step_number}`}
-                  >
-                    <Ionicons name="construct-outline" size={12} color="#00D95F" />
-                    <Text style={styles.stuckBtnText}>Stuck? Get Workaround ⚡</Text>
-                  </TouchableOpacity>
+
+                {/* Action buttons row — below each step */}
+                {!user?.is_guest && (
+                  <View style={styles.stepActionRow}>
+                    {/* Go Deeper (Sprint 8 — ALL steps, ALL users) */}
+                    <TouchableOpacity
+                      style={styles.goDeepBtn}
+                      onPress={() => {
+                        setTacticalStep({ number: step.step_number, text: step.text });
+                        setShowTactical(true);
+                      }}
+                      data-testid={`go-deeper-btn-${step.step_number}`}
+                    >
+                      <Ionicons name="flash" size={12} color="#00D95F" />
+                      <Text style={styles.goDeepBtnText}>Go Deeper ⚡</Text>
+                    </TouchableOpacity>
+
+                    {/* Stuck? (Architect-only troubleshoot) */}
+                    {!step.completed && (
+                      <TouchableOpacity
+                        style={styles.stuckBtn}
+                        onPress={() => {
+                          if (user?.is_architect) {
+                            setTroubleshootStep({ number: step.step_number, text: step.text });
+                            setShowTroubleshoot(true);
+                          } else {
+                            setShowPaywall(true);
+                          }
+                        }}
+                        data-testid={`stuck-btn-${step.step_number}`}
+                      >
+                        <Ionicons name="construct-outline" size={12} color="#F59E0B" />
+                        <Text style={styles.stuckBtnText}>Stuck?</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             ))}
@@ -569,6 +635,34 @@ export default function IdeaDetailScreen() {
         />
       )}
 
+      {/* Sprint 8: Tactical AI Panel */}
+      {tacticalStep && (
+        <TacticalAIPanel
+          visible={showTactical}
+          onClose={() => { setShowTactical(false); setTacticalStep(null); }}
+          userId={user?.id || ''}
+          ideaId={id as string}
+          ideaTitle={idea?.title || ''}
+          stepText={tacticalStep.text}
+          stepNumber={tacticalStep.number}
+          city={user?.profile?.city || ''}
+          state={user?.profile?.state || ''}
+          country={user?.profile?.country || ''}
+        />
+      )}
+
+      {/* Sprint 8: Log a Win sheet */}
+      <LogWinSheet
+        visible={showLogWin}
+        onClose={() => setShowLogWin(false)}
+        onWinLogged={(amount, arc) => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }}
+        userId={user?.id || ''}
+        ideaId={id as string}
+        platformName={idea?.title || ''}
+      />
+
       {/* Sprint 6: Victory Lap Modal */}
       <VictoryLapModal
         visible={showVictoryLap}
@@ -684,12 +778,51 @@ const styles = StyleSheet.create({
   progressSection: { marginBottom: 16 },
   stuckBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    marginLeft: 52, marginTop: 2, marginBottom: 6,
+    marginLeft: 8, marginTop: 2, marginBottom: 6,
     paddingHorizontal: 10, paddingVertical: 5,
-    backgroundColor: '#00D95F08', borderRadius: 8,
-    borderWidth: 1, borderColor: '#00D95F25', alignSelf: 'flex-start',
+    backgroundColor: '#F59E0B08', borderRadius: 8,
+    borderWidth: 1, borderColor: '#F59E0B25', alignSelf: 'flex-start',
   },
-  stuckBtnText: { fontSize: 11, color: '#00D95F', fontWeight: '600' },
+  stuckBtnText: { fontSize: 11, color: '#F59E0B', fontWeight: '600' },
+  // Sprint 8: Go Deeper button
+  stepActionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginLeft: 46, marginTop: 2, marginBottom: 8,
+  },
+  goDeepBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: '#00D95F08', borderRadius: 8,
+    borderWidth: 1, borderColor: '#00D95F30', alignSelf: 'flex-start',
+  },
+  goDeepBtnText: { fontSize: 11, color: '#00D95F', fontWeight: '700' },
+  // Sprint 8: Quick Win hero
+  quickWinHero: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#00D95F0A', borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: '#00D95F30',
+  },
+  quickWinHeroLeft: { flex: 1 },
+  quickWinBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#00D95F', paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 6, alignSelf: 'flex-start', marginBottom: 6,
+  },
+  quickWinBadgeText: { fontSize: 9, fontWeight: '800', color: '#000', letterSpacing: 1 },
+  quickWinHeroTitle: { fontSize: 20, fontWeight: '800', color: '#00D95F' },
+  quickWinHeroSub: { fontSize: 12, color: '#4A4A4A', marginTop: 2 },
+  quickWinHeroRight: { gap: 8, alignItems: 'flex-end' },
+  quickWinLaunchBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#00D95F', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  quickWinLaunchText: { fontSize: 13, fontWeight: '700', color: '#000' },
+  logWinBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#00D95F10', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#00D95F30',
+  },
+  logWinBtnText: { fontSize: 12, fontWeight: '600', color: '#00D95F' },
   architectSection: { marginBottom: 20, backgroundColor: '#0D0E14', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#2A2C35' },
   architectHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   architectBadge: {
