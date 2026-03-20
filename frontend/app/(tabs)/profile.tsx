@@ -119,7 +119,8 @@ export default function ProfileScreen() {
         {/* Identity Verification Section */}
         {!user?.is_guest && user?.id && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Identity Verification</Text>            {user?.phone_verified ? (
+            <Text style={styles.sectionTitle}>Identity Verification</Text>
+            {user?.phone_verified ? (
               <View style={styles.verifiedCard} data-testid="phone-verified-badge">
                 <View style={styles.verifiedLeft}>
                   <View style={styles.verifiedIconBox}>

@@ -11,6 +11,7 @@ import { StreakBadge } from '../../components/StreakBadge';
 import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
 import { LocalMarketPulseWidget } from '../../components/LocalMarketPulseWidget';
 import { QuickWinsBanner } from '../../components/QuickWinsBanner';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -28,6 +29,7 @@ const getDifficultyColor = (d: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,28 +81,28 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D95F" />}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.bg }]}>
           <View>
             <View style={styles.logoRow}>
               <Ionicons name="grid" size={18} color="#00D95F" />
               <Text style={styles.appTag}>Blueprint</Text>
             </View>
-            <Text style={styles.greeting}>Hey, {firstName} 👋</Text>
-            <Text style={styles.headerSub}>
+            <Text style={[styles.greeting, { color: theme.text }]}>Hey, {firstName} 👋</Text>
+            <Text style={[styles.headerSub, { color: theme.textMuted }]}>
               {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized income roadmap."}
             </Text>
           </View>
           <TouchableOpacity style={styles.notifBtn} data-testid="notif-btn">
             {streak > 0 && !user?.is_guest
               ? <StreakBadge streak={streak} isToday={true} />
-              : <Ionicons name="notifications-outline" size={22} color="#8E8E8E" />
+              : <Ionicons name="notifications-outline" size={22} color={theme.textMuted} />
             }
           </TouchableOpacity>
         </View>
