@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import bcrypt
 from bson import ObjectId
 import httpx
@@ -1087,6 +1087,38 @@ PRE_POPULATED_IDEAS = [
         "badge": "TOP RATED",
         "time_to_first_dollar": "Same day",
         "minimum_payout": "$10"
+    },
+    {
+        "id": "qw-012",
+        "title": "Scrambly — P2E Gaming ($0 Start)",
+        "description": "Scrambly is a 2026 breakout Play-to-Earn app that pays real cash for completing word puzzles and mini-games. No skills needed. 4.8 stars, 80,000+ reviews. Earns $5-$20/day just from daily play. Instant PayPal payouts at $2 minimum.",
+        "category": "Quick Wins",
+        "required_skills": ["Patience", "Basic Word Skills"],
+        "startup_cost": "free",
+        "time_needed": "flexible",
+        "is_location_based": False,
+        "is_quick_win": True,
+        "location_types": ["online"],
+        "action_steps": [
+            "Download Scrambly from the App Store or Google Play — free, 2 minutes",
+            "Create your account and claim the new-user welcome bonus (usually $0.50-$2.00)",
+            "Complete the tutorial (5 minutes) — this unlocks your first cash mission",
+            "Play 20 rounds of the daily word scramble puzzle to earn your first $1",
+            "Use the 'Bonus Time' feature every 4 hours for 2x point multipliers",
+            "Refer 2 friends for a $5 bonus each (they don't even have to play — just sign up)",
+            "Cash out at $2 minimum via PayPal — arrives within 24 hours"
+        ],
+        "potential_earnings": "$5-$20/day",
+        "difficulty": "beginner",
+        "tags": ["quick-win", "play-to-earn", "gaming", "word-games", "no-cost"],
+        "environment_fit": ["home", "any"],
+        "social_fit": ["solo"],
+        "asset_requirements": ["laptop"],
+        "interest_tags": ["tech", "finance"],
+        "affiliate_link": "https://apps.apple.com/us/app/scrambly/id1643534743",
+        "badge": "NEW 2026",
+        "time_to_first_dollar": "Same day",
+        "minimum_payout": "$2"
     }
 ]
 
@@ -1235,16 +1267,16 @@ async def update_user_location(user_id: str, location_data: Dict[str, Any]):
     return {"message": "Location updated", "city": city, "currency": currency}
 
 async def ensure_ideas_seeded():
-    """Seed ideas if DB is empty or if ideas lack new schema fields (Sprint 8: Quick Wins)"""
+    """Seed ideas if DB is empty or if ideas lack new schema fields (Sprint 9: Scrambly added)"""
     count = await db.ideas.count_documents({})
     if count == 0:
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
         return
-    # Migration: check if ideas have new fields (environment_fit or is_quick_win)
+    # Migration: check if ideas have new fields
     old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
-    missing_qw = await db.ideas.count_documents({"is_quick_win": {"$exists": False}, "id": {"$regex": "^qw-"}})
     qw_count = await db.ideas.count_documents({"is_quick_win": True})
-    if old_ideas > 0 or qw_count == 0:
+    expected_qw = len([i for i in PRE_POPULATED_IDEAS if i.get("is_quick_win")])
+    if old_ideas > 0 or qw_count < expected_qw:
         await db.ideas.delete_many({})
         await db.ideas.insert_many(PRE_POPULATED_IDEAS)
 
@@ -2445,6 +2477,200 @@ Generate a tactical execution package with EXACTLY this JSON structure (no markd
         ],
         "dm_script": {"subject": "Quick question about your business", "body": f"Hi [Name],\n\nI specialize in {data.idea_title} and noticed your business could benefit from this. Would you be open to a 15-minute call this week?\n\n[Your Name]", "follow_up": "Just checking in — did you get a chance to see my previous message?"},
         "objection_guide": [{"objection": "We don't have the budget right now", "reframe": "That's exactly why I offer a results-first trial — you only pay after you see the value. Can we start small?"}, {"objection": "We already have someone for that", "reframe": "Totally understand. I'm not here to replace anyone — I'm here to add a capability you don't currently have. What gap would be most valuable to fill?"}]
+    }
+
+
+# ============= Sprint 9: Earnings Dashboard, Referrals, Ads =============
+
+ADSENSE_PUBLISHER_ID = "ca-pub-7453043458871233"
+GOOGLE_ADS_ACCOUNT = "915-268-4915"
+
+# ads.txt endpoint (must be accessible at /ads.txt for the domain)
+@api_router.get("/ads.txt", include_in_schema=False)
+async def serve_ads_txt():
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("google.com, pub-7453043458871233, DIRECT, f08c47fec0942fa0")
+
+@api_router.get("/earnings/dashboard/{user_id}")
+async def get_earnings_dashboard(user_id: str):
+    """Sprint 9: Returns total earnings, 30-day breakdown, and projected potential."""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Actual logged wins from quick_win_logs
+    from_date_30 = datetime.utcnow() - timedelta(days=30)
+    all_wins = await db.quick_win_logs.find({"user_id": user_id}, {"_id": 0}).to_list(200)
+    wins_30d = [w for w in all_wins if w.get("logged_at", "") >= from_date_30.isoformat()]
+    
+    total_earned = sum(w.get("amount_earned", 0) for w in all_wins)
+    earned_30d = sum(w.get("amount_earned", 0) for w in wins_30d)
+    
+    # In-progress blueprints → calculate projected potential
+    saved_ideas = await db.saved_ideas.find({"user_id": user_id}, {"_id": 0}).to_list(50)
+    active_plans = [s for s in saved_ideas if s.get("status") == "in_progress"]
+    
+    projected_potential = 0.0
+    active_details = []
+    for plan in active_plans:
+        idea = await db.ideas.find_one({"id": plan.get("idea_id")}, {"_id": 0})
+        if idea:
+            # Parse potential earnings range (e.g. "$20-$40/hour" → take lower bound per-day estimate)
+            earnings_str = idea.get("potential_earnings", "$0")
+            try:
+                import re as _re
+                nums = _re.findall(r'[\d,]+', earnings_str.replace(',', ''))
+                if nums:
+                    low_val = float(nums[0])
+                    projected_potential += low_val
+                    active_details.append({
+                        "idea_id": plan.get("idea_id"),
+                        "title": idea.get("title", ""),
+                        "potential": idea.get("potential_earnings", ""),
+                        "progress_pct": plan.get("progress_percentage", 0),
+                        "steps_done": plan.get("completed_steps_count", 0),
+                        "total_steps": len(idea.get("action_steps", [])),
+                    })
+            except:
+                pass
+    
+    # Win history (last 10)
+    win_history = sorted(all_wins, key=lambda x: x.get("logged_at", ""), reverse=True)[:10]
+    
+    # Lifetime ARC from arc_transactions
+    arc_data = await db.arc_balances.find_one({"user_id": user_id}) or {}
+    lifetime_arc = arc_data.get("total_earned", 0) or user.get("arc_balance", 0)
+    
+    return {
+        "total_earned": round(total_earned, 2),
+        "earned_30d": round(earned_30d, 2),
+        "projected_potential": round(projected_potential, 2),
+        "total_wins_logged": len(all_wins),
+        "active_plans_count": len(active_plans),
+        "active_plans": active_details,
+        "win_history": win_history,
+        "lifetime_arc": lifetime_arc,
+        "arc_balance": user.get("arc_balance", 0),
+    }
+
+# ---- Referral Engine ----
+import hashlib as _hashlib
+
+def generate_referral_code(user_id: str, name: str) -> str:
+    """Generate a short unique referral code."""
+    raw = f"{user_id[:8]}{name[:3].upper()}"
+    return raw.replace("-", "").upper()[:8]
+
+@api_router.get("/referrals/{user_id}")
+async def get_referral_info(user_id: str):
+    """Sprint 9: Get user's referral code, referral count, and earnings."""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate or retrieve referral code
+    ref_code = user.get("referral_code")
+    if not ref_code:
+        ref_code = generate_referral_code(user_id, user.get("name", "USER"))
+        await db.users.update_one({"id": user_id}, {"$set": {"referral_code": ref_code}})
+    
+    # Count how many users were referred
+    referred_count = await db.users.count_documents({"referred_by": ref_code})
+    arc_from_referrals = referred_count * 100  # 100 ARC per referral
+    
+    return {
+        "referral_code": ref_code,
+        "referral_link": f"https://quick-wins-3.preview.emergentagent.com?ref={ref_code}",
+        "referred_count": referred_count,
+        "arc_from_referrals": arc_from_referrals,
+        "reward_per_referral": 100,
+    }
+
+class ClaimReferralRequest(BaseModel):
+    new_user_id: str
+    referral_code: str
+
+@api_router.post("/referrals/claim")
+async def claim_referral(data: ClaimReferralRequest):
+    """Sprint 9: New user claims a referral code → referrer gets 100 ARC."""
+    # Find referrer
+    referrer = await db.users.find_one({"referral_code": data.referral_code})
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Referral code not found")
+    
+    new_user = await db.users.find_one({"id": data.new_user_id})
+    if not new_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check not already claimed
+    if new_user.get("referred_by"):
+        raise HTTPException(status_code=400, detail="Referral already claimed")
+    
+    # Award 100 ARC to referrer
+    await db.users.update_one({"id": referrer["id"]}, {"$inc": {"arc_balance": 100}})
+    # Mark new user as referred
+    await db.users.update_one({"id": data.new_user_id}, {"$set": {"referred_by": data.referral_code}})
+    # Also give 25 ARC bonus to new user
+    await db.users.update_one({"id": data.new_user_id}, {"$inc": {"arc_balance": 25}})
+    
+    return {
+        "message": "Referral claimed!",
+        "referrer_name": referrer.get("name", ""),
+        "arc_awarded_to_referrer": 100,
+        "arc_bonus_for_you": 25,
+    }
+
+# ---- Rewarded Ad Verification ----
+class AdRewardRequest(BaseModel):
+    user_id: str
+    feature_id: str  # e.g. "go-deeper-step-3"
+    ad_type: str = "rewarded_video"  # rewarded_video | banner
+
+@api_router.post("/ads/reward-verify")
+async def verify_ad_reward(data: AdRewardRequest):
+    """Sprint 9: Verify ad watch → unlock Go Deeper for free users (24hr window)."""
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Record unlock with 24hr expiry
+    unlock_key = f"ad_unlock_{data.user_id}_{data.feature_id}"
+    unlock_record = {
+        "user_id": data.user_id,
+        "feature_id": data.feature_id,
+        "unlocked_at": datetime.utcnow().isoformat(),
+        "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
+        "ad_type": data.ad_type,
+    }
+    await db.ad_unlocks.replace_one(
+        {"user_id": data.user_id, "feature_id": data.feature_id},
+        unlock_record, upsert=True
+    )
+    # Award 5 ARC for watching an ad
+    await db.users.update_one({"id": data.user_id}, {"$inc": {"arc_balance": 5}})
+    
+    return {"unlocked": True, "feature_id": data.feature_id, "valid_for_hours": 24, "arc_bonus": 5}
+
+@api_router.get("/ads/check-unlock/{user_id}/{feature_id}")
+async def check_ad_unlock(user_id: str, feature_id: str):
+    """Sprint 9: Check if a feature is unlocked via ad watch."""
+    unlock = await db.ad_unlocks.find_one({"user_id": user_id, "feature_id": feature_id})
+    if not unlock:
+        return {"unlocked": False}
+    expires = unlock.get("expires_at", "")
+    if expires < datetime.utcnow().isoformat():
+        return {"unlocked": False, "expired": True}
+    return {"unlocked": True, "expires_at": expires}
+
+@api_router.get("/ads/config")
+async def get_ads_config():
+    """Sprint 9: Returns AdSense configuration."""
+    return {
+        "publisher_id": ADSENSE_PUBLISHER_ID,
+        "channel_id": "f08c47fec0942fa0",
+        "google_ads_account": GOOGLE_ADS_ACCOUNT,
+        "rewarded_enabled": True,
+        "banner_enabled": True,
     }
 
 

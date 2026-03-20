@@ -508,10 +508,58 @@ frontend:
           agent: "main"
           comment: "Bottom sheet with dollar input, quick amounts, ARC award animation. Auto-shows after clicking Open Platform."
 
+  - task: "Sprint 9 - Earnings Command Center"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/EarningsCommandCenter.tsx, /app/frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Option B dashboard. Total Earned counter (animated), 30-day breakdown, ARC balance, In-Progress Potential with active blueprint list, Win History toggle. Showing on Profile tab."
+
+  - task: "Sprint 9 - Referral Engine"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/ReferralCard.tsx, /app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Unique referral code per user, referral link, Share button, +100 ARC to referrer, +25 ARC to new user. Tested via API - codes generating correctly."
+
+  - task: "Sprint 9 - Rewarded Ad Gate (AdSense)"
+    implemented: true
+    working: true
+    file: "/app/frontend/components/RewardedAdGate.tsx, /app/frontend/components/AdBanner.web.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Free users see Watch 30s Ad → Unlock Go Deeper flow. 30s countdown + skip after 5s. Publisher ca-pub-7453043458871233 integrated. ads.txt at /api/ads.txt. +5 ARC for watching. 24hr unlock window."
+
+  - task: "Sprint 9 - Scrambly Quick Win"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "qw-012 Scrambly added. Total Quick Wins now 12. Banner shows '12 Paths'."
+
 metadata:
   created_by: "main_agent"
-  version: "3.0"
-  test_sequence: 3
+  version: "4.0"
+  test_sequence: 4
   run_ui: true
 
 test_plan:

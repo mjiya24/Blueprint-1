@@ -8,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import axios from 'axios';
+import { EarningsCommandCenter } from '../../components/EarningsCommandCenter';
+import { ReferralCard } from '../../components/ReferralCard';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -99,11 +101,25 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* ======= SPRINT 9: EARNINGS COMMAND CENTER ======= */}
+        {!user?.is_guest && user?.id && (
+          <View style={styles.section}>
+            <EarningsCommandCenter userId={user.id} />
+          </View>
+        )}
+
+        {/* ======= SPRINT 9: REFERRAL ENGINE ======= */}
+        {!user?.is_guest && user?.id && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Referral Engine</Text>
+            <ReferralCard userId={user.id} userName={user.name} />
+          </View>
+        )}
+
         {/* Identity Verification Section */}
         {!user?.is_guest && user?.id && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Identity Verification</Text>
-            {user?.phone_verified ? (
+            <Text style={styles.sectionTitle}>Identity Verification</Text>            {user?.phone_verified ? (
               <View style={styles.verifiedCard} data-testid="phone-verified-badge">
                 <View style={styles.verifiedLeft}>
                   <View style={styles.verifiedIconBox}>

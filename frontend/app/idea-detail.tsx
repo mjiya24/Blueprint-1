@@ -17,6 +17,7 @@ import { ArchitectPaywall } from '../components/ArchitectPaywall';
 import { TroubleshootModal } from '../components/TroubleshootModal';
 import { TacticalAIPanel } from '../components/TacticalAIPanel';
 import { LogWinSheet } from '../components/LogWinSheet';
+import { RewardedAdGate } from '../components/RewardedAdGate';
 import { useLocalSearchParams } from 'expo-router';
 import { VictoryLapModal } from '../components/VictoryLapModal';
 import { RescueModeModal } from '../components/RescueModeModal';
@@ -76,6 +77,9 @@ export default function IdeaDetailScreen() {
   const [tacticalStep, setTacticalStep] = useState<{ number: number; text: string } | null>(null);
   // Sprint 8: Log a Win sheet (for Quick Win ideas)
   const [showLogWin, setShowLogWin] = useState(false);
+  // Sprint 9: Rewarded Ad Gate (for free users wanting Go Deeper)
+  const [showAdGate, setShowAdGate] = useState(false);
+  const [pendingTacticalStep, setPendingTacticalStep] = useState<{ number: number; text: string } | null>(null);
 
   const checkIfStuck = (saved: any) => {
     if (!saved) return false;
@@ -426,8 +430,14 @@ export default function IdeaDetailScreen() {
                     <TouchableOpacity
                       style={styles.goDeepBtn}
                       onPress={() => {
-                        setTacticalStep({ number: step.step_number, text: step.text });
-                        setShowTactical(true);
+                        // Architect users go straight in; Free users see ad gate first
+                        if (user?.is_architect) {
+                          setTacticalStep({ number: step.step_number, text: step.text });
+                          setShowTactical(true);
+                        } else {
+                          setPendingTacticalStep({ number: step.step_number, text: step.text });
+                          setShowAdGate(true);
+                        }
                       }}
                       data-testid={`go-deeper-btn-${step.step_number}`}
                     >
@@ -651,7 +661,22 @@ export default function IdeaDetailScreen() {
         />
       )}
 
-      {/* Sprint 8: Log a Win sheet */}
+      {/* Sprint 9: Rewarded Ad Gate — for free users to unlock Go Deeper */}
+      {pendingTacticalStep && (
+        <RewardedAdGate
+          visible={showAdGate}
+          onClose={() => { setShowAdGate(false); setPendingTacticalStep(null); }}
+          onUnlocked={() => {
+            setShowAdGate(false);
+            setTacticalStep(pendingTacticalStep);
+            setShowTactical(true);
+            setPendingTacticalStep(null);
+          }}
+          userId={user?.id || ''}
+          featureId={`go-deeper-${id}-step-${pendingTacticalStep.number}`}
+          featureName="Go Deeper"
+        />
+      )}
       <LogWinSheet
         visible={showLogWin}
         onClose={() => setShowLogWin(false)}
