@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://architect-income-1.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://quick-wins-3.preview.emergentagent.com").rstrip("/")
 
 # Known test user from previous sprints
 TEST_USER_ID = "64c59c73-18f1-4778-bf6e-b553af870ab5"

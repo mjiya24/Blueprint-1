@@ -8,7 +8,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://architect-income-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://quick-wins-3.preview.emergentagent.com')
 
 # --- Shared test user state ---
 # We create one fresh test user per test run for sequential ARC award tests
