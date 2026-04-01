@@ -7,8 +7,9 @@ COPY . .
 # 2. Install dependencies
 RUN cd backend && pip install --no-cache-dir -r requirements.txt
 
-# 3. Set PYTHONPATH so it can see the folder we just renamed
-ENV PYTHONPATH="/app:/app/backend:/app/emergentintegrations"
+# 3. Simplify the PYTHONPATH
+# This tells Python to look in /app (where emergentintegrations lives)
+ENV PYTHONPATH="/app"
 ENV PORT=10000
 EXPOSE 10000
 
