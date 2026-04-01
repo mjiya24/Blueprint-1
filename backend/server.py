@@ -23,7 +23,12 @@ if not mongo_url:
     raise RuntimeError("MONGO_URL or DATABASE_URL environment variable is required")
 
 db_name = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "blueprint_db"
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+    socketTimeoutMS=10000,
+)
 db = client[db_name]
 
 app = FastAPI()
@@ -1145,17 +1150,32 @@ CURRENCY_MAP: Dict[str, Dict[str, str]] = {
 
 @api_router.post("/auth/signup")
 async def signup(user_data: UserSignup):
-    existing_user = await db.users.find_one({"email": user_data.email})
+    try:
+        existing_user = await db.users.find_one({"email": user_data.email})
+    except Exception as exc:
+        logger.error("Database error during signup", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
     password_hash = hash_password(user_data.password)
     user = User(email=user_data.email, name=user_data.name, password_hash=password_hash)
-    await db.users.insert_one(user.dict())
+    try:
+        await db.users.insert_one(user.dict())
+    except Exception as exc:
+        logger.error("Database error inserting user during signup", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
     return {"id": user.id, "email": user.email, "name": user.name, "is_guest": False, "is_architect": False, "profile": user.profile.dict()}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"email": credentials.email})
+    try:
+        user = await db.users.find_one({"email": credentials.email})
+    except Exception as exc:
+        logger.error("Database error during login", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
     if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {
@@ -1169,7 +1189,11 @@ async def login(credentials: UserLogin):
 @api_router.post("/auth/guest")
 async def create_guest():
     guest = GuestUser()
-    await db.users.insert_one(guest.dict())
+    try:
+        await db.users.insert_one(guest.dict())
+    except Exception as exc:
+        logger.error("Database error creating guest user", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
     return {"id": guest.id, "name": guest.name, "is_guest": True, "profile": guest.profile.dict()}
 
 # ============= Sprint 7B: Firebase Phone Verification =============
@@ -2676,6 +2700,16 @@ async def get_ads_config():
         "rewarded_enabled": True,
         "banner_enabled": True,
     }
+
+@app.get("/health")
+async def health_check():
+    try:
+        await client.admin.command("ping")
+        return {"status": "ok", "database": "connected"}
+    except Exception as exc:
+        logger.error("Health check failed", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
 
 @app.get("/")
 async def root():
