@@ -10,6 +10,7 @@ import uuid
 import os
 import logging
 from datetime import datetime
+from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -17,9 +18,19 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 load_dotenv()
 logger = logging.getLogger("content_engine")
 
-MONGO_URL = os.environ["MONGO_URL"]
-DB_NAME = os.environ["DB_NAME"]
-LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
+def get_env_var(name, alt_name=None, default=None, required=False):
+    value = os.getenv(name)
+    if not value and alt_name:
+        value = os.getenv(alt_name)
+    if not value:
+        value = default
+    if required and not value:
+        raise RuntimeError(f"Environment variable '{name}'" + (f" or '{alt_name}'" if alt_name else "") + " is required")
+    return value
+
+MONGO_URL = get_env_var("MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017")
+DB_NAME = get_env_var("DB_NAME", "DATABASE_NAME", default="blueprint_db")
+LLM_KEY = get_env_var("EMERGENT_LLM_KEY", "GEMINI_API_KEY", required=True)
 
 # ============================================================
 # 100 HIGH-SIGNAL NICHES
@@ -180,7 +191,7 @@ BLUEPRINT_SCHEMA = """{
 }"""
 
 
-async def generate_single_blueprint(niche: dict) -> dict | None:
+async def generate_single_blueprint(niche: dict) -> Optional[dict]:
     session_id = f"blueprint-gen-{uuid.uuid4().hex}"
     try:
         chat = LlmChat(

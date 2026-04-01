@@ -18,9 +18,13 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.getenv("MONGO_URL") or os.getenv("DATABASE_URL")
+if not mongo_url:
+    raise RuntimeError("MONGO_URL or DATABASE_URL environment variable is required")
+
+db_name = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "blueprint_db"
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -2672,6 +2676,10 @@ async def get_ads_config():
         "rewarded_enabled": True,
         "banner_enabled": True,
     }
+
+@app.get("/")
+async def root():
+    return {"message": "Blueprint-1 API is officially LIVE locally!"}
 
 
 # Include the router

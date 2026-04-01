@@ -16,10 +16,20 @@ from motor.motor_asyncio import AsyncIOMotorClient
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+def get_env_var(name, alt_name=None, default=None, required=False):
+    value = os.getenv(name)
+    if not value and alt_name:
+        value = os.getenv(alt_name)
+    if not value:
+        value = default
+    if required and not value:
+        raise RuntimeError(f"Environment variable '{name}'" + (f" or '{alt_name}'" if alt_name else "") + " is required")
+    return value
+
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-db_name = os.environ['DB_NAME']
-emergent_key = os.environ['EMERGENT_LLM_KEY']
+mongo_url = get_env_var('MONGO_URL', 'DATABASE_URL', default='mongodb://localhost:27017')
+db_name = get_env_var('DB_NAME', 'DATABASE_NAME', default='blueprint_db')
+emergent_key = get_env_var('EMERGENT_LLM_KEY', 'GEMINI_API_KEY', required=True)
 
 # Idea generation prompt
 IDEA_GENERATION_PROMPT = """You are an expert in side hustles, entrepreneurship, and creative money-making strategies. Generate a unique, realistic money-making idea with the following structure. Be creative and include both traditional and gray area (but legal) opportunities.
