@@ -17,14 +17,26 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+logger = logging.getLogger(__name__)
 
-mongo_url = (
-    os.getenv("MONGO_URL")
-    or os.getenv("MONGO_URI")
-    or os.getenv("MONGODB_URI")
-    or os.getenv("DATABASE_URL")
-    or os.getenv("MONGODB_URL")
-)
+def get_mongo_url():
+    env_keys = [
+        "MONGO_URL",
+        "MONGO_URI",
+        "MONGODB_URI",
+        "DATABASE_URL",
+        "MONGODB_URL",
+    ]
+    for key in env_keys:
+        value = os.getenv(key)
+        if value:
+            return value, key
+    return "mongodb://localhost:27017", "default"
+
+mongo_url, mongo_url_source = get_mongo_url()
+if mongo_url_source == "default":
+    logger.warning("No Mongo env variable found; falling back to localhost")
+
 if not mongo_url:
     raise RuntimeError(
         "One of MONGO_URL, MONGO_URI, MONGODB_URI, DATABASE_URL, or MONGODB_URL is required"
@@ -2709,14 +2721,38 @@ async def get_ads_config():
         "banner_enabled": True,
     }
 
+def mask_mongo_url(url: str) -> str:
+    if "mongodb+srv" in url:
+        return "mongodb+srv://<hidden>"
+    if "mongodb://" in url:
+        return "mongodb://<hidden>"
+    return "<hidden>"
+
+
 @app.get("/health")
-async def health_check():
+async def health_check(debug: bool = False):
     try:
         await client.admin.command("ping")
-        return {"status": "ok", "database": "connected"}
+        result = {"status": "ok", "database": "connected"}
     except Exception as exc:
         logger.error("Health check failed", exc_info=exc)
+        if debug:
+            return {
+                "status": "error",
+                "detail": "Database unavailable",
+                "mongo_url_source": mongo_url_source,
+                "db_name": db_name,
+                "mongo_url_preview": mask_mongo_url(mongo_url),
+            }
         raise HTTPException(status_code=503, detail="Database unavailable")
+
+    if debug:
+        result.update({
+            "mongo_url_source": mongo_url_source,
+            "db_name": db_name,
+            "mongo_url_preview": mask_mongo_url(mongo_url),
+        })
+    return result
 
 
 @app.get("/")
