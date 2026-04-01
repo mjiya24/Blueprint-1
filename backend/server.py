@@ -18,9 +18,17 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.getenv("MONGO_URL") or os.getenv("DATABASE_URL")
+mongo_url = (
+    os.getenv("MONGO_URL")
+    or os.getenv("MONGO_URI")
+    or os.getenv("MONGODB_URI")
+    or os.getenv("DATABASE_URL")
+    or os.getenv("MONGODB_URL")
+)
 if not mongo_url:
-    raise RuntimeError("MONGO_URL or DATABASE_URL environment variable is required")
+    raise RuntimeError(
+        "One of MONGO_URL, MONGO_URI, MONGODB_URI, DATABASE_URL, or MONGODB_URL is required"
+    )
 
 db_name = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "blueprint_db"
 client = AsyncIOMotorClient(
