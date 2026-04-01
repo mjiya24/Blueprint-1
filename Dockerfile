@@ -1,14 +1,14 @@
 FROM python:3.11-slim
 WORKDIR /app
 
-# 1. Copy the entire project
+# 1. Copy everything
 COPY . .
 
-# 2. Install standard dependencies from the backend folder
+# 2. Install dependencies
 RUN cd backend && pip install --no-cache-dir -r requirements.txt
 
-# 3. Set environment variables so Python can find the .emergent folder
-ENV PYTHONPATH="/app:/app/backend"
+# 3. Set PYTHONPATH so it can see the folder we just renamed
+ENV PYTHONPATH="/app:/app/backend:/app/emergentintegrations"
 ENV PORT=10000
 EXPOSE 10000
 
