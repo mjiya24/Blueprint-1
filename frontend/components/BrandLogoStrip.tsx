@@ -29,7 +29,7 @@ type BrandToken = {
 };
 
 // ─────────────────────────────────────────────
-// Brand registry — each entry has a Clearbit domain
+// Brand registry — each entry carries a primary domain for remote logo APIs
 // ─────────────────────────────────────────────
 const BRANDS: BrandToken[] = [
   { key: 'doordash',       label: 'DoorDash',      short: 'DD', bg: '#FF3008', fg: '#FFF', domain: 'doordash.com',       aliases: ['door dash', 'doordash', 'dasher app'] },
@@ -147,10 +147,12 @@ const inferPrimaryBrand = (item: any): BrandToken => {
 // Build ordered list of logo sources per brand
 // ─────────────────────────────────────────────
 const buildSources = (domain: string): string[] => [
-  `https://logo.clearbit.com/${domain}`,
-  `https://cdn.brandfetch.io/${domain}/w/200/h/200/logo`,
-  `https://unavatar.io/${domain}`,
+  // Brandfetch and Icon Horse are currently the most reliable in runtime testing.
+  `https://cdn.brandfetch.io/${domain}/w/256/h/256/logo`,
+  `https://icon.horse/icon/${domain}`,
+  `https://icons.duckduckgo.com/ip3/${domain}.ico`,
   `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+  `https://unavatar.io/${domain}`,
 ];
 
 // ─────────────────────────────────────────────
@@ -209,20 +211,22 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
         {/* ── Logo shell — brand-colored bg so logos pop ── */}
         {/* ── Logo shell — always glassmorphism (premium translucent badge surface) ── */}
         <View style={styles.logoShell}>
-          {/* Fallback always behind (absolute) — shows until image is confirmed valid */}
-          <View style={styles.stubAbsolute}>
-            <FallbackContent />
+          <View style={[styles.logoPlate, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.96)' : '#FFFFFF' }]}>
+            {/* Fallback always behind (absolute) — shows until image is confirmed valid */}
+            <View style={styles.stubAbsolute}>
+              <FallbackContent />
+            </View>
+            {/* Image loads silently on top; fades in only when confirmed valid+loaded */}
+            {showRemoteLogo && (
+              <Image
+                source={{ uri: currentUri! }}
+                style={[styles.logoImage, { opacity: imageLoaded ? 1 : 0 }]}
+                resizeMode="contain"
+                onError={handleImgError}
+                onLoad={handleImgLoad}
+              />
+            )}
           </View>
-          {/* Image loads silently on top; fades in only when confirmed valid+loaded */}
-          {showRemoteLogo && (
-            <Image
-              source={{ uri: currentUri! }}
-              style={[styles.logoImage, { opacity: imageLoaded ? 1 : 0 }]}
-              resizeMode="contain"
-              onError={handleImgError}
-              onLoad={handleImgLoad}
-            />
-          )}
         </View>
 
         {/* ── Label ── */}
@@ -279,7 +283,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
@@ -290,9 +294,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  logoPlate: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
   logoImage: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
   },
   stubAbsolute: {
     position: 'absolute',
