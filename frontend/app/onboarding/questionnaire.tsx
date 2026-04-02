@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -76,6 +77,7 @@ const STEP_CONFIG = [
 
 export default function QuestionnaireScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({
     environment: '',
@@ -221,27 +223,27 @@ export default function QuestionnaireScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={styles.stepIndicator}>
-            <Text style={styles.stepText}>{currentStep + 1} of {STEP_CONFIG.length}</Text>
+          <View style={[styles.stepIndicator, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
+            <Text style={[styles.stepText, { color: theme.textMuted }]}>{currentStep + 1} of {STEP_CONFIG.length}</Text>
           </View>
           <TouchableOpacity onPress={handleSkip}>
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={[styles.skipText, { color: theme.textMuted }]}>Skip</Text>
           </TouchableOpacity>
         </View>
 
         {/* Progress bar */}
-        <View style={styles.progressTrack}>
+        <View style={[styles.progressTrack, { backgroundColor: theme.surfaceAlt }]}>
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        <Text style={styles.title}>{config.title}</Text>
-        <Text style={styles.subtitle}>{config.subtitle}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{config.title}</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>{config.subtitle}</Text>
       </View>
 
       {/* Options */}
@@ -249,22 +251,22 @@ export default function QuestionnaireScreen() {
       {config.type === 'location' ? (
         <ScrollView style={styles.options} showsVerticalScrollIndicator={false}>
           {/* Location icon */}
-          <View style={styles.locationCard}>
+          <View style={[styles.locationCard, { backgroundColor: theme.surface, borderColor: theme.accent + '20' }]}>
             <View style={styles.locationIconWrap}>
               <Ionicons name="location" size={40} color="#00D95F" />
             </View>
-            <Text style={styles.locationBenefit}>
+            <Text style={[styles.locationBenefit, { color: theme.textSub }]}>
               Unlocks "Trending in [Your City]" feed — hyper-local market data for your area
             </Text>
           </View>
           {/* Detected location display */}
           {locationData ? (
-            <View style={styles.locationDetected}>
+            <View style={[styles.locationDetected, { backgroundColor: theme.accentLight, borderColor: theme.accent + '30' }]}>
               <View style={styles.locationDetectedLeft}>
                 <Ionicons name="checkmark-circle" size={22} color="#00D95F" />
                 <View>
-                  <Text style={styles.locationCity}>{locationData.city}{locationData.state ? `, ${locationData.state}` : ''}</Text>
-                  <Text style={styles.locationCountry}>{locationData.country}</Text>
+                  <Text style={[styles.locationCity, { color: theme.text }]}>{locationData.city}{locationData.state ? `, ${locationData.state}` : ''}</Text>
+                  <Text style={[styles.locationCountry, { color: theme.textMuted }]}>{locationData.country}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={() => setLocationData(null)}>
@@ -300,21 +302,21 @@ export default function QuestionnaireScreen() {
           return (
             <TouchableOpacity
               key={option.id}
-              style={[styles.optionCard, selected && styles.optionCardSelected]}
+              style={[styles.optionCard, { backgroundColor: theme.surface, borderColor: theme.border }, selected && { borderColor: '#00D95F', backgroundColor: '#00D95F0A' }]}
               onPress={() => config.type === 'single'
                 ? handleSingle(config.field, option.id)
                 : handleMulti(config.field, option.id)
               }
               activeOpacity={0.7}
             >
-              <View style={[styles.optionIcon, selected && styles.optionIconSelected]}>
-                <Ionicons name={option.icon as any} size={22} color={selected ? '#000' : '#8E8E8E'} />
+              <View style={[styles.optionIcon, selected && styles.optionIconSelected, !selected && { backgroundColor: theme.surfaceAlt }]}>
+                <Ionicons name={option.icon as any} size={22} color={selected ? '#000' : theme.textMuted} />
               </View>
               <View style={styles.optionText}>
-                <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>
+                <Text style={[styles.optionLabel, { color: theme.text }, selected && styles.optionLabelSelected]}>
                   {option.label}
                 </Text>
-                <Text style={styles.optionDesc}>{option.desc}</Text>
+                <Text style={[styles.optionDesc, { color: theme.textSub }]}>{option.desc}</Text>
               </View>
               {selected && (
                 <View style={styles.checkmark}>
@@ -329,10 +331,10 @@ export default function QuestionnaireScreen() {
       )}
 
       {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: theme.border }]}>
         {currentStep > 0 && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => setCurrentStep(s => s - 1)}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]} onPress={() => setCurrentStep(s => s - 1)}>
+            <Ionicons name="arrow-back" size={22} color={theme.text} />
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -355,7 +357,7 @@ export default function QuestionnaireScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
+  container: { flex: 1 },
   header: { paddingHorizontal: 24, paddingTop: 56, paddingBottom: 8 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   stepIndicator: {
@@ -366,7 +368,7 @@ const styles = StyleSheet.create({
   skipText: { fontSize: 14, color: '#4A4A4A' },
   progressTrack: { height: 3, backgroundColor: '#1A1C23', borderRadius: 2, marginBottom: 24 },
   progressFill: { height: '100%', backgroundColor: '#00D95F', borderRadius: 2 },
-  title: { fontSize: 26, fontWeight: '700', color: '#FFFFFF', marginBottom: 8 },
+  title: { fontSize: 26, fontWeight: '700', marginBottom: 8 },
   subtitle: { fontSize: 14, color: '#8E8E8E', marginBottom: 8 },
   options: { flex: 1, paddingHorizontal: 24 },
   optionCard: {
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
   },
   optionIconSelected: { backgroundColor: '#00D95F' },
   optionText: { flex: 1 },
-  optionLabel: { fontSize: 16, fontWeight: '600', color: '#FFFFFF', marginBottom: 2 },
+  optionLabel: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
   optionLabelSelected: { color: '#00D95F' },
   optionDesc: { fontSize: 12, color: '#8E8E8E' },
   checkmark: {
@@ -412,7 +414,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#00D95F30', marginBottom: 16,
   },
   locationDetectedLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  locationCity: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  locationCity: { fontSize: 16, fontWeight: '700' },
   locationCountry: { fontSize: 12, color: '#4A4A4A', marginTop: 2 },
   changeLocation: { fontSize: 13, color: '#00D95F', fontWeight: '600' },
   footer: {

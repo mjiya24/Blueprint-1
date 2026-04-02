@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -61,6 +62,7 @@ const counterStyles = StyleSheet.create({
 });
 
 export function EarningsCommandCenter({ userId }: Props) {
+  const { theme } = useTheme();
   const [data, setData] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
@@ -98,46 +100,53 @@ export function EarningsCommandCenter({ userId }: Props) {
 
   const d = data || { total_earned: 0, earned_30d: 0, projected_potential: 0, total_wins_logged: 0, active_plans_count: 0, active_plans: [], win_history: [], lifetime_arc: 0, arc_balance: 0 };
   const grandTotal = d.total_earned + d.projected_potential;
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       {/* Hero "Total Earned" counter */}
-      <View style={styles.heroCard}>
+      <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.accent + '30' }, elevatedCard]}>
         <View style={styles.heroTop}>
           <View style={styles.heroBadge}>
             <Ionicons name="trending-up" size={12} color="#000" />
             <Text style={styles.heroBadgeText}>EARNINGS COMMAND CENTER</Text>
           </View>
           <TouchableOpacity onPress={loadEarnings}>
-            <Ionicons name="refresh-outline" size={18} color="#4A4A4A" />
+            <Ionicons name="refresh-outline" size={18} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.heroLabel}>Total Earned (Logged)</Text>
-        <AnimatedCounter target={d.total_earned} />
+        <Text style={[styles.heroLabel, { color: theme.textSub }]}>Total Earned (Logged)</Text>
+        <Text style={[counterStyles.value, { color: '#00D95F' }]}>${d.total_earned.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
 
         {/* 3-column stats */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, { backgroundColor: theme.surfaceAlt }] }>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>${d.earned_30d.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>Last 30 Days</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>${d.earned_30d.toFixed(2)}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSub }]}>Last 30 Days</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{d.total_wins_logged}</Text>
-            <Text style={styles.statLabel}>Wins Logged</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{d.total_wins_logged}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSub }]}>Wins Logged</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: '#6366F1' }]}>{d.arc_balance.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>ARC Balance</Text>
+            <Text style={[styles.statLabel, { color: theme.textSub }]}>ARC Balance</Text>
           </View>
         </View>
       </View>
 
       {/* In-Progress Potential (Option B) */}
       {d.active_plans_count > 0 && (
-        <View style={styles.potentialCard}>
+        <View style={[styles.potentialCard, elevatedCard]}>
           <View style={styles.potentialHeader}>
             <View style={styles.potentialLeft}>
               <Ionicons name="flash-outline" size={16} color="#F59E0B" />
@@ -150,22 +159,22 @@ export function EarningsCommandCenter({ userId }: Props) {
           <Text style={styles.potentialAmount}>
             ${(d.total_earned + d.projected_potential).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
-          <Text style={styles.potentialSub}>
+          <Text style={[styles.potentialSub, { color: theme.textSub }]}>
             ${d.total_earned.toFixed(2)} earned + ${d.projected_potential.toFixed(0)} potential from {d.active_plans_count} active blueprint{d.active_plans_count > 1 ? 's' : ''}
           </Text>
 
           {/* Active blueprints list */}
           {d.active_plans.map((plan, i) => (
-            <View key={i} style={styles.planItem}>
+            <View key={i} style={[styles.planItem, { backgroundColor: theme.surface }] }>
               <View style={styles.planInfo}>
-                <Text style={styles.planTitle} numberOfLines={1}>{plan.title}</Text>
+                <Text style={[styles.planTitle, { color: theme.text }]} numberOfLines={1}>{plan.title}</Text>
                 <Text style={styles.planPotential}>{plan.potential}</Text>
               </View>
               <View style={styles.planProgress}>
-                <View style={styles.planProgressBar}>
+                <View style={[styles.planProgressBar, { backgroundColor: theme.border }]}>
                   <View style={[styles.planProgressFill, { width: `${plan.progress_pct}%` as any }]} />
                 </View>
-                <Text style={styles.planProgressText}>{plan.steps_done}/{plan.total_steps}</Text>
+                <Text style={[styles.planProgressText, { color: theme.textMuted }]}>{plan.steps_done}/{plan.total_steps}</Text>
               </View>
             </View>
           ))}
@@ -174,31 +183,31 @@ export function EarningsCommandCenter({ userId }: Props) {
 
       {/* Win History */}
       {d.win_history.length > 0 && (
-        <View style={styles.historyCard}>
+        <View style={[styles.historyCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}>
           <TouchableOpacity
             style={styles.historyHeader}
             onPress={() => setShowHistory(!showHistory)}
           >
             <View style={styles.historyLeft}>
               <Ionicons name="trophy-outline" size={16} color="#00D95F" />
-              <Text style={styles.historyTitle}>Win History</Text>
+              <Text style={[styles.historyTitle, { color: theme.text }]}>Win History</Text>
             </View>
             <View style={styles.historyRight}>
-              <Text style={styles.historyCount}>{d.win_history.length} wins</Text>
-              <Ionicons name={showHistory ? 'chevron-up' : 'chevron-down'} size={16} color="#4A4A4A" />
+              <Text style={[styles.historyCount, { color: theme.textSub }]}>{d.win_history.length} wins</Text>
+              <Ionicons name={showHistory ? 'chevron-up' : 'chevron-down'} size={16} color={theme.textMuted} />
             </View>
           </TouchableOpacity>
 
           {showHistory && (
-            <View style={styles.historyList}>
+            <View style={[styles.historyList, { borderTopColor: theme.border }]}>
               {d.win_history.map((win, i) => (
-                <View key={i} style={styles.winRow}>
+                <View key={i} style={[styles.winRow, { borderBottomColor: theme.border }]}>
                   <View style={styles.winIcon}>
                     <Ionicons name="cash-outline" size={14} color="#00D95F" />
                   </View>
                   <View style={styles.winInfo}>
-                    <Text style={styles.winPlatform}>{win.platform_name}</Text>
-                    <Text style={styles.winDate}>{formatDate(win.logged_at)}</Text>
+                    <Text style={[styles.winPlatform, { color: theme.text }]}>{win.platform_name}</Text>
+                    <Text style={[styles.winDate, { color: theme.textSub }]}>{formatDate(win.logged_at)}</Text>
                   </View>
                   <Text style={styles.winAmount}>+${win.amount_earned.toFixed(2)}</Text>
                 </View>
@@ -210,10 +219,10 @@ export function EarningsCommandCenter({ userId }: Props) {
 
       {/* Empty state */}
       {d.total_wins_logged === 0 && (
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}>
           <Text style={styles.emptyEmoji}>💰</Text>
-          <Text style={styles.emptyTitle}>No wins logged yet</Text>
-          <Text style={styles.emptySub}>Start a Quick Win blueprint and tap "Log a Win" when you get your first payout!</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No wins logged yet</Text>
+          <Text style={[styles.emptySub, { color: theme.textSub }]}>Start a Quick Win blueprint and tap "Log a Win" when you get your first payout!</Text>
         </View>
       )}
     </Animated.View>

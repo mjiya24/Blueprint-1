@@ -7,18 +7,20 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { API_URL } from '../lib/config';
+import { useTheme } from '../contexts/ThemeContext';
 
 type Plan = 'monthly' | 'annual';
 
 export default function ArchitectUpgradeScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const params = useLocalSearchParams();
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'checking' | 'success' | 'failed'>('idle');
+  const [checkoutError, setCheckoutError] = useState('');
 
   useEffect(() => {
     AsyncStorage.getItem('user').then(d => d && setUser(JSON.parse(d)));
@@ -61,7 +63,13 @@ export default function ArchitectUpgradeScreen() {
       return;
     }
     setIsLoading(true);
+    setCheckoutError('');
     try {
+      if (!API_URL) {
+        setCheckoutError('Backend URL is missing. Please check app environment settings.');
+        return;
+      }
+
       const origin = Platform.OS === 'web'
         ? (window as any).location.origin
         : API_URL;
@@ -73,34 +81,56 @@ export default function ArchitectUpgradeScreen() {
         user_id: user.id,
         origin_url: successPath,
       });
+      if (!res?.data?.url) {
+        setCheckoutError('Checkout is unavailable right now. Please try again in a moment.');
+        return;
+      }
       await Linking.openURL(res.data.url);
     } catch (e) {
-      console.error('Checkout error:', e);
+      if (axios.isAxiosError(e)) {
+        const detail = (e.response?.data as any)?.detail;
+        setCheckoutError(
+          typeof detail === 'string'
+            ? `Checkout failed: ${detail}`
+            : 'Checkout failed. Please try again in a minute.'
+        );
+      } else {
+        setCheckoutError('Checkout failed. Please check your connection and try again.');
+      }
+      console.warn('Checkout warning:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(tabs)/home');
+  };
+
   if (paymentStatus === 'checking') {
     return (
-      <View style={styles.statusScreen}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.statusScreen, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
         <ActivityIndicator size="large" color="#00D95F" />
-        <Text style={styles.statusTitle}>Confirming your payment...</Text>
-        <Text style={styles.statusSub}>This takes just a moment.</Text>
+        <Text style={[styles.statusTitle, { color: theme.text }]}>Confirming your payment...</Text>
+        <Text style={[styles.statusSub, { color: theme.textSub }]}>This takes just a moment.</Text>
       </View>
     );
   }
 
   if (paymentStatus === 'success') {
     return (
-      <View style={styles.statusScreen}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.statusScreen, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
         <View style={styles.successIcon}>
           <Ionicons name="flash" size={48} color="#000" />
         </View>
-        <Text style={styles.statusTitle}>Welcome, Architect!</Text>
-        <Text style={styles.statusSub}>Your AI coaching and troubleshooting tools are now unlocked.</Text>
+        <Text style={[styles.statusTitle, { color: theme.text }]}>Welcome, Architect!</Text>
+        <Text style={[styles.statusSub, { color: theme.textSub }]}>Your AI coaching and troubleshooting tools are now unlocked.</Text>
         <TouchableOpacity style={styles.doneBtn} onPress={() => router.replace('/(tabs)/home')}>
           <Text style={styles.doneBtnText}>Start Building →</Text>
         </TouchableOpacity>
@@ -109,11 +139,11 @@ export default function ArchitectUpgradeScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
       <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -124,8 +154,8 @@ export default function ArchitectUpgradeScreen() {
             <Ionicons name="flash" size={14} color="#000" />
             <Text style={styles.architectBadgeText}>ARCHITECT TIER</Text>
           </View>
-          <Text style={styles.heroTitle}>Execute Smarter.{'\n'}Earn Faster.</Text>
-          <Text style={styles.heroSub}>
+          <Text style={[styles.heroTitle, { color: theme.text }]}>Execute Smarter.{'\n'}Earn Faster.</Text>
+          <Text style={[styles.heroSub, { color: theme.textSub }]}>
             Stop guessing. Get an AI coach, troubleshooting tools, and exclusive high-ticket blueprints.
           </Text>
         </View>
@@ -145,20 +175,20 @@ export default function ArchitectUpgradeScreen() {
               </Text>
             </View>
           </View>
-          <View style={styles.roiCalcRow}>
+            <View style={[styles.roiCalcRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.roiCalcItem}>
-              <Text style={styles.roiCalcNum}>$14.99</Text>
-              <Text style={styles.roiCalcLabel}>Monthly cost</Text>
+              <Text style={[styles.roiCalcNum, { color: theme.text }]}>$14.99</Text>
+              <Text style={[styles.roiCalcLabel, { color: theme.textMuted }]}>Monthly cost</Text>
             </View>
-            <Ionicons name="remove" size={18} color="#2A2C35" />
+            <Ionicons name="remove" size={18} color={theme.border} />
             <View style={styles.roiCalcItem}>
-              <Text style={styles.roiCalcNum}>÷ $8/hr</Text>
-              <Text style={styles.roiCalcLabel}>Quick-Cash floor</Text>
+              <Text style={[styles.roiCalcNum, { color: theme.text }]}>÷ $8/hr</Text>
+              <Text style={[styles.roiCalcLabel, { color: theme.textMuted }]}>Quick-Cash floor</Text>
             </View>
-            <Ionicons name="remove" size={18} color="#2A2C35" />
+            <Ionicons name="remove" size={18} color={theme.border} />
             <View style={styles.roiCalcItem}>
               <Text style={[styles.roiCalcNum, { color: '#00D95F' }]}>~2 hrs</Text>
-              <Text style={styles.roiCalcLabel}>To break even</Text>
+              <Text style={[styles.roiCalcLabel, { color: theme.textMuted }]}>To break even</Text>
             </View>
           </View>
           <View style={styles.guaranteeBadge}>
@@ -177,13 +207,13 @@ export default function ArchitectUpgradeScreen() {
             { icon: 'diamond', title: 'High-Ticket Blueprints', desc: 'Unlock 5 exclusive high-earning blueprints that free users can\'t access.' },
             { icon: 'flash', title: 'Priority Access', desc: 'Get early access to new blueprints, categories, and features as we launch them.' },
           ].map((f, i) => (
-            <View key={i} style={styles.featureCard}>
+            <View key={i} style={[styles.featureCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.featureIconBox}>
                 <Ionicons name={f.icon as any} size={22} color="#00D95F" />
               </View>
               <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
+                <Text style={[styles.featureTitle, { color: theme.text }]}>{f.title}</Text>
+                <Text style={[styles.featureDesc, { color: theme.textSub }]}>{f.desc}</Text>
               </View>
             </View>
           ))}
@@ -193,22 +223,22 @@ export default function ArchitectUpgradeScreen() {
         <View style={styles.plansSection}>
           <Text style={styles.plansLabel}>CHOOSE YOUR PLAN</Text>
           <TouchableOpacity
-            style={[styles.planOption, selectedPlan === 'monthly' && styles.planOptionSelected]}
+            style={[styles.planOption, { backgroundColor: theme.surface, borderColor: theme.border }, selectedPlan === 'monthly' && styles.planOptionSelected]}
             onPress={() => setSelectedPlan('monthly')}
             data-testid="plan-monthly"
           >
             <View style={styles.planLeft}>
               <View style={[styles.radio, selectedPlan === 'monthly' && styles.radioSelected]} />
               <View>
-                <Text style={styles.planName}>Monthly</Text>
-                <Text style={styles.planBill}>Billed every month</Text>
+                <Text style={[styles.planName, { color: theme.text }]}>Monthly</Text>
+                <Text style={[styles.planBill, { color: theme.textSub }]}>Billed every month</Text>
               </View>
             </View>
-            <Text style={styles.planPrice}>$14.99<Text style={styles.planPer}>/mo</Text></Text>
+            <Text style={[styles.planPrice, { color: theme.text }]}>$14.99<Text style={styles.planPer}>/mo</Text></Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.planOption, styles.planOptionAnnual, selectedPlan === 'annual' && styles.planOptionSelected]}
+            style={[styles.planOption, styles.planOptionAnnual, { backgroundColor: theme.surface, borderColor: theme.border }, selectedPlan === 'annual' && styles.planOptionSelected]}
             onPress={() => setSelectedPlan('annual')}
             data-testid="plan-annual"
           >
@@ -218,11 +248,11 @@ export default function ArchitectUpgradeScreen() {
             <View style={styles.planLeft}>
               <View style={[styles.radio, selectedPlan === 'annual' && styles.radioSelected]} />
               <View>
-                <Text style={[styles.planName, selectedPlan === 'annual' && { color: '#00D95F' }]}>Annual</Text>
-                <Text style={styles.planBill}>$8.25/mo · billed as $99/year</Text>
+                <Text style={[styles.planName, { color: theme.text }, selectedPlan === 'annual' && { color: '#00D95F' }]}>Annual</Text>
+                <Text style={[styles.planBill, { color: theme.textSub }]}>$8.25/mo · billed as $99/year</Text>
               </View>
             </View>
-            <Text style={[styles.planPrice, selectedPlan === 'annual' && { color: '#00D95F' }]}>
+            <Text style={[styles.planPrice, { color: theme.text }, selectedPlan === 'annual' && { color: '#00D95F' }]}>
               $99<Text style={styles.planPer}>/yr</Text>
             </Text>
           </TouchableOpacity>
@@ -244,7 +274,8 @@ export default function ArchitectUpgradeScreen() {
                 </>
             }
           </TouchableOpacity>
-          <Text style={styles.guarantee}>Cancel anytime · Secure checkout via Stripe</Text>
+          {!!checkoutError && <Text style={styles.errorText}>{checkoutError}</Text>}
+          <Text style={[styles.guarantee, { color: theme.textMuted }]}>Cancel anytime · Secure checkout via Stripe</Text>
         </View>
 
         <View style={{ height: 40 }} />
@@ -309,6 +340,7 @@ const styles = StyleSheet.create({
     gap: 8, backgroundColor: '#00D95F', borderRadius: 14, padding: 18, marginBottom: 12,
   },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#000' },
+  errorText: { fontSize: 13, color: '#FF6B6B', textAlign: 'center', marginBottom: 10 },
   guarantee: { fontSize: 12, color: '#4A4A4A', textAlign: 'center' },
   // ROI Clock Section
   roiSection: {

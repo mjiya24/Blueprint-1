@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -19,6 +20,7 @@ const MILESTONES = [
 
 export default function StreakScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [streakData, setStreakData] = useState<any>({ streak_current: 0, streak_longest: 0 });
   const [user, setUser] = useState<any>(null);
 
@@ -44,14 +46,14 @@ export default function StreakScreen() {
   const streakColor = streak >= 30 ? '#FF6B35' : streak >= 7 ? '#F59E0B' : '#00D95F';
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Daily Streak</Text>
+        <Text style={[styles.navTitle, { color: theme.text }]}>Daily Streak</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -62,7 +64,7 @@ export default function StreakScreen() {
             <Ionicons name={streak >= 7 ? 'flame' : 'flame-outline'} size={64} color={streakColor} />
           </View>
           <Text style={[styles.streakCount, { color: streakColor }]}>{streak}</Text>
-          <Text style={styles.streakLabel}>day streak</Text>
+          <Text style={[styles.streakLabel, { color: theme.textSub }]}>day streak</Text>
           {streak === 0 && (
             <Text style={styles.startMsg}>Open the app every day to build your streak.</Text>
           )}
@@ -76,36 +78,36 @@ export default function StreakScreen() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name="flame" size={20} color="#F59E0B" />
-            <Text style={styles.statValue}>{streak}</Text>
-            <Text style={styles.statLabel}>Current</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{streak}</Text>
+            <Text style={[styles.statLabel, { color: theme.textMuted }]}>Current</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name="trophy" size={20} color="#00D95F" />
-            <Text style={styles.statValue}>{longest}</Text>
-            <Text style={styles.statLabel}>Longest</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{longest}</Text>
+            <Text style={[styles.statLabel, { color: theme.textMuted }]}>Longest</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Ionicons name="calendar" size={20} color="#6366F1" />
-            <Text style={styles.statValue}>{streakData.streak_last_action || '—'}</Text>
-            <Text style={styles.statLabel}>Last Action</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{streakData.streak_last_action || '—'}</Text>
+            <Text style={[styles.statLabel, { color: theme.textMuted }]}>Last Action</Text>
           </View>
         </View>
 
         {/* Milestones */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>STREAK MILESTONES</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>STREAK MILESTONES</Text>
           {MILESTONES.map((m) => {
             const achieved = streak >= m.days;
             return (
-              <View key={m.days} style={[styles.milestoneRow, achieved && styles.milestoneRowAchieved]}>
-                <View style={[styles.milestoneIcon, { backgroundColor: achieved ? m.color + '20' : '#1A1C23', borderColor: achieved ? m.color + '50' : '#2A2C35' }]}>
-                  <Ionicons name={m.icon as any} size={20} color={achieved ? m.color : '#2A2C35'} />
+              <View key={m.days} style={[styles.milestoneRow, { backgroundColor: theme.surface, borderColor: theme.border }, achieved && styles.milestoneRowAchieved]}>
+                <View style={[styles.milestoneIcon, { backgroundColor: achieved ? m.color + '20' : theme.surfaceAlt, borderColor: achieved ? m.color + '50' : theme.border }]}>
+                  <Ionicons name={m.icon as any} size={20} color={achieved ? m.color : theme.textMuted} />
                 </View>
                 <View style={styles.milestoneInfo}>
-                  <Text style={[styles.milestoneName, achieved && { color: '#FFFFFF' }]}>{m.label}</Text>
-                  <Text style={styles.milestoneDays}>{m.days} consecutive days</Text>
+                  <Text style={[styles.milestoneName, { color: theme.text }, achieved && { color: theme.text }]}>{m.label}</Text>
+                  <Text style={[styles.milestoneDays, { color: theme.textMuted }]}>{m.days} consecutive days</Text>
                 </View>
                 {achieved
                   ? <Ionicons name="checkmark-circle" size={20} color="#00D95F" />

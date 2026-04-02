@@ -49,7 +49,7 @@ function getNextMilestone(balance: number): number {
 export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const [arcBalance, setArcBalance] = useState(0);
   const [arcLoaded, setArcLoaded] = useState(false);
 
@@ -82,18 +82,29 @@ export default function ProfileScreen() {
 
   const profile = user?.profile || {};
   const firstName = user?.name?.split(' ')[0] || 'User';
+  const iconTone = isDark ? '#8E8E8E' : theme.textSub;
+  const subtleBg = isDark ? '#1A1C23' : theme.surfaceAlt;
+  const subtleBorder = isDark ? '#2A2C35' : theme.border;
+  const surfaceCard = isDark ? theme.surface : '#FFFFFF';
+  const elevatedCard = isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }] }>
+      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatarRing}>
+          <View style={[styles.avatarRing, { backgroundColor: surfaceCard, borderColor: theme.accent }, elevatedCard] }>
             <Text style={styles.avatarInitial}>{firstName.charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.name}>{user?.name || 'Guest'}</Text>
-          {!user?.is_guest && <Text style={styles.email}>{user?.email}</Text>}
+          <Text style={[styles.name, { color: theme.text }]}>{user?.name || 'Guest'}</Text>
+          {!user?.is_guest && <Text style={[styles.email, { color: theme.textSub }]}>{user?.email}</Text>}
           {user?.is_guest && (
             <View style={styles.guestBadge}>
               <Text style={styles.guestBadgeText}>Preview Mode</Text>
@@ -111,7 +122,7 @@ export default function ProfileScreen() {
         {/* ======= SPRINT 9: REFERRAL ENGINE ======= */}
         {!user?.is_guest && user?.id && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Referral Engine</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Referral Engine</Text>
             <ReferralCard userId={user.id} userName={user.name} />
           </View>
         )}
@@ -119,9 +130,9 @@ export default function ProfileScreen() {
         {/* Identity Verification Section */}
         {!user?.is_guest && user?.id && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Identity Verification</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Identity Verification</Text>
             {user?.phone_verified ? (
-              <View style={styles.verifiedCard} data-testid="phone-verified-badge">
+              <View style={[styles.verifiedCard, elevatedCard]} data-testid="phone-verified-badge">
                 <View style={styles.verifiedLeft}>
                   <View style={styles.verifiedIconBox}>
                     <Ionicons name="shield-checkmark" size={22} color="#00D95F" />
@@ -137,7 +148,7 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <View>
-                <View style={styles.unverifiedCard}>
+                <View style={[styles.unverifiedCard, elevatedCard]}>
                   <Ionicons name="shield-outline" size={20} color="#F59E0B" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.unverifiedTitle}>Phone Not Verified</Text>
@@ -166,69 +177,69 @@ export default function ProfileScreen() {
           const progressPct = Math.min(100, Math.round((arcBalance / nextM) * 100));
           return (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Architect Credits (ARC)</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Architect Credits (ARC)</Text>
               {/* Balance card */}
-              <View style={styles.arcCard} data-testid="arc-balance-card">
+              <View style={[styles.arcCard, { backgroundColor: surfaceCard, borderColor: '#F59E0B30' }, elevatedCard]} data-testid="arc-balance-card">
                 <View style={styles.arcLeft}>
                   <View style={[styles.arcCoin, { backgroundColor: lvl.color }]}>
                     <Text style={styles.arcCoinLetter}>A</Text>
                   </View>
                   <View>
-                    <Text style={styles.arcBalance}>{arcBalance.toLocaleString()} ARC</Text>
+                    <Text style={[styles.arcBalance, { color: theme.text }]}>{arcBalance.toLocaleString()} ARC</Text>
                     <View style={[styles.arcLevelBadge, { backgroundColor: lvl.color + '20', borderColor: lvl.color + '50' }]}>
                       <Text style={[styles.arcLevelText, { color: lvl.color }]}>{lvl.label}</Text>
                     </View>
                   </View>
                 </View>
                 <View style={styles.arcRight}>
-                  <Text style={styles.arcNextLabel}>Next: {nextM} ARC</Text>
-                  <View style={styles.arcProgressBar}>
+                  <Text style={[styles.arcNextLabel, { color: theme.textSub }]}>Next: {nextM} ARC</Text>
+                  <View style={[styles.arcProgressBar, { backgroundColor: subtleBorder }]}>
                     <View style={[styles.arcProgressFill, { width: `${progressPct}%` as any, backgroundColor: lvl.color }]} />
                   </View>
                 </View>
               </View>
 
               {/* How to earn */}
-              <View style={styles.arcEarnCard}>
-                <Text style={styles.arcEarnTitle}>How to earn ARC</Text>
+              <View style={[styles.arcEarnCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
+                <Text style={[styles.arcEarnTitle, { color: theme.textSub }]}>How to earn ARC</Text>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
-                  <Text style={styles.arcEarnItem}>+10 ARC · Complete a step</Text>
+                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+10 ARC · Complete a step</Text>
                 </View>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
-                  <Text style={styles.arcEarnItem}>+100 ARC · Finish a blueprint</Text>
+                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+100 ARC · Finish a blueprint</Text>
                 </View>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
-                  <Text style={styles.arcEarnItem}>+25 ARC · Share your win</Text>
+                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+25 ARC · Share your win</Text>
                 </View>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
-                  <Text style={styles.arcEarnItem}>+5 ARC · Daily check-in</Text>
+                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+5 ARC · Daily check-in</Text>
                 </View>
               </View>
 
               {/* Teaser Store */}
-              <Text style={styles.storeTitle}>Architect Store</Text>
+              <Text style={[styles.storeTitle, { color: theme.textSub }]}>Architect Store</Text>
               {ARC_STORE_ITEMS.map((item, i) => (
-                <View key={i} style={styles.storeItem} data-testid={`arc-store-item-${i}`}>
+                <View key={i} style={[styles.storeItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} data-testid={`arc-store-item-${i}`}>
                   <View style={styles.storeItemLeft}>
-                    <View style={styles.storeIconBox}>
-                      <Ionicons name={item.icon as any} size={18} color="#4A4A4A" />
+                    <View style={[styles.storeIconBox, { backgroundColor: subtleBg }]}>
+                      <Ionicons name={item.icon as any} size={18} color={theme.textSub} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.storeItemTitle}>{item.title}</Text>
-                      <Text style={styles.storeItemSub}>{item.subtitle}</Text>
+                      <Text style={[styles.storeItemTitle, { color: theme.text }]}>{item.title}</Text>
+                      <Text style={[styles.storeItemSub, { color: theme.textSub }]}>{item.subtitle}</Text>
                     </View>
                   </View>
-                  <View style={styles.storeArcTag}>
-                    <Ionicons name="lock-closed" size={10} color="#4A4A4A" />
-                    <Text style={styles.storeArcCost}>{item.arc} ARC</Text>
+                  <View style={[styles.storeArcTag, { backgroundColor: subtleBg }]}>
+                    <Ionicons name="lock-closed" size={10} color={theme.textSub} />
+                    <Text style={[styles.storeArcCost, { color: theme.textSub }]}>{item.arc} ARC</Text>
                   </View>
                 </View>
               ))}
-              <Text style={styles.storeComingSoon}>Store unlocks when you reach 300 ARC</Text>
+              <Text style={[styles.storeComingSoon, { color: theme.textMuted }]}>Store unlocks when you reach 300 ARC</Text>
             </View>
           );
         })()}
@@ -236,33 +247,33 @@ export default function ProfileScreen() {
         {/* Blueprint Profile */}
         {!user?.is_guest && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Blueprint Profile</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Blueprint Profile</Text>
 
             {profile.environment && (
-              <View style={styles.infoCard}>
+              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
                 <View style={styles.infoIcon}><Ionicons name="home" size={18} color="#00D95F" /></View>
                 <View>
-                  <Text style={styles.infoLabel}>Work Environment</Text>
-                  <Text style={styles.infoValue}>{ENV_LABELS[profile.environment] || profile.environment}</Text>
+                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>Work Environment</Text>
+                  <Text style={[styles.infoValue, { color: theme.text }]}>{ENV_LABELS[profile.environment] || profile.environment}</Text>
                 </View>
               </View>
             )}
 
             {profile.social_preference && (
-              <View style={styles.infoCard}>
+              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
                 <View style={styles.infoIcon}><Ionicons name="people" size={18} color="#00D95F" /></View>
                 <View>
-                  <Text style={styles.infoLabel}>Work Style</Text>
-                  <Text style={styles.infoValue}>{SOCIAL_LABELS[profile.social_preference] || profile.social_preference}</Text>
+                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>Work Style</Text>
+                  <Text style={[styles.infoValue, { color: theme.text }]}>{SOCIAL_LABELS[profile.social_preference] || profile.social_preference}</Text>
                 </View>
               </View>
             )}
 
             {profile.assets?.length > 0 && (
-              <View style={styles.infoCard}>
+              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
                 <View style={styles.infoIcon}><Ionicons name="briefcase" size={18} color="#00D95F" /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>My Assets</Text>
+                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>My Assets</Text>
                   <View style={styles.tagsRow}>
                     {profile.assets.map((a: string, i: number) => (
                       <View key={i} style={styles.tag}><Text style={styles.tagText}>{a}</Text></View>
@@ -273,10 +284,10 @@ export default function ProfileScreen() {
             )}
 
             {profile.questionnaire_interests?.length > 0 && (
-              <View style={styles.infoCard}>
+              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
                 <View style={styles.infoIcon}><Ionicons name="star" size={18} color="#00D95F" /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>Interests</Text>
+                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>Interests</Text>
                   <View style={styles.tagsRow}>
                     {profile.questionnaire_interests.map((t: string, i: number) => (
                       <View key={i} style={styles.tag}><Text style={styles.tagText}>{t}</Text></View>
@@ -287,11 +298,11 @@ export default function ProfileScreen() {
             )}
 
             {!profile.environment && (
-              <TouchableOpacity style={styles.retakeCard} onPress={() => router.push('/onboarding/questionnaire')}>
+              <TouchableOpacity style={[styles.retakeCard, { backgroundColor: theme.accentLight, borderColor: theme.accent + '40' }, elevatedCard]} onPress={() => router.push('/onboarding/questionnaire')}>
                 <Ionicons name="compass" size={20} color="#00D95F" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.retakeTitle}>Complete Your Blueprint Profile</Text>
-                  <Text style={styles.retakeDesc}>Get personalized match scores for every idea</Text>
+                  <Text style={[styles.retakeTitle, { color: theme.text }]}>Complete Your Blueprint Profile</Text>
+                  <Text style={[styles.retakeDesc, { color: theme.textSub }]}>Get personalized match scores for every idea</Text>
                 </View>
                 <Ionicons name="arrow-forward" size={16} color="#00D95F" />
               </TouchableOpacity>
@@ -301,69 +312,69 @@ export default function ProfileScreen() {
 
         {/* Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Settings</Text>
 
           {!user?.is_guest && (
-            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/onboarding/questionnaire')}>
+            <TouchableOpacity style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} onPress={() => router.push('/onboarding/questionnaire')}>
               <View style={styles.menuLeft}>
-                <Ionicons name="create-outline" size={22} color="#8E8E8E" />
-                <Text style={styles.menuText}>Retake Blueprint Quiz</Text>
+                <Ionicons name="create-outline" size={22} color={iconTone} />
+                <Text style={[styles.menuText, { color: theme.text }]}>Retake Blueprint Quiz</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#2A2C35" />
+              <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
             <View style={styles.menuLeft}>
-              <Ionicons name="notifications-outline" size={22} color="#8E8E8E" />
-              <Text style={styles.menuText}>Notifications</Text>
+              <Ionicons name="notifications-outline" size={22} color={iconTone} />
+              <Text style={[styles.menuText, { color: theme.text }]}>Notifications</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#2A2C35" />
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
 
           {/* Sprint 6: Theme Toggle */}
-          <View style={styles.menuItem} data-testid="theme-toggle-row">
+          <View style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} data-testid="theme-toggle-row">
             <View style={styles.menuLeft}>
               <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={isDark ? '#8E8E8E' : '#F59E0B'} />
               <View>
-                <Text style={styles.menuText}>Architect {isDark ? 'Dark' : 'Light'} Mode</Text>
-                <Text style={styles.menuSubtext}>{isDark ? 'Classic electric mint on black' : 'Clean white — great for daylight'}</Text>
+                <Text style={[styles.menuText, { color: theme.text }]}>Architect {isDark ? 'Dark' : 'Light'} Mode</Text>
+                <Text style={[styles.menuSubtext, { color: theme.textSub }]}>{isDark ? 'Classic electric mint on black' : 'Fluent Light+ for clean focus and readability'}</Text>
               </View>
             </View>
             <Switch
               value={!isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: '#2A2C35', true: '#00D95F40' }}
-              thumbColor={isDark ? '#4A4A4A' : '#00D95F'}
+              trackColor={{ false: subtleBorder, true: theme.accent + '40' }}
+              thumbColor={isDark ? '#4A4A4A' : theme.accent}
               data-testid="theme-switch"
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/about-blueprint')}>
+          <TouchableOpacity style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} onPress={() => router.push('/about-blueprint')}>
             <View style={styles.menuLeft}>
-              <Ionicons name="information-circle-outline" size={22} color="#8E8E8E" />
-              <Text style={styles.menuText}>About Blueprint</Text>
+              <Ionicons name="information-circle-outline" size={22} color={iconTone} />
+              <Text style={[styles.menuText, { color: theme.text }]}>About Blueprint</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#2A2C35" />
+            <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Logout */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#FF4444" />
-            <Text style={styles.logoutText}>Sign Out</Text>
+          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: surfaceCard, borderColor: theme.danger + '33' }, elevatedCard]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color={theme.danger} />
+            <Text style={[styles.logoutText, { color: theme.danger }]}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {user?.is_guest && (
           <View style={[styles.section, { paddingBottom: 8 }]}>
-            <TouchableOpacity style={styles.upgradeCard} onPress={() => router.push('/onboarding/auth')}>
+            <TouchableOpacity style={[styles.upgradeCard, { backgroundColor: theme.accentLight, borderColor: theme.accent + '40' }, elevatedCard]} onPress={() => router.push('/onboarding/auth')}>
               <View style={styles.upgradeCardLeft}>
                 <Ionicons name="grid" size={20} color="#00D95F" />
                 <View>
-                  <Text style={styles.upgradeCardTitle}>Upgrade to Blueprint</Text>
-                  <Text style={styles.upgradeCardDesc}>Unlock match scores & progress tracking</Text>
+                  <Text style={[styles.upgradeCardTitle, { color: theme.text }]}>Upgrade to Blueprint</Text>
+                  <Text style={[styles.upgradeCardDesc, { color: theme.textSub }]}>Unlock match scores & progress tracking</Text>
                 </View>
               </View>
               <Ionicons name="arrow-forward" size={16} color="#00D95F" />
@@ -371,7 +382,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <Text style={styles.version}>Blueprint v1.0 · Architect Your Income</Text>
+        <Text style={[styles.version, { color: theme.textMuted }]}>Blueprint v1.0 · Architect Your Income</Text>
       </ScrollView>
     </View>
   );

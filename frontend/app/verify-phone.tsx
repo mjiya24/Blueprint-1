@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -14,6 +15,7 @@ type Stage = 'phone' | 'otp' | 'success';
 
 export default function VerifyPhoneScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [stage, setStage] = useState<Stage>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -115,11 +117,11 @@ export default function VerifyPhoneScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))} style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -128,8 +130,8 @@ export default function VerifyPhoneScreen() {
         <View style={styles.iconBox}>
           <Ionicons name="shield-checkmark" size={40} color="#00D95F" />
         </View>
-        <Text style={styles.title}>Verify Your Identity</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: theme.text }]}>Verify Your Identity</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>
           A verified phone number unlocks Blueprint Squads — the community of verified Architects helping each other win.
         </Text>
 
@@ -137,14 +139,14 @@ export default function VerifyPhoneScreen() {
           <View style={styles.form}>
             <Text style={styles.label}>PHONE NUMBER</Text>
             <Text style={styles.hint}>Include your country code (e.g. +1 for USA)</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="call" size={18} color="#4A4A4A" style={styles.inputIcon} />
+            <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Ionicons name="call" size={18} color={theme.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="+1 555 123 4567"
-                placeholderTextColor="#4A4A4A"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="phone-pad"
                 autoFocus
                 data-testid="phone-input"
@@ -180,14 +182,14 @@ export default function VerifyPhoneScreen() {
               <Text style={styles.sentText}>Code sent to {phone}</Text>
             </View>
             <Text style={styles.label}>VERIFICATION CODE</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="keypad" size={18} color="#4A4A4A" style={styles.inputIcon} />
+            <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Ionicons name="keypad" size={18} color={theme.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 value={otp}
                 onChangeText={setOtp}
                 placeholder="6-digit code"
-                placeholderTextColor="#4A4A4A"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="number-pad"
                 maxLength={6}
                 autoFocus
@@ -232,7 +234,7 @@ export default function VerifyPhoneScreen() {
             </View>
             <TouchableOpacity
               style={styles.btn}
-              onPress={() => router.back()}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
               data-testid="verification-done-btn"
             >
               <Text style={styles.btnText}>Back to Profile</Text>

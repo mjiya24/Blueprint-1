@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const SKILLS = [
   'Research',
@@ -26,6 +27,7 @@ const SKILLS = [
 
 export default function SkillsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   const toggleSkill = (skill: string) => {
@@ -54,24 +56,24 @@ export default function SkillsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}> 
+      <StatusBar barStyle={theme.statusBar as any} />
       
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: theme.surfaceAlt }]}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         
-        <View style={styles.progress}>
+        <View style={[styles.progress, { backgroundColor: theme.surfaceAlt }]}> 
           <View style={[styles.progressBar, { width: '40%' }]} />
         </View>
         
         <Text style={styles.step}>Step 2 of 5</Text>
-        <Text style={styles.title}>What are your skills?</Text>
-        <Text style={styles.subtitle}>Select skills that match your strengths</Text>
+        <Text style={[styles.title, { color: theme.text }]}>What are your skills?</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>Select skills that match your strengths</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -81,12 +83,14 @@ export default function SkillsScreen() {
               key={skill}
               style={[
                 styles.skillChip,
+                { backgroundColor: theme.surface, borderColor: theme.border },
                 selectedSkills.includes(skill) && styles.skillChipSelected,
               ]}
               onPress={() => toggleSkill(skill)}
             >
               <Text style={[
                 styles.skillText,
+                { color: theme.text },
                 selectedSkills.includes(skill) && styles.skillTextSelected,
               ]}>
                 {skill}
@@ -115,7 +119,6 @@ export default function SkillsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
     padding: 24,
   },
   header: {
@@ -126,14 +129,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   progress: {
     height: 4,
-    backgroundColor: '#1E293B',
     borderRadius: 2,
     marginBottom: 16,
   },
@@ -151,12 +152,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
   },
   content: {
     flex: 1,
@@ -167,13 +166,11 @@ const styles = StyleSheet.create({
     marginHorizontal: -4,
   },
   skillChip: {
-    backgroundColor: '#1E293B',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 24,
     margin: 4,
     borderWidth: 2,
-    borderColor: 'transparent',
   },
   skillChipSelected: {
     backgroundColor: '#1E3A32',
@@ -181,7 +178,6 @@ const styles = StyleSheet.create({
   },
   skillText: {
     fontSize: 14,
-    color: '#E2E8F0',
     fontWeight: '500',
   },
   skillTextSelected: {

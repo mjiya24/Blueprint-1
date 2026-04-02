@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { WinCard } from '../../components/WinCard';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -15,6 +16,14 @@ const CATEGORIES = ['All', 'AI & Automation', 'Digital & Content', 'Agency & B2B
 
 export default function WinsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
   const [wins, setWins] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,13 +72,13 @@ export default function WinsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }] }>
+      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
 
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Community Wins</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Community Wins</Text>
           <View style={styles.liveRow}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>LIVE FEED</Text>
@@ -88,20 +97,20 @@ export default function WinsScreen() {
       </View>
 
       {/* Stats Bar */}
-      <View style={styles.statsBar}>
+      <View style={[styles.statsBar, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard] }>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.total_wins}</Text>
-          <Text style={styles.statLabel}>Total Wins</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>{stats.total_wins}</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>Total Wins</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>${(stats.total_earned / 1000).toFixed(0)}K+</Text>
-          <Text style={styles.statLabel}>Total Earned</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>${(stats.total_earned / 1000).toFixed(0)}K+</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>Total Earned</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{stats.verified_count}</Text>
-          <Text style={styles.statLabel}>Verified</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>{stats.verified_count}</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>Verified</Text>
         </View>
       </View>
 
@@ -114,10 +123,15 @@ export default function WinsScreen() {
         contentContainerStyle={styles.filterRow}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.filterChip, selectedCategory === item && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+              selectedCategory === item && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }],
+              elevatedCard,
+            ]}
             onPress={() => selectCategory(item)}
           >
-            <Text style={[styles.filterText, selectedCategory === item && styles.filterTextActive]}>
+            <Text style={[styles.filterText, { color: theme.textSub }, selectedCategory === item && [styles.filterTextActive, { color: theme.accent }]]}>
               {item}
             </Text>
           </TouchableOpacity>
@@ -132,9 +146,9 @@ export default function WinsScreen() {
         </View>
       ) : wins.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="trophy-outline" size={48} color="#2A2C35" />
-          <Text style={styles.emptyTitle}>No wins yet</Text>
-          <Text style={styles.emptyDesc}>Be the first to share your Blueprint success!</Text>
+          <Ionicons name="trophy-outline" size={48} color={theme.textMuted} />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No wins yet</Text>
+          <Text style={[styles.emptyDesc, { color: theme.textSub }]}>Be the first to share your Blueprint success!</Text>
           {user?.is_architect && (
             <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/submit-win')}>
               <Text style={styles.emptyBtnText}>Share Your Win</Text>

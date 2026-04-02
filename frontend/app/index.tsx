@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions } from 
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +31,8 @@ export default function WelcomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.container, { backgroundColor: theme.bg }]}> 
+        <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
         <View style={styles.logoMark}>
           <Ionicons name="grid" size={32} color="#00D95F" />
         </View>
@@ -39,20 +41,20 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <View style={styles.logoIcon}>
             <Ionicons name="grid" size={28} color="#00D95F" />
           </View>
-          <Text style={styles.appName}>Blueprint</Text>
+          <Text style={[styles.appName, { color: theme.text }]}>Blueprint</Text>
         </View>
         <View style={styles.taglineContainer}>
-          <Text style={styles.tagline}>Architect Your Income.</Text>
+          <Text style={[styles.tagline, { color: theme.text }]}>Architect Your Income.</Text>
         </View>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}> 
           A personalized roadmap to every income stream that fits your life.
         </Text>
       </View>
@@ -63,8 +65,8 @@ export default function WelcomeScreen() {
             <Ionicons name="analytics" size={20} color="#00D95F" />
           </View>
           <View style={styles.featureContent}>
-            <Text style={styles.featureTitle}>Personalized Match Scores</Text>
-            <Text style={styles.featureDesc}>Ideas ranked by how well they fit your life</Text>
+            <Text style={[styles.featureTitle, { color: theme.text }]}>Personalized Match Scores</Text>
+            <Text style={[styles.featureDesc, { color: theme.textSub }]}>Ideas ranked by how well they fit your life</Text>
           </View>
         </View>
         <View style={styles.featureRow}>
@@ -72,8 +74,8 @@ export default function WelcomeScreen() {
             <Ionicons name="checkmark-done" size={20} color="#00D95F" />
           </View>
           <View style={styles.featureContent}>
-            <Text style={styles.featureTitle}>Step-by-Step Action Plans</Text>
-            <Text style={styles.featureDesc}>Track every move from idea to first dollar</Text>
+            <Text style={[styles.featureTitle, { color: theme.text }]}>Step-by-Step Action Plans</Text>
+            <Text style={[styles.featureDesc, { color: theme.textSub }]}>Track every move from idea to first dollar</Text>
           </View>
         </View>
         <View style={styles.featureRow}>
@@ -81,8 +83,8 @@ export default function WelcomeScreen() {
             <Ionicons name="flash" size={20} color="#00D95F" />
           </View>
           <View style={styles.featureContent}>
-            <Text style={styles.featureTitle}>Gig to Passive — All Categories</Text>
-            <Text style={styles.featureDesc}>DoorDash, freelancing, digital products & more</Text>
+            <Text style={[styles.featureTitle, { color: theme.text }]}>Gig to Passive — All Categories</Text>
+            <Text style={[styles.featureDesc, { color: theme.textSub }]}>DoorDash, freelancing, digital products & more</Text>
           </View>
         </View>
       </View>
@@ -97,13 +99,13 @@ export default function WelcomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={[styles.secondaryButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
           onPress={() => router.push('/onboarding/guest')}
         >
-          <Text style={styles.secondaryButtonText}>Preview as Guest</Text>
+          <Text style={[styles.secondaryButtonText, { color: theme.text }]}>Preview as Guest</Text>
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
+        <Text style={[styles.disclaimer, { color: theme.textMuted }]}> 
           No credit card required · Free forever
         </Text>
       </View>
@@ -114,7 +116,6 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
     padding: 24,
     justifyContent: 'space-between',
   },
@@ -148,7 +149,6 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   taglineContainer: {
@@ -157,12 +157,10 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
     lineHeight: 36,
   },
   subtitle: {
     fontSize: 16,
-    color: '#8E8E8E',
     lineHeight: 24,
   },
   features: {
@@ -189,12 +187,10 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
     marginBottom: 2,
   },
   featureDesc: {
     fontSize: 13,
-    color: '#8E8E8E',
     lineHeight: 18,
   },
   footer: {
@@ -216,22 +212,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#1A1C23',
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2C35',
     marginBottom: 16,
   },
   secondaryButtonText: {
-    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '600',
   },
   disclaimer: {
     fontSize: 12,
-    color: '#4A4A4A',
     textAlign: 'center',
   },
 });

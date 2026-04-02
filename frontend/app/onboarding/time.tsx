@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-nativ
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const TIME_OPTIONS = [
   { id: 'part-time', label: 'Part-Time', subtitle: '10-20 hours/week', icon: 'time-outline' },
@@ -12,6 +13,7 @@ const TIME_OPTIONS = [
 
 export default function TimeScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedTime, setSelectedTime] = useState('');
 
   const handleContinue = async () => {
@@ -32,24 +34,24 @@ export default function TimeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}> 
+      <StatusBar barStyle={theme.statusBar as any} />
       
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: theme.surfaceAlt }]}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         
-        <View style={styles.progress}>
+        <View style={[styles.progress, { backgroundColor: theme.surfaceAlt }]}> 
           <View style={[styles.progressBar, { width: '80%' }]} />
         </View>
         
         <Text style={styles.step}>Step 4 of 5</Text>
-        <Text style={styles.title}>Time Availability</Text>
-        <Text style={styles.subtitle}>How much time can you dedicate?</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Time Availability</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>How much time can you dedicate?</Text>
       </View>
 
       <View style={styles.content}>
@@ -58,6 +60,7 @@ export default function TimeScreen() {
             key={option.id}
             style={[
               styles.optionCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
               selectedTime === option.id && styles.optionCardSelected,
             ]}
             onPress={() => setSelectedTime(option.id)}
@@ -65,6 +68,7 @@ export default function TimeScreen() {
             <View style={styles.optionContent}>
               <View style={[
                 styles.iconContainer,
+                { backgroundColor: theme.surfaceAlt },
                 selectedTime === option.id && styles.iconContainerSelected,
               ]}>
                 <Ionicons 
@@ -76,11 +80,12 @@ export default function TimeScreen() {
               <View style={styles.optionText}>
                 <Text style={[
                   styles.optionLabel,
+                  { color: theme.text },
                   selectedTime === option.id && styles.optionLabelSelected,
                 ]}>
                   {option.label}
                 </Text>
-                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+                  <Text style={[styles.optionSubtitle, { color: theme.textSub }]}>{option.subtitle}</Text>
               </View>
             </View>
             {selectedTime === option.id && (
@@ -109,7 +114,6 @@ export default function TimeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
     padding: 24,
   },
   header: {
@@ -120,14 +124,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   progress: {
     height: 4,
-    backgroundColor: '#1E293B',
     borderRadius: 2,
     marginBottom: 16,
   },
@@ -145,12 +147,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
   },
   content: {
     flex: 1,
@@ -159,12 +159,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
     padding: 20,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
   },
   optionCardSelected: {
     borderColor: '#10B981',
@@ -179,7 +177,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#0F172A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -192,16 +189,14 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 18,
-    color: '#E2E8F0',
     fontWeight: '600',
     marginBottom: 4,
   },
   optionLabelSelected: {
-    color: '#fff',
+    color: '#10B981',
   },
   optionSubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
   },
   footer: {
     paddingTop: 16,

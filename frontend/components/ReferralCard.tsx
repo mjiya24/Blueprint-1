@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -15,9 +16,17 @@ interface Props {
 }
 
 export function ReferralCard({ userId, userName = '' }: Props) {
+  const { theme } = useTheme();
   const [refData, setRefData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
 
   useEffect(() => {
     loadReferral();
@@ -64,12 +73,12 @@ export function ReferralCard({ userId, userName = '' }: Props) {
   if (!refData) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.accent + '20' }, elevatedCard]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Ionicons name="people-outline" size={18} color="#00D95F" />
-          <Text style={styles.title}>Referral Engine</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Referral Engine</Text>
         </View>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>+100 ARC / REFERRAL</Text>
@@ -77,38 +86,38 @@ export function ReferralCard({ userId, userName = '' }: Props) {
       </View>
 
       {/* Referral code box */}
-      <View style={styles.codeBox}>
+      <View style={[styles.codeBox, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
         <View style={styles.codeLeft}>
-          <Text style={styles.codeLabel}>YOUR CODE</Text>
-          <Text style={styles.code}>{refData.referral_code}</Text>
+          <Text style={[styles.codeLabel, { color: theme.textSub }]}>YOUR CODE</Text>
+          <Text style={[styles.code, { color: theme.text }]}>{refData.referral_code}</Text>
         </View>
-        <TouchableOpacity style={styles.copyBtn} onPress={handleCopyCode}>
+        <TouchableOpacity style={[styles.copyBtn, { backgroundColor: theme.surface }]} onPress={handleCopyCode}>
           <Ionicons
             name={copied ? 'checkmark-circle' : 'copy-outline'}
             size={16}
-            color={copied ? '#00D95F' : '#8E8E8E'}
+            color={copied ? '#00D95F' : theme.textSub}
           />
-          <Text style={[styles.copyBtnText, copied && { color: '#00D95F' }]}>
+          <Text style={[styles.copyBtnText, { color: theme.textSub }, copied && { color: '#00D95F' }]}> 
             {copied ? 'Copied!' : 'Copy'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Stats row */}
-      <View style={styles.statsRow}>
+      <View style={[styles.statsRow, { backgroundColor: theme.surfaceAlt }]}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{refData.referred_count}</Text>
-          <Text style={styles.statLabel}>Friends Invited</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>Friends Invited</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: '#6366F1' }]}>{refData.arc_from_referrals}</Text>
-          <Text style={styles.statLabel}>ARC Earned</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>ARC Earned</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>$0</Text>
-          <Text style={styles.statLabel}>Cash Earned</Text>
+          <Text style={[styles.statLabel, { color: theme.textSub }]}>Cash Earned</Text>
         </View>
       </View>
 
@@ -118,7 +127,7 @@ export function ReferralCard({ userId, userName = '' }: Props) {
         <Text style={styles.shareBtnText}>Share My Blueprint Link</Text>
       </TouchableOpacity>
 
-      <Text style={styles.fine}>
+      <Text style={[styles.fine, { color: theme.textSub }]}> 
         You earn 100 ARC for every friend who signs up. They get 25 ARC free.
       </Text>
     </View>

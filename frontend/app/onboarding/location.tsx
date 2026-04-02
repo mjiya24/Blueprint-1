@@ -5,11 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function LocationScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
 
@@ -92,48 +94,48 @@ export default function LocationScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}> 
+      <StatusBar barStyle={theme.statusBar as any} />
       
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: theme.surfaceAlt }]}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         
-        <View style={styles.progress}>
+        <View style={[styles.progress, { backgroundColor: theme.surfaceAlt }]}> 
           <View style={[styles.progressBar, { width: '100%' }]} />
         </View>
         
         <Text style={styles.step}>Step 5 of 5</Text>
-        <Text style={styles.title}>Enable Location</Text>
-        <Text style={styles.subtitle}>Find money-making opportunities near you</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Enable Location</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>Find money-making opportunities near you</Text>
       </View>
 
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, { backgroundColor: theme.surface }]}> 
           <Ionicons name="location" size={80} color="#10B981" />
         </View>
 
-        <View style={styles.benefitsBox}>
-          <Text style={styles.benefitsTitle}>Why we need location:</Text>
+        <View style={[styles.benefitsBox, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
+          <Text style={[styles.benefitsTitle, { color: theme.text }]}>Why we need location:</Text>
           <View style={styles.benefitItem}>
             <Ionicons name="business" size={20} color="#10B981" />
-            <Text style={styles.benefitText}>Find local businesses to partner with</Text>
+            <Text style={[styles.benefitText, { color: theme.text }]}>Find local businesses to partner with</Text>
           </View>
           <View style={styles.benefitItem}>
             <Ionicons name="people" size={20} color="#10B981" />
-            <Text style={styles.benefitText}>Discover area-specific opportunities</Text>
+            <Text style={[styles.benefitText, { color: theme.text }]}>Discover area-specific opportunities</Text>
           </View>
           <View style={styles.benefitItem}>
             <Ionicons name="trending-up" size={20} color="#10B981" />
-            <Text style={styles.benefitText}>Get ideas based on local demand</Text>
+            <Text style={[styles.benefitText, { color: theme.text }]}>Get ideas based on local demand</Text>
           </View>
         </View>
 
-        <Text style={styles.privacyNote}>
+        <Text style={[styles.privacyNote, { color: theme.textSub }]}>
           <Ionicons name="shield-checkmark" size={16} color="#94A3B8" />
           {' '}We only use your location to show relevant opportunities. Your privacy is important to us.
         </Text>
@@ -160,7 +162,7 @@ export default function LocationScreen() {
           onPress={handleSkip}
           disabled={isLoading}
         >
-          <Text style={styles.skipButtonText}>Skip for Now</Text>
+          <Text style={[styles.skipButtonText, { color: theme.textSub }]}>Skip for Now</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -170,7 +172,6 @@ export default function LocationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
     padding: 24,
   },
   header: {
@@ -181,14 +182,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   progress: {
     height: 4,
-    backgroundColor: '#1E293B',
     borderRadius: 2,
     marginBottom: 16,
   },
@@ -206,12 +205,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
   },
   content: {
     flex: 1,
@@ -222,22 +219,20 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
   },
   benefitsBox: {
     width: '100%',
-    backgroundColor: '#1E293B',
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
   },
   benefitsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 16,
   },
   benefitItem: {
@@ -247,13 +242,11 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontSize: 14,
-    color: '#E2E8F0',
     marginLeft: 12,
     flex: 1,
   },
   privacyNote: {
     fontSize: 12,
-    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 16,
@@ -284,7 +277,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipButtonText: {
-    color: '#94A3B8',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Win {
   id: string;
@@ -43,13 +44,21 @@ function timeAgo(dateStr: string): string {
 }
 
 export function WinCard({ win, onUpvote }: Props) {
+  const { theme } = useTheme();
   const catColor = CATEGORY_COLORS[win.category] || '#00D95F';
   const earnings = win.earnings_amount >= 1000
     ? `$${(win.earnings_amount / 1000).toFixed(1)}K`
     : `$${win.earnings_amount}`;
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
 
   return (
-    <View style={styles.card} data-testid={`win-card-${win.id}`}>
+    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]} data-testid={`win-card-${win.id}`}>
       {/* Accent stripe */}
       <View style={[styles.accentStripe, { backgroundColor: catColor }]} />
 
@@ -60,12 +69,12 @@ export function WinCard({ win, onUpvote }: Props) {
             <Text style={[styles.avatarText, { color: win.user_color }]}>{win.user_initials}</Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{win.user_name}</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>{win.user_name}</Text>
             <View style={styles.metaRow}>
               <View style={[styles.catBadge, { backgroundColor: catColor + '18' }]}>
                 <Text style={[styles.catText, { color: catColor }]}>{win.category}</Text>
               </View>
-              <Text style={styles.timeAgo}>{timeAgo(win.created_at)}</Text>
+              <Text style={[styles.timeAgo, { color: theme.textMuted }]}>{timeAgo(win.created_at)}</Text>
             </View>
           </View>
           {win.verified && (
@@ -77,26 +86,26 @@ export function WinCard({ win, onUpvote }: Props) {
         </View>
 
         {/* Blueprint + Earnings */}
-        <View style={styles.earningsRow}>
+        <View style={[styles.earningsRow, { backgroundColor: theme.surfaceAlt }]}>
           <View style={styles.earningsLeft}>
             <Text style={styles.earningsAmount}>{earnings}</Text>
-            <Text style={styles.earningsPeriod}>{win.earnings_period}</Text>
+            <Text style={[styles.earningsPeriod, { color: theme.textSub }]}>{win.earnings_period}</Text>
           </View>
           <View style={styles.earningsMeta}>
-            <Text style={styles.blueprintLabel}>via Blueprint</Text>
-            <Text style={styles.blueprintTitle} numberOfLines={2}>{win.blueprint_title}</Text>
-            <Text style={styles.weeksText}>in {win.weeks_to_earn} weeks</Text>
+            <Text style={[styles.blueprintLabel, { color: theme.textMuted }]}>via Blueprint</Text>
+            <Text style={[styles.blueprintTitle, { color: theme.text }]} numberOfLines={2}>{win.blueprint_title}</Text>
+            <Text style={[styles.weeksText, { color: theme.textSub }]}>in {win.weeks_to_earn} weeks</Text>
           </View>
         </View>
 
         {/* Quote */}
-        <Text style={styles.quote}>"{win.quote}"</Text>
+        <Text style={[styles.quote, { color: theme.textSub }]}>"{win.quote}"</Text>
 
         {/* Footer */}
         <TouchableOpacity style={styles.upvoteRow} onPress={onUpvote}>
-          <Ionicons name="arrow-up-circle-outline" size={18} color="#4A4A4A" />
-          <Text style={styles.upvoteCount}>{win.upvotes || 0}</Text>
-          <Text style={styles.upvoteLabel}>inspiring</Text>
+          <Ionicons name="arrow-up-circle-outline" size={18} color={theme.textMuted} />
+          <Text style={[styles.upvoteCount, { color: theme.textSub }]}>{win.upvotes || 0}</Text>
+          <Text style={[styles.upvoteLabel, { color: theme.textMuted }]}>inspiring</Text>
         </TouchableOpacity>
       </View>
     </View>

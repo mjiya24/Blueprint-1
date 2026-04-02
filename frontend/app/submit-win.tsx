@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -14,6 +15,7 @@ const EARNING_PERIODS = ['per week', 'per month', 'total so far', 'per project']
 
 export default function SubmitWinScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [blueprintTitle, setBlueprintTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -82,13 +84,13 @@ export default function SubmitWinScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
       <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Share Your Win</Text>
+        <Text style={[styles.navTitle, { color: theme.text }]}>Share Your Win</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -98,21 +100,21 @@ export default function SubmitWinScreen() {
           <View style={styles.trophyIcon}>
             <Ionicons name="trophy" size={32} color="#F59E0B" />
           </View>
-          <Text style={styles.heroTitle}>You earned it — prove it.</Text>
-          <Text style={styles.heroSub}>Your win inspires the next Architect. Post it to the community feed.</Text>
+          <Text style={[styles.heroTitle, { color: theme.text }]}>You earned it — prove it.</Text>
+          <Text style={[styles.heroSub, { color: theme.textSub }]}>Your win inspires the next Architect. Post it to the community feed.</Text>
         </View>
 
         {/* Quick fill from saved blueprints */}
         {recentBlueprints.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>QUICK FILL FROM YOUR BLUEPRINTS</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>QUICK FILL FROM YOUR BLUEPRINTS</Text>
             {recentBlueprints.map((bp: any) => (
               <TouchableOpacity
                 key={bp.idea_id}
-                style={[styles.bpChip, blueprintTitle === bp.title && styles.bpChipActive]}
+                style={[styles.bpChip, { backgroundColor: theme.surface, borderColor: theme.border }, blueprintTitle === bp.title && styles.bpChipActive]}
                 onPress={() => { setBlueprintTitle(bp.title || ''); setCategory(bp.category || ''); }}
               >
-                <Text style={[styles.bpChipText, blueprintTitle === bp.title && { color: '#00D95F' }]}>{bp.title}</Text>
+                <Text style={[styles.bpChipText, { color: theme.text }, blueprintTitle === bp.title && { color: '#00D95F' }]}>{bp.title}</Text>
                 {blueprintTitle === bp.title && <Ionicons name="checkmark-circle" size={16} color="#00D95F" />}
               </TouchableOpacity>
             ))}
@@ -121,28 +123,28 @@ export default function SubmitWinScreen() {
 
         {/* Form Fields */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>WHICH BLUEPRINT DID YOU WIN WITH?</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>WHICH BLUEPRINT DID YOU WIN WITH?</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
             value={blueprintTitle}
             onChangeText={setBlueprintTitle}
             placeholder="e.g. AI Automation Agency, Pressure Washing..."
-            placeholderTextColor="#4A4A4A"
+            placeholderTextColor={theme.textMuted}
             data-testid="blueprint-title-input"
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HOW MUCH DID YOU EARN?</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>HOW MUCH DID YOU EARN?</Text>
           <View style={styles.earningsRow}>
-            <View style={styles.dollarInput}>
-              <Text style={styles.dollarSign}>$</Text>
+            <View style={[styles.dollarInput, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.dollarSign, { color: theme.textMuted }]}>$</Text>
               <TextInput
-                style={styles.amountInput}
+                style={[styles.amountInput, { color: theme.text }]}
                 value={earningsAmount}
                 onChangeText={setEarningsAmount}
                 placeholder="2500"
-                placeholderTextColor="#4A4A4A"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="numeric"
                 data-testid="earnings-amount-input"
               />
@@ -152,7 +154,7 @@ export default function SubmitWinScreen() {
                 {EARNING_PERIODS.map(p => (
                   <TouchableOpacity
                     key={p}
-                    style={[styles.periodChip, earningsPeriod === p && styles.periodChipActive]}
+                    style={[styles.periodChip, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }, earningsPeriod === p && styles.periodChipActive]}
                     onPress={() => setEarningsPeriod(p)}
                   >
                     <Text style={[styles.periodText, earningsPeriod === p && { color: '#00D95F' }]}>{p}</Text>
@@ -164,26 +166,26 @@ export default function SubmitWinScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>HOW MANY WEEKS DID IT TAKE?</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>HOW MANY WEEKS DID IT TAKE?</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
             value={weeksToEarn}
             onChangeText={setWeeksToEarn}
             placeholder="e.g. 6"
-            placeholderTextColor="#4A4A4A"
+            placeholderTextColor={theme.textMuted}
             keyboardType="numeric"
             data-testid="weeks-input"
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>YOUR WIN STORY (min 20 chars)</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>YOUR WIN STORY (min 20 chars)</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
             value={quote}
             onChangeText={setQuote}
             placeholder="What was the key breakthrough? What would you tell someone starting today?"
-            placeholderTextColor="#4A4A4A"
+            placeholderTextColor={theme.textMuted}
             multiline
             maxLength={280}
             data-testid="win-quote-input"

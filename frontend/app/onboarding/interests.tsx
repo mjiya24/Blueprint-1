@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const CATEGORIES = [
   { id: 'flipping', label: 'Flipping & Reselling', icon: 'swap-horizontal' },
@@ -13,6 +14,7 @@ const CATEGORIES = [
 
 export default function InterestsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const toggleCategory = (id: string) => {
@@ -41,24 +43,24 @@ export default function InterestsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}> 
+      <StatusBar barStyle={theme.statusBar as any} />
       
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: theme.surfaceAlt }]}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         
-        <View style={styles.progress}>
+        <View style={[styles.progress, { backgroundColor: theme.surfaceAlt }]}> 
           <View style={[styles.progressBar, { width: '20%' }]} />
         </View>
         
         <Text style={styles.step}>Step 1 of 5</Text>
-        <Text style={styles.title}>What interests you?</Text>
-        <Text style={styles.subtitle}>Select categories you'd like to explore</Text>
+        <Text style={[styles.title, { color: theme.text }]}>What interests you?</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>Select categories you'd like to explore</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -67,6 +69,7 @@ export default function InterestsScreen() {
             key={category.id}
             style={[
               styles.categoryCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
               selectedCategories.includes(category.id) && styles.categoryCardSelected,
             ]}
             onPress={() => toggleCategory(category.id)}
@@ -79,6 +82,7 @@ export default function InterestsScreen() {
               />
               <Text style={[
                 styles.categoryLabel,
+                { color: theme.text },
                 selectedCategories.includes(category.id) && styles.categoryLabelSelected,
               ]}>
                 {category.label}
@@ -110,7 +114,6 @@ export default function InterestsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
     padding: 24,
   },
   header: {
@@ -121,14 +124,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   progress: {
     height: 4,
-    backgroundColor: '#1E293B',
     borderRadius: 2,
     marginBottom: 16,
   },
@@ -146,12 +147,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
   },
   content: {
     flex: 1,
@@ -160,12 +159,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
     padding: 20,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: 'transparent',
   },
   categoryCardSelected: {
     borderColor: '#10B981',
@@ -177,12 +174,11 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 16,
-    color: '#E2E8F0',
     marginLeft: 16,
     fontWeight: '500',
   },
   categoryLabelSelected: {
-    color: '#fff',
+    color: '#10B981',
     fontWeight: '600',
   },
   footer: {
