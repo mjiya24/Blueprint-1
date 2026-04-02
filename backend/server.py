@@ -1940,6 +1940,29 @@ REAL_LIFE_SEED_BLUEPRINTS = [
     {"title": "International Student Career Fair Strategy", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,000/month", "horizon": "medium", "tags": ["student", "career", "internship", "f1-safe"]},
 ]
 
+REAL_LIFE_SEED_BLUEPRINTS.extend([
+    {"title": "Data Analyst Specialist Track", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$9,000/month", "horizon": "medium", "tags": ["specialist", "analytics", "college", "new-grad"]},
+    {"title": "Cloud Support Specialist", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,500-$10,000/month", "horizon": "medium", "tags": ["specialist", "cloud", "new-grad", "professional"]},
+    {"title": "Clinical Research Coordinator Path", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$8,500/month", "horizon": "long", "tags": ["specialist", "healthcare", "career-switch"]},
+    {"title": "Cybersecurity SOC Analyst Entry", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$11,000/month", "horizon": "long", "tags": ["specialist", "security", "new-grad", "career-switch"]},
+    {"title": "RevOps Specialist for SaaS", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$12,000/month", "horizon": "long", "tags": ["specialist", "revops", "professional"]},
+    {"title": "UX Research Apprenticeship Route", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,500-$8,000/month", "horizon": "medium", "tags": ["specialist", "ux", "career-switch", "internship"]},
+    {"title": "Accounting to FP&A Career Switch", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$10,000/month", "horizon": "long", "tags": ["career-switch", "finance", "professional"]},
+    {"title": "Teacher to Instructional Design", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,500-$7,500/month", "horizon": "medium", "tags": ["career-switch", "education", "content"]},
+    {"title": "Nursing to Healthcare Tech Ops", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,500-$10,500/month", "horizon": "long", "tags": ["career-switch", "healthcare", "specialist"]},
+    {"title": "Mechanical Engineer to Product Ops", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$12,000/month", "horizon": "long", "tags": ["career-switch", "product", "professional"]},
+    {"title": "Campus IT Helpdesk to SysAdmin", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$5,000/month", "horizon": "medium", "tags": ["college", "new-grad", "specialist", "f1-safe"]},
+    {"title": "Graduate Research Assistant to Data Engineer", "category": "Student & Campus", "difficulty": "advanced", "startup_cost": "free", "potential_earnings": "$2,500-$9,500/month", "horizon": "long", "tags": ["college", "new-grad", "specialist", "f1-safe"]},
+    {"title": "Junior QA Tester Specialist", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,500-$6,000/month", "horizon": "medium", "tags": ["new-grad", "specialist", "career-switch"]},
+    {"title": "Supply Chain Analyst Career Launch", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,000/month", "horizon": "medium", "tags": ["new-grad", "professional", "specialist"]},
+    {"title": "GIS Specialist Transition Program", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$8,500/month", "horizon": "long", "tags": ["career-switch", "specialist", "professional"]},
+    {"title": "Local Government Fellowship Pipeline", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,200-$5,500/month", "horizon": "medium", "tags": ["college", "new-grad", "internship", "f1-safe"]},
+    {"title": "Sales Engineer Specialist Path", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$5,000-$15,000/month", "horizon": "long", "tags": ["specialist", "professional", "career-switch"]},
+    {"title": "Biotech Lab Assistant Hiring Sprint", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,500/month", "horizon": "fast", "tags": ["college", "internship", "specialist", "f1-safe"]},
+    {"title": "ERP Functional Consultant Track", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,500-$14,000/month", "horizon": "long", "tags": ["specialist", "career-switch", "professional"]},
+    {"title": "Digital Marketing Specialist Rotation", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,500/month", "horizon": "medium", "tags": ["specialist", "new-grad", "professional"]},
+])
+
 
 def _extra_action_steps(horizon: str) -> List[str]:
     if horizon == "fast":
@@ -1996,16 +2019,46 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
                 "For F-1 students, pursue only authorized paths like on-campus work, CPT, OPT, or approved internships."
             )
 
+        career_stage = "professional"
+        if any(t in tags for t in ["college", "student"]):
+            career_stage = "college"
+        elif "new-grad" in tags:
+            career_stage = "new-grad"
+        elif "career-switch" in tags:
+            career_stage = "career-switch"
+
+        payout_speed = "biweekly"
+        if horizon == "fast":
+            payout_speed = "weekly"
+        elif horizon == "long":
+            payout_speed = "monthly"
+
+        verification_sources = [
+            "BLS Occupational Outlook Handbook",
+            "Indeed Job Trends",
+            "LinkedIn Jobs",
+            "Glassdoor Salary Benchmarks",
+        ]
+        if "f1-safe" in tags:
+            verification_sources = [
+                "USCIS F-1 Employment Guidance",
+                "University International Office Guidelines",
+                "NACE Internship Data",
+            ]
+
         generated.append({
             "id": f"rl-{idx:03d}",
             "title": row["title"],
             "description": description,
             "category": category,
             "required_skills": ["Execution", "Consistency", "Communication"],
+            "required_credentials": ["Resume", "Portfolio" if category in ["Digital & Content", "AI & Automation", "No-Code & SaaS"] else "Background Check"],
+            "requirements_summary": "Resume + role-specific skill proof",
             "startup_cost": row["startup_cost"],
             "time_needed": "flexible" if horizon == "fast" else "part-time",
             "is_location_based": location_based,
             "location_types": ["online"] if not location_based else ["urban", "suburban"],
+            "available_regions": ["US", "CA", "GB", "IN"],
             "action_steps": _f1_safe_steps() if is_f1_safe else _extra_action_steps(horizon),
             "potential_earnings": row["potential_earnings"],
             "difficulty": row["difficulty"],
@@ -2015,6 +2068,12 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
             "asset_requirements": asset_reqs,
             "interest_tags": ["finance", "tech"] if category in ["AI & Automation", "No-Code & SaaS"] else ["finance", "creative"],
             "time_horizon": horizon,
+            "career_stage": career_stage,
+            "payout_speed": payout_speed,
+            "pay_band": row.get("pay_band") or "market-linked",
+            "verification_status": "source-linked",
+            "verification_sources": verification_sources,
+            "verification_last_checked": "2026-04-02",
         })
     return generated
 

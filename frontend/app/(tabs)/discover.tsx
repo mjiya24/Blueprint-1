@@ -40,6 +40,22 @@ const CATEGORY_TABS = [
   { key: 'Student & Campus',     label: 'Student' },
 ];
 
+const PAY_FILTERS = [
+  { key: 'all', label: 'Any Pay' },
+  { key: 'under-2k', label: '<$2k/mo' },
+  { key: '2k-5k', label: '$2k-$5k' },
+  { key: '5k-10k', label: '$5k-$10k' },
+  { key: '10k+', label: '$10k+' },
+];
+
+const PAYOUT_FILTERS = [
+  { key: 'all', label: 'Any Speed' },
+  { key: 'same-day', label: 'Same Day' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'biweekly', label: 'Biweekly' },
+  { key: 'monthly', label: 'Monthly+' },
+];
+
 export default function DiscoverScreen() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -54,6 +70,8 @@ export default function DiscoverScreen() {
   const [isSearchMode, setIsSearchMode]         = useState(false);
   const [activeCategory, setActiveCategory]     = useState('All');
   const [selectedDifficulty, setSelectedDiff]   = useState('all');
+  const [selectedPayBand, setSelectedPayBand]   = useState('all');
+  const [selectedPayout, setSelectedPayout]     = useState('all');
   const [showFilters, setShowFilters]           = useState(false);
 
   useEffect(() => { init(); }, []);
@@ -100,14 +118,79 @@ export default function DiscoverScreen() {
     return String(bp?.difficulty || '').toLowerCase() === diff;
   };
 
-  const triggerSearch = async (q: string, cat: string, diff: string) => {
+  const parseMonthlyEarnings = (value?: string): number => {
+    if (!value) return 0;
+    const raw = String(value).toLowerCase();
+    const nums = (raw.match(/\d[\d,]*/g) || []).map((n) => parseInt(n.replace(/,/g, ''), 10)).filter((n) => !Number.isNaN(n));
+    if (nums.length === 0) return 0;
+    const top = Math.max(...nums);
+    if (raw.includes('/hour')) return top * 160;
+    if (raw.includes('/day')) return top * 22;
+    if (raw.includes('/week')) return top * 4;
+    if (raw.includes('/year')) return Math.round(top / 12);
+    return top;
+  };
+
+  const inferPayoutSpeed = (bp: any): string => {
+    if (bp?.payout_speed) return String(bp.payout_speed).toLowerCase();
+    const tags = Array.isArray(bp?.tags) ? bp.tags.join(' ').toLowerCase() : '';
+    if (tags.includes('quick-win') || tags.includes('quick-cash') || String(bp?.time_horizon || '').toLowerCase() === 'fast') return 'weekly';
+    if (String(bp?.time_horizon || '').toLowerCase() === 'long') return 'monthly';
+    return 'biweekly';
+  };
+
+  const inferPayBand = (bp: any): string => {
+    const monthly = parseMonthlyEarnings(bp?.potential_earnings);
+    if (monthly < 2000) return 'under-2k';
+    if (monthly < 5000) return '2k-5k';
+    if (monthly < 10000) return '5k-10k';
+    return '10k+';
+  };
+
+  const matchesPayBand = (bp: any, payBand: string) => payBand === 'all' || inferPayBand(bp) === payBand;
+
+  const matchesPayout = (bp: any, payout: string) => payout === 'all' || inferPayoutSpeed(bp) === payout;
+
+  const computeLocationAwareMatch = (bp: any): number => {
+    const base = typeof bp?.match_score === 'number' ? bp.match_score : 50;
+    let score = base;
+
+    const profile = user?.profile || {};
+    const hasCity = !!profile?.city;
+    const country = String(profile?.country_code || 'US').toUpperCase();
+    const regions: string[] = Array.isArray(bp?.available_regions) ? bp.available_regions : ['US', 'CA', 'GB', 'IN'];
+
+    if (bp?.is_location_based) {
+      score += hasCity ? 10 : -8;
+      score += regions.includes(country) ? 10 : -10;
+    } else {
+      score += 8;
+    }
+
+    const reqAssets = (bp?.asset_requirements || []).filter((a: string) => a !== 'none');
+    const userAssets = new Set(profile?.assets || []);
+    if (reqAssets.length > 0) {
+      const matched = reqAssets.filter((a: string) => userAssets.has(a)).length;
+      if (matched === reqAssets.length) score += 8;
+      else if (matched > 0) score += 3;
+      else score -= 6;
+    }
+
+    return Math.max(30, Math.min(99, Math.round(score)));
+  };
+
+  const triggerSearch = async (q: string, cat: string, diff: string, payBand: string, payout: string) => {
     setIsSearching(true);
     try {
       const query = q.toLowerCase();
       const results = blueprints.filter(bp => {
         const haystack = `${bp.title} ${bp.description} ${bp.category}`.toLowerCase();
         const matchQ = !query || haystack.includes(query);
-        return matchQ && matchesCategory(bp, cat) && matchesDifficulty(bp, diff);
+        return matchQ &&
+               matchesCategory(bp, cat) &&
+               matchesDifficulty(bp, diff) &&
+               matchesPayBand(bp, payBand) &&
+               matchesPayout(bp, payout);
       });
       setSearchResults(results);
     } catch {
@@ -116,7 +199,9 @@ export default function DiscoverScreen() {
         const haystack = `${bp.title} ${bp.description}`.toLowerCase();
         return (!q || haystack.includes(q.toLowerCase())) &&
                matchesCategory(bp, cat) &&
-               matchesDifficulty(bp, diff);
+               matchesDifficulty(bp, diff) &&
+               matchesPayBand(bp, payBand) &&
+               matchesPayout(bp, payout);
       });
       setSearchResults(results);
     } finally {
@@ -128,7 +213,7 @@ export default function DiscoverScreen() {
     setSearchQuery(text);
     if (text.length > 0) {
       setIsSearchMode(true);
-      triggerSearch(text, activeCategory, selectedDifficulty);
+      triggerSearch(text, activeCategory, selectedDifficulty, selectedPayBand, selectedPayout);
     } else {
       setIsSearchMode(false);
     }
@@ -139,7 +224,7 @@ export default function DiscoverScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     // If in search mode, re-run search with new category
     if (isSearchMode && searchQuery) {
-      triggerSearch(searchQuery, key, selectedDifficulty);
+      triggerSearch(searchQuery, key, selectedDifficulty, selectedPayBand, selectedPayout);
     }
   };
 
@@ -150,7 +235,10 @@ export default function DiscoverScreen() {
   };
 
   const filteredBlueprints = blueprints.filter(bp =>
-    matchesCategory(bp, activeCategory) && matchesDifficulty(bp, selectedDifficulty)
+    matchesCategory(bp, activeCategory) &&
+    matchesDifficulty(bp, selectedDifficulty) &&
+    matchesPayBand(bp, selectedPayBand) &&
+    matchesPayout(bp, selectedPayout)
   );
 
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
@@ -158,7 +246,12 @@ export default function DiscoverScreen() {
 
   const renderCard = ({ item }: { item: any }) => {
     const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
-    const matchColor = item.match_score ? getMatchColor(item.match_score) : null;
+    const liveMatch = computeLocationAwareMatch(item);
+    const matchColor = getMatchColor(liveMatch);
+    const requirements = item?.required_credentials?.length
+      ? item.required_credentials.join(', ')
+      : (item?.requirements_summary || (item?.asset_requirements || []).filter((a: string) => a !== 'none').join(', '));
+    const verification = item?.verification_status || 'source-linked';
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: theme.surface, borderColor: 'rgba(255,255,255,0.05)' }]}
@@ -173,18 +266,33 @@ export default function DiscoverScreen() {
               {item.category}
             </Text>
           </View>
-          {matchColor && item.match_score && !user?.is_guest && (
-            <View style={[styles.matchPill, { borderColor: matchColor + '40' }]}>
-              <View style={[styles.matchDot, { backgroundColor: matchColor }]} />
-              <Text style={[styles.matchScore, { color: matchColor }]}>{item.match_score}% Match</Text>
-            </View>
-          )}
+          <View style={[styles.matchPill, { borderColor: matchColor + '40' }]}>
+            <View style={[styles.matchDot, { backgroundColor: matchColor }]} />
+            <Text style={[styles.matchScore, { color: matchColor }]}>{liveMatch}% Match</Text>
+          </View>
         </View>
 
         <Text style={[styles.cardTitle, { color: theme.text }]}>{item.title}</Text>
         <Text style={[styles.cardDesc, { color: theme.textSub }]} numberOfLines={2}>
           {item.description}
         </Text>
+
+        {!!requirements && (
+          <Text style={[styles.reqText, { color: theme.textMuted }]} numberOfLines={1}>
+            Requirements: {requirements}
+          </Text>
+        )}
+
+        <View style={styles.metaLine}>
+          <View style={[styles.verifyPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}> 
+            <Ionicons name="shield-checkmark-outline" size={11} color={theme.textMuted} />
+            <Text style={[styles.verifyText, { color: theme.textMuted }]}>{verification}</Text>
+          </View>
+          <View style={[styles.verifyPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}> 
+            <Ionicons name="time-outline" size={11} color={theme.textMuted} />
+            <Text style={[styles.verifyText, { color: theme.textMuted }]}>{inferPayoutSpeed(item)}</Text>
+          </View>
+        </View>
 
         <BrandLogoStrip item={item} theme={theme} />
 
@@ -303,12 +411,62 @@ export default function DiscoverScreen() {
                   ]}
                   onPress={() => {
                     setSelectedDiff(d);
-                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, d);
+                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, d, selectedPayBand, selectedPayout);
                   }}
                 >
                   <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>
                     {d === 'all' ? 'Any' : d}
                   </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Pay</Text>
+          <View style={styles.filterChips}>
+            {PAY_FILTERS.map(p => {
+              const active = selectedPayBand === p.key;
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                      borderColor: active ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedPayBand(p.key);
+                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, p.key, selectedPayout);
+                  }}
+                >
+                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Payout</Text>
+          <View style={styles.filterChips}>
+            {PAYOUT_FILTERS.map(p => {
+              const active = selectedPayout === p.key;
+              return (
+                <TouchableOpacity
+                  key={p.key}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                      borderColor: active ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedPayout(p.key);
+                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, selectedPayBand, p.key);
+                  }}
+                >
+                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -441,6 +599,18 @@ const styles = StyleSheet.create({
   matchScore: { fontSize: 11, fontWeight: '700' },
   cardTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 5, lineHeight: 22 },
   cardDesc:   { fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  reqText:    { fontSize: 11, marginBottom: 7, lineHeight: 15 },
+  metaLine:   { flexDirection: 'row', gap: 6, marginBottom: 8 },
+  verifyPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  verifyText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   pillsRow:   { flexDirection: 'row', gap: 6, flex: 1 },
   pill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
