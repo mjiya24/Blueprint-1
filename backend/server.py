@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -3703,6 +3705,51 @@ app.add_middleware(
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_event():
+    """Schedule the nightly blueprint verification pass on startup."""
+    try:
+        from app.services.blueprint_verifier import run_nightly_verifier
+        asyncio.create_task(run_nightly_verifier(db))
+        logger.info("[Startup] Nightly verifier task scheduled.")
+    except Exception as exc:
+        logger.warning(f"[Startup] Could not schedule verifier: {exc}")
+
+
+@api_router.get("/verify/status")
+async def get_verification_status():
+    """Return aggregated verification-status counts and last check date."""
+    pipeline = [
+        {"$group": {"_id": "$verification_status", "count": {"$sum": 1}}},
+    ]
+    cursor = db["ideas"].aggregate(pipeline)
+    status_counts: dict = {}
+    async for doc in cursor:
+        key = doc.get("_id") or "unknown"
+        status_counts[key] = doc["count"]
+
+    last_doc = await db["ideas"].find_one(
+        {"verification_last_checked": {"$exists": True}},
+        sort=[("verification_last_checked", -1)],
+    )
+    return {
+        "status_counts": status_counts,
+        "last_checked": last_doc.get("verification_last_checked") if last_doc else None,
+        "total_ideas": sum(status_counts.values()),
+    }
+
+
+@api_router.post("/verify/refresh")
+async def trigger_verification_refresh():
+    """Manually trigger a single verification pass (admin / CI use)."""
+    try:
+        from app.services.blueprint_verifier import verify_all_once
+        asyncio.create_task(verify_all_once(db))
+        return {"message": "Verification refresh started in background", "status": "queued"}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

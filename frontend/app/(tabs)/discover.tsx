@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, ScrollView,
+  View, Text, StyleSheet, FlatList, ScrollView, Modal,
   TouchableOpacity, StatusBar, TextInput, ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -73,6 +74,8 @@ export default function DiscoverScreen() {
   const [selectedPayBand, setSelectedPayBand]   = useState('all');
   const [selectedPayout, setSelectedPayout]     = useState('all');
   const [showFilters, setShowFilters]           = useState(false);
+  const [verifyModalBp, setVerifyModalBp]       = useState<any>(null);
+  const [verifiedOnly, setVerifiedOnly]         = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -179,29 +182,33 @@ export default function DiscoverScreen() {
     return Math.max(30, Math.min(99, Math.round(score)));
   };
 
-  const triggerSearch = async (q: string, cat: string, diff: string, payBand: string, payout: string) => {
+  const triggerSearch = async (q: string, cat: string, diff: string, payBand: string, payout: string, verified = verifiedOnly) => {
     setIsSearching(true);
     try {
       const query = q.toLowerCase();
       const results = blueprints.filter(bp => {
         const haystack = `${bp.title} ${bp.description} ${bp.category}`.toLowerCase();
         const matchQ = !query || haystack.includes(query);
+        const matchVerified = !verified || bp.verification_status === 'source-linked' || bp.verification_status === 'bls-verified';
         return matchQ &&
                matchesCategory(bp, cat) &&
                matchesDifficulty(bp, diff) &&
                matchesPayBand(bp, payBand) &&
-               matchesPayout(bp, payout);
+               matchesPayout(bp, payout) &&
+               matchVerified;
       });
       setSearchResults(results);
     } catch {
       // API failed — client-side filter only
       const results = blueprints.filter(bp => {
         const haystack = `${bp.title} ${bp.description}`.toLowerCase();
+        const matchVerified = !verified || bp.verification_status === 'source-linked' || bp.verification_status === 'bls-verified';
         return (!q || haystack.includes(q.toLowerCase())) &&
                matchesCategory(bp, cat) &&
                matchesDifficulty(bp, diff) &&
                matchesPayBand(bp, payBand) &&
-               matchesPayout(bp, payout);
+               matchesPayout(bp, payout) &&
+               matchVerified;
       });
       setSearchResults(results);
     } finally {
@@ -234,12 +241,14 @@ export default function DiscoverScreen() {
     searchRef.current?.blur();
   };
 
-  const filteredBlueprints = blueprints.filter(bp =>
-    matchesCategory(bp, activeCategory) &&
-    matchesDifficulty(bp, selectedDifficulty) &&
-    matchesPayBand(bp, selectedPayBand) &&
-    matchesPayout(bp, selectedPayout)
-  );
+  const filteredBlueprints = blueprints.filter(bp => {
+    const matchVerified = !verifiedOnly || bp.verification_status === 'source-linked' || bp.verification_status === 'bls-verified';
+    return matchesCategory(bp, activeCategory) &&
+      matchesDifficulty(bp, selectedDifficulty) &&
+      matchesPayBand(bp, selectedPayBand) &&
+      matchesPayout(bp, selectedPayout) &&
+      matchVerified;
+  });
 
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
   const libraryCount = blueprints.length;
@@ -266,7 +275,17 @@ export default function DiscoverScreen() {
               {item.category}
             </Text>
           </View>
-          <View style={[styles.matchPill, { borderColor: matchColor + '40' }]}>
+          <View style={[
+            styles.matchPill,
+            { borderColor: matchColor + '40' },
+            liveMatch >= 85 && {
+              shadowColor: '#00D95F',
+              shadowOpacity: 0.55,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 0 },
+              elevation: 8,
+            },
+          ]}>
             <View style={[styles.matchDot, { backgroundColor: matchColor }]} />
             <Text style={[styles.matchScore, { color: matchColor }]}>{liveMatch}% Match</Text>
           </View>
@@ -284,11 +303,15 @@ export default function DiscoverScreen() {
         )}
 
         <View style={styles.metaLine}>
-          <View style={[styles.verifyPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}> 
-            <Ionicons name="shield-checkmark-outline" size={11} color={theme.textMuted} />
-            <Text style={[styles.verifyText, { color: theme.textMuted }]}>{verification}</Text>
-          </View>
-          <View style={[styles.verifyPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}> 
+          <TouchableOpacity
+            style={[styles.verifyPill, { backgroundColor: 'rgba(0,217,95,0.08)', borderColor: '#00D95F40' }]}
+            onPress={() => setVerifyModalBp(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="shield-checkmark-outline" size={11} color="#00D95F" />
+            <Text style={[styles.verifyText, { color: '#00D95F' }]}>{verification}</Text>
+          </TouchableOpacity>
+          <View style={[styles.verifyPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
             <Ionicons name="time-outline" size={11} color={theme.textMuted} />
             <Text style={[styles.verifyText, { color: theme.textMuted }]}>{inferPayoutSpeed(item)}</Text>
           </View>
@@ -392,85 +415,155 @@ export default function DiscoverScreen() {
         </ScrollView>
       </View>
 
-      {/* ── Difficulty filter strip ── */}
+      {/* ── Filter strip ── */}
       {showFilters && (
         <View style={[styles.filterStrip, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Difficulty</Text>
-          <View style={styles.filterChips}>
-            {['all', 'beginner', 'intermediate', 'advanced'].map(d => {
-              const active = selectedDifficulty === d;
-              return (
-                <TouchableOpacity
-                  key={d}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
-                      borderColor: active ? theme.accent : theme.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedDiff(d);
-                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, d, selectedPayBand, selectedPayout);
-                  }}
-                >
-                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>
-                    {d === 'all' ? 'Any' : d}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+
+          {/* Verified Only toggle row */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Verified</Text>
+            <TouchableOpacity
+              style={[
+                styles.verifiedToggle,
+                verifiedOnly
+                  ? { backgroundColor: 'rgba(0,217,95,0.15)', borderColor: '#00D95F' }
+                  : { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+              ]}
+              onPress={() => {
+                const next = !verifiedOnly;
+                setVerifiedOnly(next);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                if (isSearchMode || searchQuery) {
+                  triggerSearch(searchQuery, activeCategory, selectedDifficulty, selectedPayBand, selectedPayout, next);
+                }
+              }}
+              activeOpacity={0.75}
+            >
+              <Ionicons
+                name={verifiedOnly ? 'shield-checkmark' : 'shield-checkmark-outline'}
+                size={13}
+                color={verifiedOnly ? '#00D95F' : theme.textMuted}
+              />
+              <Text style={[
+                styles.filterChipText,
+                { color: verifiedOnly ? '#00D95F' : theme.textSub },
+              ]}>Verified Only</Text>
+            </TouchableOpacity>
           </View>
 
-          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Pay</Text>
-          <View style={styles.filterChips}>
-            {PAY_FILTERS.map(p => {
-              const active = selectedPayBand === p.key;
-              return (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
-                      borderColor: active ? theme.accent : theme.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedPayBand(p.key);
-                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, p.key, selectedPayout);
-                  }}
-                >
-                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Difficulty row */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Difficulty</Text>
+            <View style={styles.filterChipsWrap}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+                {['all', 'beginner', 'intermediate', 'advanced'].map(d => {
+                  const active = selectedDifficulty === d;
+                  return (
+                    <TouchableOpacity
+                      key={d}
+                      style={[
+                        styles.filterChip,
+                        {
+                          backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                          borderColor: active ? theme.accent : theme.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedDiff(d);
+                        if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, d, selectedPayBand, selectedPayout);
+                      }}
+                    >
+                      <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>
+                        {d === 'all' ? 'Any' : d}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <LinearGradient
+                colors={['transparent', theme.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.filterFade}
+                pointerEvents="none"
+              />
+            </View>
           </View>
 
-          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Payout</Text>
-          <View style={styles.filterChips}>
-            {PAYOUT_FILTERS.map(p => {
-              const active = selectedPayout === p.key;
-              return (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
-                      borderColor: active ? theme.accent : theme.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    setSelectedPayout(p.key);
-                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, selectedPayBand, p.key);
-                  }}
-                >
-                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Pay row */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Pay</Text>
+            <View style={styles.filterChipsWrap}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+                {PAY_FILTERS.map(p => {
+                  const active = selectedPayBand === p.key;
+                  return (
+                    <TouchableOpacity
+                      key={p.key}
+                      style={[
+                        styles.filterChip,
+                        {
+                          backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                          borderColor: active ? theme.accent : theme.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedPayBand(p.key);
+                        if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, p.key, selectedPayout);
+                      }}
+                    >
+                      <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <LinearGradient
+                colors={['transparent', theme.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.filterFade}
+                pointerEvents="none"
+              />
+            </View>
           </View>
+
+          {/* Payout row */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Payout</Text>
+            <View style={styles.filterChipsWrap}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+                {PAYOUT_FILTERS.map(p => {
+                  const active = selectedPayout === p.key;
+                  return (
+                    <TouchableOpacity
+                      key={p.key}
+                      style={[
+                        styles.filterChip,
+                        {
+                          backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                          borderColor: active ? theme.accent : theme.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedPayout(p.key);
+                        if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, selectedDifficulty, selectedPayBand, p.key);
+                      }}
+                    >
+                      <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>{p.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <LinearGradient
+                colors={['transparent', theme.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.filterFade}
+                pointerEvents="none"
+              />
+            </View>
+          </View>
+
         </View>
       )}
 
@@ -528,6 +621,53 @@ export default function DiscoverScreen() {
           }
         />
       )}
+
+      {/* ── Verification Sources Modal ── */}
+      <Modal
+        visible={!!verifyModalBp}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVerifyModalBp(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setVerifyModalBp(null)}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.modalHandle, { backgroundColor: theme.border }]} />
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Verified Sources</Text>
+            <Text style={[styles.modalBpTitle, { color: theme.textSub }]} numberOfLines={2}>
+              {verifyModalBp?.title}
+            </Text>
+            <View style={[styles.modalDivider, { backgroundColor: theme.border }]} />
+            {(verifyModalBp?.verification_sources || []).map((src: string, i: number) => (
+              <View key={i} style={styles.modalSourceRow}>
+                <Ionicons name="checkmark-circle" size={15} color="#00D95F" />
+                <Text style={[styles.modalSourceText, { color: theme.textSub }]}>{src}</Text>
+              </View>
+            ))}
+            {!(verifyModalBp?.verification_sources?.length) && (
+              <View style={styles.modalSourceRow}>
+                <Ionicons name="checkmark-circle" size={15} color="#00D95F" />
+                <Text style={[styles.modalSourceText, { color: theme.textSub }]}>BLS Occupational Outlook Handbook</Text>
+              </View>
+            )}
+            {!!verifyModalBp?.verification_last_checked && (
+              <Text style={[styles.modalLastChecked, { color: theme.textMuted }]}>
+                Last verified: {verifyModalBp.verification_last_checked}
+              </Text>
+            )}
+            <TouchableOpacity
+              style={[styles.modalClose, { backgroundColor: theme.accentLight }]}
+              onPress={() => setVerifyModalBp(null)}
+            >
+              <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 14 }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }
@@ -570,15 +710,22 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: '700' },
   tabsContent: { paddingHorizontal: 20, gap: 10, paddingVertical: 2 },
 
-  // Difficulty filter
+  // Filter strip
   filterStrip: {
-    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+    flexDirection: 'column', gap: 2,
     marginHorizontal: 20, marginBottom: 12, padding: 12, borderRadius: 12, borderWidth: 1,
   },
-  filterLabel:    { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  filterChips:    { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  filterChip:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
-  filterChipText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  filterRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
+  filterLabel:     { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 68 },
+  filterChipsWrap: { flex: 1, overflow: 'hidden' },
+  filterChips:     { flexDirection: 'row', gap: 6, paddingVertical: 2, paddingRight: 32 },
+  filterFade:      { position: 'absolute', right: 0, top: 0, bottom: 0, width: 32 },
+  filterChip:      { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  filterChipText:  { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  verifiedToggle:  {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
+  },
 
   // List
   list:         { paddingHorizontal: 16, paddingBottom: 32 },
@@ -599,7 +746,7 @@ const styles = StyleSheet.create({
   matchScore: { fontSize: 11, fontWeight: '700' },
   cardTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 5, lineHeight: 22 },
   cardDesc:   { fontSize: 12, lineHeight: 17, marginBottom: 8 },
-  reqText:    { fontSize: 11, marginBottom: 7, lineHeight: 15 },
+  reqText:    { fontSize: 10, marginBottom: 7, lineHeight: 14, fontStyle: 'italic' },
   metaLine:   { flexDirection: 'row', gap: 6, marginBottom: 8 },
   verifyPill: {
     borderWidth: 1,
@@ -621,6 +768,24 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 217, 95, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
+  },
+
+  // Verification Modal
+  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'flex-end' },
+  modalSheet: {
+    borderTopLeftRadius: 26, borderTopRightRadius: 26, borderWidth: 1,
+    padding: 24, paddingBottom: 40,
+  },
+  modalHandle:      { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitle:       { fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  modalBpTitle:     { fontSize: 13, lineHeight: 18, marginBottom: 14 },
+  modalDivider:     { height: 1, marginBottom: 12 },
+  modalSourceRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 9 },
+  modalSourceText:  { fontSize: 13, flex: 1, lineHeight: 19 },
+  modalLastChecked: { fontSize: 11, marginTop: 12, marginBottom: 2 },
+  modalClose: {
+    marginTop: 22, height: 46, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
   },
 
   // Loading / Empty
