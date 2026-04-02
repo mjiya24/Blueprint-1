@@ -21,7 +21,8 @@ const getMatchColor = (s: number) => s >= 75 ? '#00D95F' : s >= 55 ? '#F59E0B' :
 
 const normalizeBlueprintList = (payload: any): any[] => {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.blueprints)) return payload.blueprints;
+  if (Array.isArray(payload?.ideas)) return payload.ideas;       // /api/ideas
+  if (Array.isArray(payload?.blueprints)) return payload.blueprints; // /api/blueprints
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
 };
@@ -64,10 +65,18 @@ export default function DiscoverScreen() {
   const loadBlueprints = async (u?: any) => {
     setIsLoading(true);
     try {
-      const params: any = { limit: 60 };
+      const params: any = { limit: 100 };
       if (u && !u.is_guest) params.user_id = u.id;
-      const res = await axios.get(`${API_URL}/api/blueprints`, { params });
-      setBlueprints(normalizeBlueprintList(res.data));
+      // Try /api/ideas first (always seeded), fall back to /api/blueprints
+      let items: any[] = [];
+      try {
+        const res = await axios.get(`${API_URL}/api/ideas`, { params });
+        items = normalizeBlueprintList(res.data);
+      } catch {
+        const res = await axios.get(`${API_URL}/api/blueprints`, { params });
+        items = normalizeBlueprintList(res.data);
+      }
+      setBlueprints(items);
     } catch (e) {
       console.error('Discover load error:', e);
     } finally {
@@ -137,7 +146,10 @@ export default function DiscoverScreen() {
 
   const filteredBlueprints = activeCategory === 'All'
     ? blueprints
-    : blueprints.filter(bp => bp.category === activeCategory);
+    : blueprints.filter(bp => {
+        const catPrefix = activeCategory.split(' & ')[0]; // e.g. 'Local' from 'Local & Service'
+        return bp.category?.startsWith(catPrefix);
+      });
 
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
 
