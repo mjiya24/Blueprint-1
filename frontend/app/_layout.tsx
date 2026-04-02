@@ -11,6 +11,7 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="idea-detail" />
+          <Stack.Screen name="about-blueprint" />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
