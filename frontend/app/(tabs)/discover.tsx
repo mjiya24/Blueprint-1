@@ -29,13 +29,13 @@ const normalizeBlueprintList = (payload: any): any[] => {
 };
 
 const CATEGORY_TABS = [
-  { key: 'All',                  label: 'All',        icon: 'apps-outline' },
-  { key: 'AI & Automation',      label: 'AI',         icon: 'flash-outline' },
-  { key: 'Digital & Content',    label: 'Content',    icon: 'film-outline' },
-  { key: 'No-Code & SaaS',       label: 'No-Code',    icon: 'code-slash-outline' },
-  { key: 'Passive & Investment', label: 'Passive',    icon: 'trending-up-outline' },
-  { key: 'Agency & B2B',         label: 'Agency',     icon: 'briefcase-outline' },
-  { key: 'Local & Service',      label: 'Local',      icon: 'location-outline' },
+  { key: 'All',                  label: 'All' },
+  { key: 'AI & Automation',      label: 'AI' },
+  { key: 'Digital & Content',    label: 'Content' },
+  { key: 'No-Code & SaaS',       label: 'No-Code' },
+  { key: 'Passive & Investment', label: 'Passive' },
+  { key: 'Agency & B2B',         label: 'Agency' },
+  { key: 'Local & Service',      label: 'Local' },
 ];
 
 export default function DiscoverScreen() {
@@ -66,7 +66,7 @@ export default function DiscoverScreen() {
   const loadBlueprints = async (u?: any) => {
     setIsLoading(true);
     try {
-      const params: any = { limit: 100 };
+      const params: any = { limit: 150 };
       if (u && !u.is_guest) params.user_id = u.id;
       // Try /api/ideas first (always seeded), fall back to /api/blueprints
       let items: any[] = [];
@@ -255,33 +255,34 @@ export default function DiscoverScreen() {
       </View>
 
       {/* ── Category tab pills ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
-        style={styles.tabsRow}
-      >
-        {CATEGORY_TABS.map(tab => {
-          const active = activeCategory === tab.key;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tab,
-                {
-                  backgroundColor: active ? theme.accent : theme.surface,
-                  borderColor: active ? theme.accent : theme.border,
-                },
-              ]}
-              onPress={() => handleCategoryTab(tab.key)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={tab.icon as any} size={14} color={active ? '#000' : theme.textMuted} />
-              <Text style={[styles.tabText, { color: active ? '#000' : theme.textSub }]}>{tab.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.tabsPanel}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContent}
+          style={styles.tabsRow}
+        >
+          {CATEGORY_TABS.map(tab => {
+            const active = activeCategory === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tab,
+                  {
+                    backgroundColor: active ? theme.accent : theme.surface,
+                    borderColor: active ? theme.accent : theme.border,
+                  },
+                ]}
+                onPress={() => handleCategoryTab(tab.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tabText, { color: active ? '#000' : theme.text }]}>#{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* ── Difficulty filter strip ── */}
       {showFilters && (
@@ -397,13 +398,19 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14 },
 
   // Category tabs
-  tabsRow:    { marginBottom: 14, flexGrow: 0 },
+  tabsPanel: {
+    marginBottom: 12,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  tabsRow:    { flexGrow: 0 },
   tab: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 11, borderRadius: 22, borderWidth: 1,
+    minHeight: 42,
   },
   tabText: { fontSize: 13, fontWeight: '700' },
-  tabsContent: { paddingHorizontal: 20, gap: 10 },
+  tabsContent: { paddingHorizontal: 20, gap: 10, paddingVertical: 2 },
 
   // Difficulty filter
   filterStrip: {

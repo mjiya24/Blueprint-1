@@ -1869,6 +1869,130 @@ PRE_POPULATED_IDEAS = [
     }
 ]
 
+REAL_LIFE_SEED_BLUEPRINTS = [
+    # Fast cash
+    {"title": "Mobile Notary Service", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,500-$6,000/month", "horizon": "fast", "tags": ["local", "service", "quick-cash"]},
+    {"title": "Weekend Event Staffing", "category": "Gig Economy", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,000/month", "horizon": "fast", "tags": ["gig", "events", "quick-cash"]},
+    {"title": "Furniture Assembly Service", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,200-$5,500/month", "horizon": "fast", "tags": ["local", "task", "quick-cash"]},
+    {"title": "Local Flyer Distribution", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$700-$2,500/month", "horizon": "fast", "tags": ["local", "marketing", "quick-cash"]},
+    {"title": "Restaurant Menu Photography", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,000-$4,000/month", "horizon": "fast", "tags": ["content", "photo", "quick-cash"]},
+    {"title": "Craigslist Lead Response Assistant", "category": "Agency & B2B", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$900-$3,500/month", "horizon": "fast", "tags": ["b2b", "assistant", "quick-cash"]},
+    {"title": "Real Estate Open House Assistant", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$3,800/month", "horizon": "fast", "tags": ["real-estate", "local", "quick-cash"]},
+    {"title": "Etsy Listing Optimization Service", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$4,500/month", "horizon": "fast", "tags": ["etsy", "seo", "quick-cash"]},
+    {"title": "YouTube Thumbnail Pack Designer", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$5,000/month", "horizon": "fast", "tags": ["youtube", "design", "quick-cash"]},
+    {"title": "Podcast Show Notes Writing", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,800/month", "horizon": "fast", "tags": ["content", "writing", "quick-cash"]},
+    {"title": "Shopify Product Upload Assistant", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,000/month", "horizon": "fast", "tags": ["shopify", "assistant", "quick-cash"]},
+    {"title": "Fiverr Voiceover Gig", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$700-$3,200/month", "horizon": "fast", "tags": ["fiverr", "content", "quick-cash"]},
+
+    # Medium-term builders
+    {"title": "Niche Lead Gen Landing Pages", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["no-code", "lead-gen", "business"]},
+    {"title": "Appointment Setter Agency", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$12,000/month", "horizon": "medium", "tags": ["agency", "sales", "b2b"]},
+    {"title": "Google Maps Rank Service", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$10,000/month", "horizon": "medium", "tags": ["local-seo", "agency", "b2b"]},
+    {"title": "No-Code Client Portal Builder", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$11,000/month", "horizon": "medium", "tags": ["no-code", "portal", "saas"]},
+    {"title": "Automated Cold Email Service", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$12,000/month", "horizon": "medium", "tags": ["ai", "automation", "b2b"]},
+    {"title": "Short-Form Video Repurposing", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["content", "video", "agency"]},
+    {"title": "Newsletter Ops for Founders", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$7,500/month", "horizon": "medium", "tags": ["newsletter", "ops", "b2b"]},
+    {"title": "Micro-Influencer Outreach Agency", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$10,000/month", "horizon": "medium", "tags": ["marketing", "agency", "b2b"]},
+    {"title": "UGC Creator Management", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$12,000/month", "horizon": "medium", "tags": ["ugc", "content", "agency"]},
+    {"title": "Niche Job Board with Sponsorships", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,500-$8,000/month", "horizon": "medium", "tags": ["job-board", "no-code", "saas"]},
+    {"title": "LinkedIn Ghostwriting Retainers", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["linkedin", "writing", "b2b"]},
+    {"title": "Community Management Studio", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$8,500/month", "horizon": "medium", "tags": ["community", "agency", "b2b"]},
+    {"title": "AI FAQ Bot for Ecommerce", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$9,500/month", "horizon": "medium", "tags": ["ai", "ecommerce", "automation"]},
+    {"title": "Klaviyo Email Flow Setup Service", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$11,000/month", "horizon": "medium", "tags": ["email", "agency", "ecommerce"]},
+
+    # Long-term cashflow
+    {"title": "Niche SaaS Churn Analyzer", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$25,000/month", "horizon": "long", "tags": ["saas", "analytics", "long-term"]},
+    {"title": "B2B Data API Reseller", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$20,000/month", "horizon": "long", "tags": ["api", "data", "saas"]},
+    {"title": "Niche Affiliate Comparison Site", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,500-$15,000/month", "horizon": "long", "tags": ["affiliate", "seo", "passive"]},
+    {"title": "Digital Asset Newsletter Portfolio", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$12,000/month", "horizon": "long", "tags": ["newsletter", "portfolio", "passive"]},
+    {"title": "Micro-SaaS Template Licensing", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$18,000/month", "horizon": "long", "tags": ["saas", "templates", "licensing"]},
+    {"title": "Evergreen Course Funnel", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$20,000/month", "horizon": "long", "tags": ["course", "funnel", "passive"]},
+    {"title": "Niche Podcast Ad Network", "category": "Digital & Content", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$25,000/month", "horizon": "long", "tags": ["podcast", "ads", "media"]},
+    {"title": "Portfolio of Local Service Brands", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "high", "potential_earnings": "$5,000-$30,000/month", "horizon": "long", "tags": ["local", "services", "portfolio"]},
+    {"title": "Programmatic SEO Sites", "category": "Passive & Investment", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$2,500-$40,000/month", "horizon": "long", "tags": ["seo", "passive", "long-term"]},
+    {"title": "Domain Leasing Portfolio", "category": "Passive & Investment", "difficulty": "advanced", "startup_cost": "high", "potential_earnings": "$1,500-$25,000/month", "horizon": "long", "tags": ["domains", "investment", "passive"]},
+    {"title": "Creator Education Membership", "category": "Digital & Content", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$22,000/month", "horizon": "long", "tags": ["membership", "education", "content"]},
+    {"title": "Niche Research Subscription", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$14,000/month", "horizon": "long", "tags": ["research", "subscription", "passive"]},
+    {"title": "B2B Reporting-as-a-Service", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$18,000/month", "horizon": "long", "tags": ["b2b", "reporting", "service"]},
+    {"title": "AI Workflow Productized Service", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$20,000/month", "horizon": "long", "tags": ["ai", "automation", "service"]},
+    {"title": "Vertical Marketplace Ops Agency", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$16,000/month", "horizon": "long", "tags": ["marketplace", "ops", "b2b"]},
+    {"title": "AI-Powered Translation Pipeline", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$10,000/month", "horizon": "medium", "tags": ["ai", "translation", "service"]},
+    {"title": "Freelancer Finance Spreadsheet Packs", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$500-$5,000/month", "horizon": "medium", "tags": ["spreadsheets", "digital-product", "finance"]},
+    {"title": "Warehouse Overflow Delivery Contracts", "category": "Gig Economy", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,800-$7,000/month", "horizon": "fast", "tags": ["delivery", "contracts", "gig"]},
+    {"title": "Pressure Washing Route Builder", "category": "Local & Service", "difficulty": "intermediate", "startup_cost": "medium", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["local", "service", "route"]},
+    {"title": "AI Sales Call Summaries Service", "category": "AI & Automation", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,500-$6,500/month", "horizon": "fast", "tags": ["ai", "sales", "ops"]},
+    {"title": "Commercial Cleaning Bid Agency", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,500-$18,000/month", "horizon": "long", "tags": ["cleaning", "agency", "local"]},
+    {"title": "TikTok Shop Product Sourcing", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$12,000/month", "horizon": "medium", "tags": ["tiktok", "ecommerce", "content"]},
+    {"title": "Local Lead Arbitrage Network", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$20,000/month", "horizon": "long", "tags": ["lead-gen", "local", "b2b"]},
+    {"title": "Printable Education Bundle Store", "category": "Passive & Investment", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$600-$6,000/month", "horizon": "medium", "tags": ["printables", "education", "passive"]},
+    {"title": "AI Prospect Database Maintenance", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["ai", "data", "b2b"]},
+    {"title": "Managed Blog Refresh Service", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$6,000/month", "horizon": "fast", "tags": ["content", "seo", "service"]},
+    {"title": "No-Code Internal QA Dashboard", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$9,500/month", "horizon": "medium", "tags": ["dashboard", "no-code", "b2b"]},
+]
+
+
+def _extra_action_steps(horizon: str) -> List[str]:
+    if horizon == "fast":
+        return [
+            "Set up profiles and basic tools today",
+            "Pitch or apply to 20 opportunities this week",
+            "Close the first paid job within 7 days",
+            "Reinvest first earnings into better tools and outreach"
+        ]
+    if horizon == "long":
+        return [
+            "Validate demand and define a clear niche",
+            "Build repeatable systems and SOPs",
+            "Acquire customers consistently for 90+ days",
+            "Scale with automation, referrals, and retained revenue"
+        ]
+    return [
+        "Choose a profitable niche and offer",
+        "Create a simple portfolio or landing page",
+        "Land 3 paying clients or customers",
+        "Systemize delivery and scale monthly"
+    ]
+
+
+def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    generated: List[Dict[str, Any]] = []
+    for idx, row in enumerate(seed_rows, start=1):
+        category = row["category"]
+        horizon = row.get("horizon", "medium")
+        location_based = category in ["Local & Service", "Gig Economy"]
+        asset_reqs = ["none"]
+        if category in ["No-Code & SaaS", "AI & Automation", "Digital & Content", "Agency & B2B"]:
+            asset_reqs = ["laptop"]
+        if category == "Passive & Investment" and row.get("startup_cost") in ["medium", "high"]:
+            asset_reqs = ["investment"]
+        if category == "Gig Economy":
+            asset_reqs = ["car"]
+
+        generated.append({
+            "id": f"rl-{idx:03d}",
+            "title": row["title"],
+            "description": f"A real-world {horizon}-term income blueprint in {category.lower()} focused on practical execution and reliable cashflow.",
+            "category": category,
+            "required_skills": ["Execution", "Consistency", "Communication"],
+            "startup_cost": row["startup_cost"],
+            "time_needed": "flexible" if horizon == "fast" else "part-time",
+            "is_location_based": location_based,
+            "location_types": ["online"] if not location_based else ["urban", "suburban"],
+            "action_steps": _extra_action_steps(horizon),
+            "potential_earnings": row["potential_earnings"],
+            "difficulty": row["difficulty"],
+            "tags": row.get("tags", []) + [horizon, "real-life"],
+            "environment_fit": ["outdoor", "any"] if location_based else ["home", "office"],
+            "social_fit": ["customer-facing"] if category in ["Local & Service", "Agency & B2B", "Gig Economy"] else ["solo"],
+            "asset_requirements": asset_reqs,
+            "interest_tags": ["finance", "tech"] if category in ["AI & Automation", "No-Code & SaaS"] else ["finance", "creative"],
+            "time_horizon": horizon,
+        })
+    return generated
+
+
+PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(REAL_LIFE_SEED_BLUEPRINTS))
+
 # ============= Sprint 5: Currency & Location Constants =============
 
 CURRENCY_MAP: Dict[str, Dict[str, str]] = {
