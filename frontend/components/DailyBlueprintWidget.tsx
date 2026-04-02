@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -14,6 +15,7 @@ interface Props {
 
 export function DailyBlueprintWidget({ userId, profile }: Props) {
   const router = useRouter();
+  const { theme } = useTheme();
   const [blueprint, setBlueprint] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
 
   return (
     <TouchableOpacity
-      style={styles.widget}
+      style={[styles.widget, { backgroundColor: theme.surface, borderColor: theme.accent + '30' }]}
       activeOpacity={0.8}
       onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: blueprint.id } })}
       data-testid="daily-blueprint-widget"
@@ -59,31 +61,31 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
 
       {/* Content */}
       <View style={styles.body}>
-        <View style={styles.scoreCircle}>
+        <View style={[styles.scoreCircle, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
           <Text style={[styles.scoreNum, { color: scoreColor }]}>{score}%</Text>
-          <Text style={styles.scoreLabel}>Match</Text>
+          <Text style={[styles.scoreLabel, { color: theme.textMuted }]}>Match</Text>
         </View>
         <View style={styles.info}>
           <View style={styles.categoryRow}>
-            <Text style={styles.category}>{blueprint.category}</Text>
+            <Text style={[styles.category, { color: theme.textMuted }]}>{blueprint.category}</Text>
           </View>
-          <Text style={styles.title} numberOfLines={2}>{blueprint.title}</Text>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{blueprint.title}</Text>
           <View style={styles.metaRow}>
-            <View style={styles.metaPill}>
+            <View style={[styles.metaPill, { backgroundColor: theme.surfaceAlt }]}>
               <Ionicons name="cash-outline" size={11} color="#00D95F" />
-              <Text style={styles.metaText}>{blueprint.potential_earnings}</Text>
+              <Text style={[styles.metaText, { color: theme.textSub }]}>{blueprint.potential_earnings}</Text>
             </View>
-            <View style={styles.metaPill}>
+            <View style={[styles.metaPill, { backgroundColor: theme.surfaceAlt }]}>
               <Ionicons name="time-outline" size={11} color="#8E8E8E" />
-              <Text style={styles.metaText}>{blueprint.time_to_first_dollar}</Text>
+              <Text style={[styles.metaText, { color: theme.textSub }]}>{blueprint.time_to_first_dollar}</Text>
             </View>
           </View>
         </View>
       </View>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>17-step blueprint · Tap to explore</Text>
+      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+        <Text style={[styles.footerText, { color: theme.textSub }]}>17-step blueprint · Tap to explore</Text>
         <Ionicons name="arrow-forward" size={14} color="#00D95F" />
       </View>
     </TouchableOpacity>

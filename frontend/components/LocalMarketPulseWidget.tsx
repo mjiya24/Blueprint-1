@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -28,6 +29,7 @@ const CAT_COLORS: Record<string, string> = {
 
 export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
   const router = useRouter();
+  const { theme } = useTheme();
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,9 +52,9 @@ export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.loadingCard}>
+      <View style={[styles.loadingCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <ActivityIndicator color="#00D95F" size="small" />
-        <Text style={styles.loadingText}>Finding top earners near {city}...</Text>
+        <Text style={[styles.loadingText, { color: theme.textMuted }]}>Finding top earners near {city}...</Text>
       </View>
     );
   }
@@ -60,16 +62,16 @@ export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
   if (!blueprints.length) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.surface }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.headerLeft}>
           <View style={styles.locPin}>
             <Ionicons name="location" size={12} color="#00D95F" />
           </View>
           <View>
             <Text style={styles.label}>TRENDING IN {city.toUpperCase()}</Text>
-            <Text style={styles.sublabel}>Top earners for your market</Text>
+            <Text style={[styles.sublabel, { color: theme.textMuted }]}>Top earners for your market</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -86,15 +88,15 @@ export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
         return (
           <TouchableOpacity
             key={bp.id}
-            style={styles.row}
+            style={[styles.row, { borderBottomColor: theme.border }]}
             onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: bp.id } })}
             activeOpacity={0.75}
             data-testid={`local-trending-${bp.id}`}
           >
             <View style={styles.rowLeft}>
-              <Text style={styles.rankNum}>{i + 1}</Text>
+              <Text style={[styles.rankNum, { color: theme.border }]}>{i + 1}</Text>
               <View>
-                <Text style={styles.rowTitle} numberOfLines={1}>{bp.title}</Text>
+                <Text style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>{bp.title}</Text>
                 <View style={[styles.catPill, { backgroundColor: color + '18' }]}>
                   <Text style={[styles.catText, { color }]}>{bp.category}</Text>
                 </View>

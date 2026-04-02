@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -24,6 +25,7 @@ const QUICK_PROMPTS = [
 
 export default function BlueprintGuideScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const params = useLocalSearchParams();
   const ideaId = params.idea_id as string;
   const ideaTitle = (params.idea_title as string) || 'your Blueprint';
@@ -82,8 +84,8 @@ export default function BlueprintGuideScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
         <ActivityIndicator size="large" color="#00D95F" />
       </View>
     );
@@ -91,22 +93,22 @@ export default function BlueprintGuideScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       {/* Nav */}
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+      <View style={[styles.navBar, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.navCenter}>
           <View style={styles.guideIndicator} />
           <View>
-            <Text style={styles.navTitle}>Blueprint Guide</Text>
-            <Text style={styles.navSub} numberOfLines={1}>{ideaTitle}</Text>
+            <Text style={[styles.navTitle, { color: theme.text }]}>Blueprint Guide</Text>
+            <Text style={[styles.navSub, { color: theme.textMuted }]} numberOfLines={1}>{ideaTitle}</Text>
           </View>
         </View>
         <View style={styles.architectPill}>
@@ -128,20 +130,20 @@ export default function BlueprintGuideScreen() {
             <View style={styles.avatarLarge}>
               <Ionicons name="flash" size={32} color="#000" />
             </View>
-            <Text style={styles.emptyTitle}>Blueprint Guide</Text>
-            <Text style={styles.emptyDesc}>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>Blueprint Guide</Text>
+            <Text style={[styles.emptyDesc, { color: theme.textSub }]}>
               Your AI accountability coach. Ask anything about your active blueprint — strategy, obstacles, next steps.
             </Text>
             <View style={styles.quickPromptsSection}>
-              <Text style={styles.quickLabel}>TRY ASKING</Text>
+              <Text style={[styles.quickLabel, { color: theme.textMuted }]}>TRY ASKING</Text>
               {QUICK_PROMPTS.map((p, i) => (
                 <TouchableOpacity
                   key={i}
-                  style={styles.quickPrompt}
+                  style={[styles.quickPrompt, { backgroundColor: theme.surface, borderColor: theme.border }]}
                   onPress={() => sendMessage(p)}
                   data-testid={`quick-prompt-${i}`}
                 >
-                  <Text style={styles.quickPromptText}>{p}</Text>
+                  <Text style={[styles.quickPromptText, { color: theme.text }]}>{p}</Text>
                   <Ionicons name="arrow-forward" size={14} color="#00D95F" />
                 </TouchableOpacity>
               ))}
@@ -159,8 +161,8 @@ export default function BlueprintGuideScreen() {
                 <Ionicons name="flash" size={12} color="#000" />
               </View>
             )}
-            <View style={[styles.bubbleContent, msg.role === 'user' ? styles.userBubbleContent : styles.assistantBubbleContent]}>
-              <Text style={[styles.bubbleText, msg.role === 'user' && styles.userBubbleText]}>
+            <View style={[styles.bubbleContent, msg.role === 'user' ? styles.userBubbleContent : [styles.assistantBubbleContent, { backgroundColor: theme.surface, borderColor: theme.border }]]}>
+              <Text style={[styles.bubbleText, { color: msg.role === 'user' ? '#000' : theme.text }]}>
                 {msg.content}
               </Text>
             </View>
@@ -185,11 +187,11 @@ export default function BlueprintGuideScreen() {
       </ScrollView>
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
           placeholder="Ask your Blueprint Guide..."
-          placeholderTextColor="#4A4A4A"
+          placeholderTextColor={theme.textMuted}
           value={input}
           onChangeText={setInput}
           multiline

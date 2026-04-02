@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { ArchitectPaywall } from '../components/ArchitectPaywall';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -26,6 +27,7 @@ const DIFF_COLORS: Record<string, string> = { easy: '#00D95F', medium: '#F59E0B'
 export default function BlueprintDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { theme } = useTheme();
   const [blueprint, setBlueprint] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,14 +51,14 @@ export default function BlueprintDetailScreen() {
   }, [blueprint, user]);
 
   if (isLoading) return (
-    <View style={styles.loading}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.loading, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
       <ActivityIndicator size="large" color="#00D95F" />
     </View>
   );
 
   if (!blueprint) return (
-    <View style={styles.loading}>
+    <View style={[styles.loading, { backgroundColor: theme.bg }]}>
       <Text style={{ color: '#FF6B6B' }}>Blueprint not found</Text>
     </View>
   );
@@ -68,13 +70,13 @@ export default function BlueprintDetailScreen() {
   const isArchitect = user?.is_architect;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       {/* Nav */}
       <View style={styles.navBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
         <View style={[styles.v2Badge, { backgroundColor: catColor + '18', borderColor: catColor + '40' }]}>
           <Text style={[styles.v2Text, { color: catColor }]}>v2.0 · 17 STEPS</Text>
@@ -94,18 +96,19 @@ export default function BlueprintDetailScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.title}>{blueprint.title}</Text>
-          <Text style={styles.description}>{blueprint.description}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{blueprint.title}</Text>
+          <Text style={[styles.description, { color: theme.textSub }]}>{blueprint.description}</Text>
 
           {/* Local Market Signal — Sprint 5 */}
           {viability && (
             <View style={[styles.viabilityCard, {
+              backgroundColor: theme.surface,
               borderColor: viability.demand_level === 'High' ? '#00D95F30' :
                 viability.demand_level === 'Medium' ? '#F59E0B30' : '#FF6B6B30'
             }]} data-testid="viability-badge">
               <View style={styles.viabilityHeader}>
                 <Ionicons name="location" size={13} color="#00D95F" />
-                <Text style={styles.viabilityHeaderText}>LOCAL MARKET — {user?.profile?.city?.toUpperCase()}</Text>
+                <Text style={[styles.viabilityHeaderText, { color: theme.textMuted }]}>LOCAL MARKET — {user?.profile?.city?.toUpperCase()}</Text>
                 <View style={[styles.demandBadge, {
                   backgroundColor: viability.demand_level === 'High' ? '#00D95F18' :
                     viability.demand_level === 'Medium' ? '#F59E0B18' : '#FF6B6B18'
@@ -120,7 +123,7 @@ export default function BlueprintDetailScreen() {
                 <Text style={[styles.viabilityScore, {
                   color: viability.score >= 75 ? '#00D95F' : viability.score >= 50 ? '#F59E0B' : '#FF6B6B'
                 }]}>{viability.score}%</Text>
-                <Text style={styles.viabilityReason} numberOfLines={3}>{viability.reason}</Text>
+                <Text style={[styles.viabilityReason, { color: theme.textSub }]} numberOfLines={3}>{viability.reason}</Text>
               </View>
               {viability.local_tip && (
                 <View style={styles.localTip}>
@@ -132,23 +135,23 @@ export default function BlueprintDetailScreen() {
           )}
 
           {/* Stats row */}
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.statBox}>
               <Ionicons name="cash-outline" size={18} color="#00D95F" />
-              <Text style={styles.statVal}>{blueprint.potential_earnings}</Text>
-              <Text style={styles.statLabel}>Potential</Text>
+              <Text style={[styles.statVal, { color: theme.text }]}>{blueprint.potential_earnings}</Text>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>Potential</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="time-outline" size={18} color="#F59E0B" />
-              <Text style={styles.statVal}>{blueprint.time_to_first_dollar}</Text>
-              <Text style={styles.statLabel}>First Dollar</Text>
+              <Text style={[styles.statVal, { color: theme.text }]}>{blueprint.time_to_first_dollar}</Text>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>First Dollar</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="wallet-outline" size={18} color="#6366F1" />
-              <Text style={styles.statVal}>{blueprint.startup_cost_range || blueprint.startup_cost}</Text>
-              <Text style={styles.statLabel}>Startup Cost</Text>
+              <Text style={[styles.statVal, { color: theme.text }]}>{blueprint.startup_cost_range || blueprint.startup_cost}</Text>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>Startup Cost</Text>
             </View>
           </View>
 
@@ -159,7 +162,7 @@ export default function BlueprintDetailScreen() {
               <Text style={[styles.diffText, { color: DIFF_COLORS[blueprint.difficulty] }]}>{blueprint.difficulty}</Text>
             </View>
             {(blueprint.tags || []).slice(0, 3).map((t: string, i: number) => (
-              <View key={i} style={styles.tagPill}><Text style={styles.tagText}>#{t}</Text></View>
+              <View key={i} style={[styles.tagPill, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}><Text style={[styles.tagText, { color: theme.textMuted }]}>#{t}</Text></View>
             ))}
           </View>
         </View>
@@ -167,27 +170,27 @@ export default function BlueprintDetailScreen() {
         {/* Steps */}
         <View style={styles.stepsSection}>
           <View style={styles.stepsSectionHeader}>
-            <Text style={styles.stepsTitle}>The 17-Step Blueprint</Text>
+            <Text style={[styles.stepsTitle, { color: theme.text }]}>The 17-Step Blueprint</Text>
             <View style={styles.stepsLegend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#00D95F' }]} />
-                <Text style={styles.legendText}>5 Free</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#00D95F44' }]} />
-                <Text style={styles.legendText}>12 Architect</Text>
+              <Text style={[styles.legendText, { color: theme.textMuted }]}>5 Free</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#00D95F44' }]} />
+              <Text style={[styles.legendText, { color: theme.textMuted }]}>12 Architect</Text>
               </View>
             </View>
           </View>
 
           {/* Free Steps */}
           {freeSteps.map((step: any) => (
-            <View key={step.step_number} style={styles.stepRow}>
-              <View style={styles.stepNumBadge}>
-                <Text style={styles.stepNumText}>{step.step_number}</Text>
+            <View key={step.step_number} style={[styles.stepRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={[styles.stepNumBadge, { backgroundColor: theme.surfaceAlt }]}>
+                <Text style={[styles.stepNumText, { color: theme.text }]}>{step.step_number}</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={styles.stepText}>{step.text}</Text>
+                <Text style={[styles.stepText, { color: theme.text }]}>{step.text}</Text>
                 {step.common_wall && (
                   <View style={styles.wallNote}>
                     <Ionicons name="alert-circle-outline" size={12} color="#F59E0B" />

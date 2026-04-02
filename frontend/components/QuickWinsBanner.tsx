@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -55,6 +56,7 @@ interface Props {
 
 export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Props) {
   const router = useRouter();
+  const { theme } = useTheme();
   const [wins, setWins] = useState<QuickWin[]>([]);
   const [loading, setLoading] = useState(true);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -113,13 +115,13 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
             <Ionicons name="flash" size={12} color="#000" />
             <Text style={styles.heroBadgeText}>QUICK WINS</Text>
           </Animated.View>
-          <Text style={styles.heroTitle}>$25 in 60 Minutes</Text>
-          <Text style={styles.heroSubtitle}>$0 to start · Verified · Instant payouts</Text>
+          <Text style={[styles.heroTitle, { color: theme.text }]}>$25 in 60 Minutes</Text>
+          <Text style={[styles.heroSubtitle, { color: theme.textMuted }]}>$0 to start · Verified · Instant payouts</Text>
         </View>
         <View style={styles.heroRight}>
-          <View style={styles.heroStat}>
+          <View style={[styles.heroStat, { backgroundColor: theme.surface }]}>
             <Text style={styles.heroStatNum}>{wins.length}</Text>
-            <Text style={styles.heroStatLabel}>Paths</Text>
+            <Text style={[styles.heroStatLabel, { color: theme.textMuted }]}>Paths</Text>
           </View>
         </View>
       </View>
@@ -138,7 +140,7 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
           return (
             <TouchableOpacity
               key={win.id}
-              style={styles.card}
+              style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
               onPress={() => handleCardPress(win)}
               activeOpacity={0.8}
             >
@@ -156,7 +158,7 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
               )}
 
               {/* Title */}
-              <Text style={styles.cardTitle} numberOfLines={2}>{win.title}</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{win.title}</Text>
 
               {/* Earnings */}
               <Text style={styles.cardEarnings}>{win.potential_earnings}</Text>
@@ -165,7 +167,7 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
               {win.time_to_first_dollar && (
                 <View style={styles.timeRow}>
                   <Ionicons name="time-outline" size={11} color="#4A4A4A" />
-                  <Text style={styles.timeText}>{win.time_to_first_dollar}</Text>
+                  <Text style={[styles.timeText, { color: theme.textMuted }]}>{win.time_to_first_dollar}</Text>
                 </View>
               )}
 
@@ -184,7 +186,7 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
 
         {/* See all card */}
         <TouchableOpacity
-          style={styles.seeAllCard}
+          style={[styles.seeAllCard, { backgroundColor: theme.surface }]}
           onPress={() => router.push({ pathname: '/(tabs)/discover', params: { quickwins: '1' } })}
           activeOpacity={0.8}
         >
