@@ -2036,9 +2036,9 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
         if "unverified" not in tags:
             confidence_score = 45  # base confidence for source-linked entries
 
-        payout_speed = "biweekly"
+        payout_speed = "weekly"
         if horizon == "fast":
-            payout_speed = "weekly"
+            payout_speed = "48h"
         elif horizon == "long":
             payout_speed = "monthly"
 
@@ -2054,6 +2054,10 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
                 "University International Office Guidelines",
                 "NACE Internship Data",
             ]
+        
+        # Override payout_speed for unverified entries (slower payout expected)
+        if "unverified" in tags and payout_speed == "48h":
+            payout_speed = "weekly"
 
         generated.append({
             "id": f"rl-{idx:03d}",
