@@ -154,21 +154,22 @@ export default function DiscoverScreen() {
       });
 
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
+  const libraryCount = blueprints.length;
 
   const renderCard = ({ item }: { item: any }) => {
     const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
     const matchColor = item.match_score ? getMatchColor(item.match_score) : null;
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        style={[styles.card, { backgroundColor: theme.surface, borderColor: 'rgba(255,255,255,0.05)' }]}
         onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: item.id } })}
         activeOpacity={0.75}
         data-testid={`discover-card-${item.id}`}
       >
         {/* Top row */}
         <View style={styles.cardTop}>
-          <View style={[styles.catBadge, { backgroundColor: theme.surfaceAlt }]}>
-            <Text style={[styles.catText, { color: theme.textMuted }]} numberOfLines={1}>
+          <View style={[styles.catBadge, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.13)' : theme.surfaceAlt }]}> 
+            <Text style={[styles.catText, { color: theme.text }]} numberOfLines={1}>
               {item.category}
             </Text>
           </View>
@@ -332,7 +333,9 @@ export default function DiscoverScreen() {
               <Text style={[styles.resultsCount, { color: theme.textMuted }]}>
                 {isSearching
                   ? 'Searching…'
-                  : `${displayData.length} ${isSearchMode ? 'results' : 'blueprints'}`}
+                  : (isSearchMode
+                    ? `${displayData.length} RESULTS`
+                    : `${libraryCount} BLUEPRINTS`)}
                 {activeCategory !== 'All' && !isSearchMode ? ` · ${activeCategory}` : ''}
               </Text>
             </View>
@@ -420,7 +423,7 @@ const styles = StyleSheet.create({
   // Card
   card: {
     borderRadius: 18, padding: 16, marginBottom: 10, borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   cardTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -430,14 +433,14 @@ const styles = StyleSheet.create({
   matchDot:  { width: 6, height: 6, borderRadius: 3 },
   matchScore: { fontSize: 11, fontWeight: '700' },
   cardTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 5, lineHeight: 22 },
-  cardDesc:   { fontSize: 12, lineHeight: 17 },
-    cardDesc:   { fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  cardDesc:   { fontSize: 12, lineHeight: 17, marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   pillsRow:   { flexDirection: 'row', gap: 6, flex: 1 },
   pill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   pillText:   { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   earnings: {
     fontSize: 22, fontWeight: '800', color: '#00D95F',
+    fontVariant: ['tabular-nums'],
     textShadowColor: 'rgba(0, 217, 95, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,

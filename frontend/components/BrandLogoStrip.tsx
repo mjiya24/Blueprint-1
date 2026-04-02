@@ -32,7 +32,7 @@ type BrandToken = {
 // Brand registry — each entry has a Clearbit domain
 // ─────────────────────────────────────────────
 const BRANDS: BrandToken[] = [
-  { key: 'doordash',       label: 'DoorDash',      short: 'DD', bg: '#FF3008', fg: '#FFF', domain: 'doordash.com',       aliases: ['door dash', 'dash'] },
+  { key: 'doordash',       label: 'DoorDash',      short: 'DD', bg: '#FF3008', fg: '#FFF', domain: 'doordash.com',       aliases: ['door dash', 'doordash', 'dasher app'] },
   { key: 'rover',          label: 'Rover',          short: 'R',  bg: '#14A800', fg: '#FFF', domain: 'rover.com',           aliases: ['dog walking', 'pet sitting'] },
   { key: 'biolife',        label: 'BioLife',        short: 'BL', bg: '#0077C8', fg: '#FFF', domain: 'biolifeplasma.com',   aliases: ['bio life', 'plasma donation', 'plasma'] },
   { key: 'ubereats',       label: 'Uber Eats',      short: 'UE', bg: '#06C167', fg: '#FFF', domain: 'ubereats.com',        aliases: ['uber eats', 'ubereats'] },
@@ -107,12 +107,29 @@ const collectText = (item: any): string => {
   return parts.join(' ').toLowerCase();
 };
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const hasTerm = (haystack: string, rawTerm: string) => {
+  const term = rawTerm.toLowerCase().trim();
+  if (!term) return false;
+  // Phrase terms are matched directly; single-word terms require boundaries to avoid false positives.
+  if (/\s|[-_/]|\./.test(term)) return haystack.includes(term);
+  const re = new RegExp(`(^|[^a-z0-9])${escapeRegExp(term)}([^a-z0-9]|$)`);
+  return re.test(haystack);
+};
+
 const brandMatches = (brand: BrandToken, haystack: string) =>
-  [brand.key, ...(brand.aliases || [])].some((term) => haystack.includes(term));
+  [brand.key, ...(brand.aliases || [])].some((term) => hasTerm(haystack, term));
 
 /** Returns exactly ONE primary badge token for the item. */
 const inferPrimaryBrand = (item: any): BrandToken => {
   const haystack = collectText(item);
+  const title = String(item?.title || '').toLowerCase();
+
+  // Priority lock: if title explicitly says Uber/Lyft, do not allow delivery aliases to override it.
+  if (/uber\s*eats|ubereats/.test(title)) return BRANDS.find((b) => b.key === 'ubereats')!;
+  if (/\buber\b/.test(title)) return BRANDS.find((b) => b.key === 'uber')!;
+  if (/\blyft\b/.test(title)) return BRANDS.find((b) => b.key === 'lyft')!;
 
   const brandHit = BRANDS.find((b) => brandMatches(b, haystack));
   if (brandHit) return brandHit;
@@ -190,11 +207,8 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
         ]}
       >
         {/* ── Logo shell — brand-colored bg so logos pop ── */}
-        {/* ── Logo shell — glassmorphism when no logo; brand-bg when logo confirmed loaded ── */}
-        <View style={[
-          styles.logoShell,
-          (showRemoteLogo && imageLoaded) ? { backgroundColor: brand.bg + 'D9' } : {},
-        ]}>
+        {/* ── Logo shell — always glassmorphism (premium translucent badge surface) ── */}
+        <View style={styles.logoShell}>
           {/* Fallback always behind (absolute) — shows until image is confirmed valid */}
           <View style={styles.stubAbsolute}>
             <FallbackContent />
@@ -248,7 +262,9 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: 12,
     paddingVertical: 5,
     paddingHorizontal: 8,
@@ -300,7 +316,8 @@ const styles = StyleSheet.create({
   },
   logoStubText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
+    textAlign: 'center',
     letterSpacing: 0.2,
   },
   brandLabel: {
