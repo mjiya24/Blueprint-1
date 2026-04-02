@@ -446,8 +446,8 @@ const styles = StyleSheet.create({
   searchList: { paddingHorizontal: 20, paddingBottom: 32 },
   resultsLabel: { fontSize: 12, color: '#4A4A4A', marginBottom: 12, marginTop: 4 },
   searchCard: {
-    backgroundColor: '#1A1C23', borderRadius: 18, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2A2C35',
+    backgroundColor: '#111827', borderRadius: 18, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: '#1F2A44',
   },
   searchCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   searchCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   pillsRow: { flexDirection: 'row', gap: 6, flex: 1 },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   pillText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
-  earnings: { fontSize: 13, fontWeight: '700', color: '#00D95F' },
+  earnings: { fontSize: 18, fontWeight: '800', color: '#00D95F', textShadowColor: 'rgba(0, 217, 95, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
   widgetSection: { paddingTop: 4 },
   widgetHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

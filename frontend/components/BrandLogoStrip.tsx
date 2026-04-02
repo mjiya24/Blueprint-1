@@ -74,9 +74,11 @@ const CATEGORY_FALLBACK: Record<string, BrandToken> = {
 };
 
 const CATEGORY_MATCHERS: BrandToken[] = [
-  { key: 'delivery',         label: 'Delivery',        short: 'DL', bg: '#0F6CBD', fg: '#FFF', kind: 'category', iconName: 'truck-fast',          aliases: ['delivery', 'deliver', 'courier', 'food delivery', 'grocery delivery'] },
+  // Freelance checked FIRST — covers VA/admin before 'deliver' substring trap fires
+  { key: 'freelance',        label: 'Freelance',       short: 'FL', bg: '#2563EB', fg: '#FFF', kind: 'category', iconName: 'laptop-code',          aliases: ['freelance', 'virtual assistant', ' va ', '(va)', 'admin task', 'administrative', 'data entry', 'client work', 'gig work', 'consulting', 'copywriting', 'design service', 'retainer'] },
+  // Delivery — use whole-word 'delivery' only to avoid matching 'deliver' inside other words
+  { key: 'delivery',         label: 'Delivery',        short: 'DL', bg: '#0F6CBD', fg: '#FFF', kind: 'category', iconName: 'truck-fast',          aliases: ['delivery', 'courier', 'food delivery', 'grocery delivery', 'same-day delivery'] },
   { key: 'social-media',     label: 'Social Media',    short: 'SM', bg: '#7C3AED', fg: '#FFF', kind: 'category', iconName: 'share-nodes',          aliases: ['social media', 'tiktok', 'youtube', 'content creator'] },
-  { key: 'freelance',        label: 'Freelance',       short: 'FL', bg: '#2563EB', fg: '#FFF', kind: 'category', iconName: 'laptop-code',          aliases: ['freelance', 'client work', 'gig work', 'consulting', 'copywriting', 'design service'] },
   { key: 'ecommerce',        label: 'E-commerce',      short: 'EC', bg: '#F59E0B', fg: '#111', kind: 'category', iconName: 'bag-shopping',         aliases: ['e-commerce', 'ecommerce', 'reselling', 'dropshipping'] },
   { key: 'pets',             label: 'Pet Care',        short: 'PT', bg: '#10B981', fg: '#FFF', kind: 'category', iconName: 'paw',                  aliases: ['pet', 'dog', 'cat', 'dog walking', 'pet sitting'] },
   { key: 'local-service',    label: 'Service',         short: 'SV', bg: '#10B981', fg: '#FFF', kind: 'category', iconName: 'screwdriver-wrench',   aliases: ['service business', 'local service', 'cleaning', 'handyman', 'pressure washing'] },
@@ -155,8 +157,8 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
           },
         ]}
       >
-        {/* ── Logo shell ── */}
-        <View style={styles.logoShell}>
+        {/* ── Logo shell — brand-colored bg so white logos pop ── */}
+        <View style={[styles.logoShell, showRemoteLogo ? { backgroundColor: brand.bg } : {}]}>
           {showRemoteLogo ? (
             <Image
               source={{ uri: clearbitUri! }}
@@ -166,7 +168,7 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
             />
           ) : isCategory ? (
             <View style={[styles.categoryIconWrap, { backgroundColor: brand.bg + '22' }]}>
-              <FontAwesome6 name={brand.iconName as any} size={15} color={brand.bg} />
+              <FontAwesome6 name={brand.iconName as any} size={17} color={brand.bg} />
             </View>
           ) : (
             <View style={[styles.logoStub, { backgroundColor: brand.bg }]}>
@@ -224,48 +226,49 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logoShell: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    // subtle inner glow
+    // subtle floating shadow
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
   logoImage: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
   },
   categoryIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoStub: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoStubText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   brandLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     flexShrink: 1,
-    maxWidth: 110,
+    maxWidth: 120,
+    letterSpacing: 0.1,
   },
 });
