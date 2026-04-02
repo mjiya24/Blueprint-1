@@ -339,7 +339,7 @@ export default function ProfileScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/about-blueprint')}>
             <View style={styles.menuLeft}>
               <Ionicons name="information-circle-outline" size={22} color="#8E8E8E" />
               <Text style={styles.menuText}>About Blueprint</Text>
