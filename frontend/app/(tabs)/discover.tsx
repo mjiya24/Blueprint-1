@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, FlatList,
+  View, Text, StyleSheet, FlatList, ScrollView,
   TouchableOpacity, StatusBar, TextInput, ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
-import { CategoryCarousel } from '../../components/discover/CategoryCarousel';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -19,8 +17,7 @@ const DIFF_COLORS: Record<string, string> = {
   beginner: '#00D95F', intermediate: '#F59E0B', advanced: '#FF6B6B',
 };
 
-const getMatchColor = (score: number) =>
-  score >= 75 ? '#00D95F' : score >= 55 ? '#F59E0B' : '#FF6B6B';
+const getMatchColor = (s: number) => s >= 75 ? '#00D95F' : s >= 55 ? '#F59E0B' : '#FF6B6B';
 
 const normalizeBlueprintList = (payload: any): any[] => {
   if (Array.isArray(payload)) return payload;
@@ -29,156 +26,137 @@ const normalizeBlueprintList = (payload: any): any[] => {
   return [];
 };
 
+const CATEGORY_TABS = [
+  { key: 'All',                  label: 'All',        icon: 'apps-outline' },
+  { key: 'AI & Automation',      label: 'AI',         icon: 'flash-outline' },
+  { key: 'Digital & Content',    label: 'Content',    icon: 'film-outline' },
+  { key: 'No-Code & SaaS',       label: 'No-Code',    icon: 'code-slash-outline' },
+  { key: 'Passive & Investment', label: 'Passive',    icon: 'trending-up-outline' },
+  { key: 'Agency & B2B',         label: 'Agency',     icon: 'briefcase-outline' },
+  { key: 'Local & Service',      label: 'Local',      icon: 'location-outline' },
+];
+
 export default function DiscoverScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const elevatedCard = {
-    shadowColor: theme.isDark ? '#000000' : '#0F172A',
-    shadowOpacity: theme.isDark ? 0.32 : 0.08,
-    shadowRadius: theme.isDark ? 16 : 12,
-    shadowOffset: { width: 0, height: theme.isDark ? 8 : 5 },
-    elevation: theme.isDark ? 6 : 3,
-  };
-  const params = useLocalSearchParams();
   const searchRef = useRef<TextInput>(null);
 
-  const [user, setUser] = useState<any>(null);
-  const [carousels, setCarousels] = useState<any[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isLoadingCarousels, setIsLoadingCarousels] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchMode, setIsSearchMode] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const [selectedCost, setSelectedCost] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [user, setUser]                         = useState<any>(null);
+  const [blueprints, setBlueprints]             = useState<any[]>([]);
+  const [searchResults, setSearchResults]       = useState<any[]>([]);
+  const [isLoading, setIsLoading]               = useState(true);
+  const [isSearching, setIsSearching]           = useState(false);
+  const [searchQuery, setSearchQuery]           = useState('');
+  const [isSearchMode, setIsSearchMode]         = useState(false);
+  const [activeCategory, setActiveCategory]     = useState('All');
+  const [selectedDifficulty, setSelectedDiff]   = useState('all');
+  const [showFilters, setShowFilters]           = useState(false);
 
-  const CATEGORIES = ['All', 'AI & Automation', 'Passive & Investment', 'Agency & B2B', 'Digital & Content', 'Local & Service', 'No-Code & SaaS'];
+  useEffect(() => { init(); }, []);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  useEffect(() => {
-    if (user !== undefined) loadCarousels();
-  }, [user]);
-
-  // If a category param is passed (e.g. from carousel "See all")
-  useEffect(() => {
-    if (params.category) {
-      const catMap: Record<string, string> = {
-        ai: 'AI & Automation', passive: 'Passive & Investment', agency: 'Agency & B2B',
-        digital: 'Digital & Content', local: 'Local & Service', nocode: 'No-Code & SaaS',
-      };
-      const cat = catMap[params.category as string];
-      if (cat) setSelectedCategory(cat);
-      setIsSearchMode(true);
-      triggerSearch('', cat || 'All', 'all', 'all');
-    }
-  }, [params.category]);
-
-  useEffect(() => {
-    if (isSearchMode) triggerSearch(searchQuery, selectedCategory, selectedDifficulty, selectedCost);
-  }, [searchQuery, selectedCategory, selectedDifficulty, selectedCost]);
-
-  const loadUser = async () => {
-    const userData = await AsyncStorage.getItem('user');
-    setUser(userData ? JSON.parse(userData) : null);
+  const init = async () => {
+    const raw = await AsyncStorage.getItem('user');
+    const u = raw ? JSON.parse(raw) : null;
+    setUser(u);
+    await loadBlueprints(u);
   };
 
-  const loadCarousels = async () => {
+  const loadBlueprints = async (u?: any) => {
+    setIsLoading(true);
     try {
-      const userId = user && !user.is_guest ? `?user_id=${user.id}` : '';
-      const res = await axios.get(`${API_URL}/api/blueprints/carousels${userId}`);
-      const carouselData = Array.isArray(res.data) ? res.data : [];
-      setCarousels(carouselData);
-
-      // Backward-compatible fallback: if carousels are empty, show a search-style feed.
-      if (carouselData.length === 0) {
-        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
-        const fallback = normalizeBlueprintList(fallbackRes.data);
-        if (fallback.length > 0) {
-          setSearchResults(fallback);
-          setIsSearchMode(true);
-        }
-      }
+      const params: any = { limit: 60 };
+      if (u && !u.is_guest) params.user_id = u.id;
+      const res = await axios.get(`${API_URL}/api/blueprints`, { params });
+      setBlueprints(normalizeBlueprintList(res.data));
     } catch (e) {
-      console.error('Carousels error:', e);
-      try {
-        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
-        const fallback = normalizeBlueprintList(fallbackRes.data);
-        if (fallback.length > 0) {
-          setSearchResults(fallback);
-          setIsSearchMode(true);
-        }
-      } catch (fallbackError) {
-        console.error('Discover fallback error:', fallbackError);
-      }
+      console.error('Discover load error:', e);
     } finally {
-      setIsLoadingCarousels(false);
+      setIsLoading(false);
     }
   };
 
-  const triggerSearch = async (q: string, cat: string, diff: string, cost: string) => {
+  const triggerSearch = async (q: string, cat: string, diff: string) => {
     setIsSearching(true);
     try {
-      const params: any = { limit: 40 };
-      if (q) params.q = q;
-      if (cat && cat !== 'All') params.category = cat;
-      if (diff && diff !== 'all') params.difficulty = diff;
-      if (cost && cost !== 'all') params.startup_cost = cost;
-      if (user && !user.is_guest) params.user_id = user.id;
-      const res = await axios.get(`${API_URL}/api/blueprints/search`, { params });
+      const p: any = { limit: 40 };
+      if (q) p.q = q;
+      if (cat && cat !== 'All') p.category = cat;
+      if (diff && diff !== 'all') p.difficulty = diff;
+      if (user && !user.is_guest) p.user_id = user.id;
+
+      const res = await axios.get(`${API_URL}/api/blueprints/search`, { params: p });
       let results = normalizeBlueprintList(res.data);
 
-      // Fallback for deployments where /search may return empty despite available blueprints.
-      if (results.length === 0 && !q && cat === 'All' && diff === 'all' && cost === 'all') {
-        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
-        results = normalizeBlueprintList(fallbackRes.data);
+      // Client-side fallback if search API returns empty
+      if (results.length === 0) {
+        results = blueprints.filter(bp => {
+          const haystack = `${bp.title} ${bp.description}`.toLowerCase();
+          const matchQ    = !q    || haystack.includes(q.toLowerCase());
+          const matchCat  = cat === 'All' || bp.category === cat;
+          const matchDiff = diff === 'all' || bp.difficulty?.toLowerCase() === diff;
+          return matchQ && matchCat && matchDiff;
+        });
       }
-
       setSearchResults(results);
-    } catch (e) {
-      console.error('Search error:', e);
+    } catch {
+      // API failed — client-side filter only
+      const results = blueprints.filter(bp => {
+        const haystack = `${bp.title} ${bp.description}`.toLowerCase();
+        return (!q || haystack.includes(q.toLowerCase())) &&
+               (cat === 'All' || bp.category === cat);
+      });
+      setSearchResults(results);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleSearchFocus = () => {
-    setIsSearchMode(true);
-    if (!searchResults.length) triggerSearch(searchQuery, selectedCategory, selectedDifficulty, selectedCost);
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (text.length > 0) {
+      setIsSearchMode(true);
+      triggerSearch(text, activeCategory, selectedDifficulty);
+    } else {
+      setIsSearchMode(false);
+    }
+  };
+
+  const handleCategoryTab = (key: string) => {
+    setActiveCategory(key);
+    // If in search mode, re-run search with new category
+    if (isSearchMode && searchQuery) {
+      triggerSearch(searchQuery, key, selectedDifficulty);
+    }
   };
 
   const handleSearchClear = () => {
     setSearchQuery('');
     setIsSearchMode(false);
-    setSelectedCategory('All');
-    setSelectedDifficulty('all');
-    setSelectedCost('all');
-    setShowFilters(false);
+    searchRef.current?.blur();
   };
 
-  const activeFilterCount = [
-    selectedCategory !== 'All', selectedDifficulty !== 'all', selectedCost !== 'all'
-  ].filter(Boolean).length;
+  const filteredBlueprints = activeCategory === 'All'
+    ? blueprints
+    : blueprints.filter(bp => bp.category === activeCategory);
 
-  const renderSearchCard = ({ item }: { item: any }) => {
-    const diffColor = DIFF_COLORS[item.difficulty] || '#8E8E8E';
+  const displayData = isSearchMode ? searchResults : filteredBlueprints;
+
+  const renderCard = ({ item }: { item: any }) => {
+    const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
     const matchColor = item.match_score ? getMatchColor(item.match_score) : null;
     return (
       <TouchableOpacity
-        style={[styles.searchCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}
+        style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
         onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: item.id } })}
         activeOpacity={0.75}
-        data-testid={`search-result-${item.id}`}
+        data-testid={`discover-card-${item.id}`}
       >
-        <View style={styles.searchCardTop}>
-          <View style={styles.searchCardLeft}>
-            <View style={styles.catBadge}>
-              <Text style={styles.catBadgeText}>{item.category}</Text>
-            </View>
+        {/* Top row */}
+        <View style={styles.cardTop}>
+          <View style={[styles.catBadge, { backgroundColor: theme.surfaceAlt }]}>
+            <Text style={[styles.catText, { color: theme.textMuted }]} numberOfLines={1}>
+              {item.category}
+            </Text>
           </View>
           {matchColor && item.match_score && !user?.is_guest && (
             <View style={[styles.matchPill, { borderColor: matchColor + '40' }]}>
@@ -187,17 +165,22 @@ export default function DiscoverScreen() {
             </View>
           )}
         </View>
-        <Text style={[styles.searchCardTitle, { color: theme.text }]}>{item.title}</Text>
-        <Text style={[styles.searchCardDesc, { color: theme.textSub }]} numberOfLines={2}>{item.description}</Text>
+
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{item.title}</Text>
+        <Text style={[styles.cardDesc, { color: theme.textSub }]} numberOfLines={2}>
+          {item.description}
+        </Text>
+
         <BrandLogoStrip item={item} theme={theme} />
-        <View style={styles.searchCardFooter}>
+
+        <View style={styles.cardFooter}>
           <View style={styles.pillsRow}>
             <View style={[styles.pill, { backgroundColor: diffColor + '18' }]}>
               <Text style={[styles.pillText, { color: diffColor }]}>{item.difficulty}</Text>
             </View>
             {item.startup_cost && (
               <View style={[styles.pill, { backgroundColor: '#3B82F618' }]}>
-                <Text style={[styles.pillText, { color: '#3B82F6' }]}>{item.startup_cost} cost</Text>
+                <Text style={[styles.pillText, { color: '#60A5FA' }]}>{item.startup_cost} cost</Text>
               </View>
             )}
           </View>
@@ -208,275 +191,253 @@ export default function DiscoverScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }] }>
-      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* ── Header ── */}
+      <View style={[styles.header, { backgroundColor: theme.bg }]}>
         <View>
-          <View style={styles.titleRow}>
-            <View style={[styles.titleAccentDot, { backgroundColor: theme.accent }]} />
-            <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
-          </View>
-          <Text style={[styles.subtitle, { color: theme.textSub }]}>99+ income blueprints</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
+          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+            {isLoading ? 'Loading…' : `${blueprints.length > 0 ? blueprints.length + '+' : '99+'} income blueprints`}
+          </Text>
         </View>
         <TouchableOpacity
           style={[
-            styles.filterIconBtn,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-            (showFilters || activeFilterCount > 0) && [styles.filterIconBtnActive, { borderColor: theme.accent }],
-            elevatedCard,
+            styles.filterBtn,
+            { backgroundColor: showFilters ? theme.accentLight : theme.surface, borderColor: showFilters ? theme.accent : theme.border },
           ]}
-          onPress={() => {
-            setShowFilters(!showFilters);
-            setIsSearchMode(true);
-            if (!searchResults.length) triggerSearch(searchQuery, selectedCategory, selectedDifficulty, selectedCost);
-          }}
+          onPress={() => setShowFilters(f => !f)}
           data-testid="filter-toggle-btn"
         >
-          <Ionicons name="options" size={20} color={activeFilterCount > 0 ? '#00D95F' : '#8E8E8E'} />
-          {activeFilterCount > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-            </View>
-          )}
+          <Ionicons name="options" size={20} color={showFilters ? theme.accent : theme.textMuted} />
         </TouchableOpacity>
       </View>
 
-      {/* Search bar */}
-      <View style={styles.searchRow}>
-        <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }, isSearchMode && [styles.searchBoxActive, { borderColor: theme.accent + '40' }], elevatedCard]}>
-          <Ionicons name="search" size={16} color={isSearchMode ? '#00D95F' : '#4A4A4A'} />
+      {/* ── Search bar ── */}
+      <View style={styles.searchWrap}>
+        <View style={[
+          styles.searchBox,
+          { backgroundColor: theme.surface, borderColor: isSearchMode ? theme.accent + '60' : theme.border },
+        ]}>
+          <Ionicons name="search" size={16} color={isSearchMode ? theme.accent : theme.textMuted} />
           <TextInput
             ref={searchRef}
             style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Search blueprints, categories, tags..."
+            placeholder="Search blueprints, categories, tags…"
             placeholderTextColor={theme.textMuted}
             value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={handleSearchFocus}
+            onChangeText={handleSearchChange}
             returnKeyType="search"
             data-testid="search-input"
           />
-          {(isSearchMode || searchQuery !== '') && (
+          {searchQuery !== '' && (
             <TouchableOpacity onPress={handleSearchClear} data-testid="search-clear-btn">
-              <Ionicons name="close-circle" size={18} color="#4A4A4A" />
+              <Ionicons name="close-circle" size={18} color={theme.textMuted} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Filter panel */}
+      {/* ── Category tab pills ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsContent}
+        style={styles.tabsRow}
+      >
+        {CATEGORY_TABS.map(tab => {
+          const active = activeCategory === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.tab,
+                {
+                  backgroundColor: active ? theme.accent : theme.surface,
+                  borderColor: active ? theme.accent : theme.border,
+                },
+              ]}
+              onPress={() => handleCategoryTab(tab.key)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={tab.icon as any} size={12} color={active ? '#000' : theme.textMuted} />
+              <Text style={[styles.tabText, { color: active ? '#000' : theme.textSub }]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* ── Difficulty filter strip ── */}
       {showFilters && (
-        <View style={[styles.filterPanel, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }, elevatedCard]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Category</Text>
-              <View style={styles.filterChips}>
-                {CATEGORIES.map(c => (
-                  <TouchableOpacity
-                    key={c}
-                    style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedCategory === c && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
-                    onPress={() => setSelectedCategory(c)}
-                    data-testid={`category-filter-${c}`}
-                  >
-                    <Text style={[styles.filterChipText, { color: theme.textSub }, selectedCategory === c && [styles.filterChipTextActive, { color: theme.accent }]]}>
-                      {c === 'All' ? 'All' : c.split(' & ')[0]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-          <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Difficulty</Text>
-            <View style={styles.filterChips}>
-              {['all', 'easy', 'medium', 'hard'].map(d => (
+        <View style={[styles.filterStrip, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Difficulty</Text>
+          <View style={styles.filterChips}>
+            {['all', 'beginner', 'intermediate', 'advanced'].map(d => {
+              const active = selectedDifficulty === d;
+              return (
                 <TouchableOpacity
                   key={d}
-                  style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedDifficulty === d && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
-                  onPress={() => setSelectedDifficulty(d)}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: active ? theme.accent + '22' : theme.surfaceAlt,
+                      borderColor: active ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedDiff(d);
+                    if (isSearchMode || searchQuery) triggerSearch(searchQuery, activeCategory, d);
+                  }}
                 >
-                  <Text style={[styles.filterChipText, { color: theme.textSub }, selectedDifficulty === d && [styles.filterChipTextActive, { color: theme.accent }]]}>
+                  <Text style={[styles.filterChipText, { color: active ? theme.accent : theme.textSub }]}>
                     {d === 'all' ? 'Any' : d}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={[styles.filterLabel, { marginLeft: 12 }]}>Cost</Text>
-            <View style={styles.filterChips}>
-              {['all', 'low', 'medium', 'high'].map(c => (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedCost === c && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
-                  onPress={() => setSelectedCost(c)}
-                >
-                  <Text style={[styles.filterChipText, { color: theme.textSub }, selectedCost === c && [styles.filterChipTextActive, { color: theme.accent }]]}>
-                    {c === 'all' ? 'Any' : c}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              );
+            })}
           </View>
         </View>
       )}
 
-      {/* Main content */}
-      {isSearchMode ? (
-        /* Search / Filter Results */
+      {/* ── Blueprint list ── */}
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading blueprints…</Text>
+        </View>
+      ) : (
         <FlatList
-          data={searchResults}
-          renderItem={renderSearchCard}
+          data={displayData}
+          renderItem={renderCard}
           keyExtractor={i => i.id}
-          contentContainerStyle={styles.searchList}
+          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={[styles.resultsLabel, { color: theme.textSub }] }>
-              {isSearching ? 'Searching...' : `${searchResults.length} results`}
-              {selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}
-            </Text>
+            <View style={styles.listHeader}>
+              <Text style={[styles.resultsCount, { color: theme.textMuted }]}>
+                {isSearching
+                  ? 'Searching…'
+                  : `${displayData.length} ${isSearchMode ? 'results' : 'blueprints'}`}
+                {activeCategory !== 'All' && !isSearchMode ? ` · ${activeCategory}` : ''}
+              </Text>
+            </View>
           }
           ListEmptyComponent={
             isSearching ? (
-              <ActivityIndicator color="#00D95F" style={{ marginTop: 40 }} />
+              <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
             ) : (
               <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={48} color="#2A2C35" />
-                <Text style={[styles.emptyText, { color: theme.text }]}>No blueprints found</Text>
-                <Text style={[styles.emptySubtext, { color: theme.textSub }]}>Try adjusting your filters</Text>
+                <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
+                  <Ionicons name="compass-outline" size={38} color={theme.textMuted} />
+                </View>
+                <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                  {isSearchMode ? 'No results found' : 'No blueprints yet'}
+                </Text>
+                <Text style={[styles.emptySub, { color: theme.textMuted }]}>
+                  {isSearchMode
+                    ? 'Try a different keyword or clear your filters'
+                    : 'New blueprints are added daily — check back soon'}
+                </Text>
+                {isSearchMode && (
+                  <TouchableOpacity
+                    style={[styles.emptyBtn, { backgroundColor: theme.accentLight }]}
+                    onPress={handleSearchClear}
+                  >
+                    <Text style={[styles.emptyBtnText, { color: theme.accent }]}>Clear Search</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )
           }
         />
-      ) : (
-        /* Discovery Feed — carousels */
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Daily Blueprint Widget */}
-          {user && !user.is_guest && (
-            <View style={styles.widgetSection}>
-              <View style={styles.widgetHeader}>
-                <Ionicons name="calendar" size={13} color="#00D95F" />
-                <Text style={styles.widgetHeaderText}>TODAY'S PICK</Text>
-              </View>
-              <DailyBlueprintWidget userId={user.id} profile={user.profile} />
-            </View>
-          )}
-
-          {/* Guest CTA */}
-          {(!user || user.is_guest) && (
-            <TouchableOpacity
-              style={styles.guestBanner}
-              onPress={() => router.push('/onboarding/auth')}
-              data-testid="guest-create-account-banner"
-            >
-              <Ionicons name="flash" size={16} color="#00D95F" />
-              <Text style={styles.guestBannerText}>Create a free account to see your Match Scores</Text>
-              <Ionicons name="chevron-forward" size={14} color="#00D95F" />
-            </TouchableOpacity>
-          )}
-
-          {/* Carousels */}
-          {isLoadingCarousels ? (
-            <View style={styles.loadingCarousels}>
-              <ActivityIndicator color="#00D95F" />
-            </View>
-          ) : (
-            carousels.map(carousel => (
-              <CategoryCarousel key={carousel.id} carousel={carousel} />
-            ))
-          )}
-
-          <View style={{ height: 32 }} />
-        </ScrollView>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
+  container: { flex: 1 },
+
+  // Header
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 20, paddingTop: 58, paddingBottom: 14,
+    paddingHorizontal: 20, paddingTop: 58, paddingBottom: 12,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  titleAccentDot: { width: 10, height: 10, borderRadius: 6, marginTop: 2 },
-  title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#4A4A4A' },
-  filterIconBtn: {
-    width: 40, height: 40, borderRadius: 10,
-    backgroundColor: '#1A1C23', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#2A2C35', marginTop: 4,
+  title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, marginTop: 2 },
+  filterBtn: {
+    width: 40, height: 40, borderRadius: 10, borderWidth: 1,
+    justifyContent: 'center', alignItems: 'center', marginTop: 6,
   },
-  filterIconBtnActive: { borderColor: '#00D95F', backgroundColor: '#00D95F10' },
-  filterBadge: {
-    position: 'absolute', top: -4, right: -4,
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: '#00D95F', justifyContent: 'center', alignItems: 'center',
-  },
-  filterBadgeText: { fontSize: 9, color: '#000', fontWeight: '800' },
-  searchRow: { paddingHorizontal: 20, marginBottom: 16 },
+
+  // Search
+  searchWrap: { paddingHorizontal: 20, marginBottom: 14 },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#1A1C23', borderRadius: 12,
-    paddingHorizontal: 14, borderWidth: 1, borderColor: '#2A2C35',
+    borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, height: 46,
   },
-  searchBoxActive: { borderColor: '#00D95F30' },
-  searchInput: { flex: 1, height: 44, color: '#FFFFFF', fontSize: 14 },
-  filterPanel: {
-    marginHorizontal: 20, marginBottom: 12,
-    backgroundColor: '#0D0E14', borderRadius: 14,
-    borderWidth: 1, borderColor: '#2A2C35', padding: 14,
+  searchInput: { flex: 1, fontSize: 14 },
+
+  // Category tabs
+  tabsRow:    { marginBottom: 14, flexGrow: 0 },
+  tabsContent: { paddingHorizontal: 20, gap: 8 },
+  tab: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
   },
-  filterScroll: { paddingBottom: 8 },
-  filterGroup: { marginBottom: 4 },
-  filterRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  filterLabel: {
-    fontSize: 10, color: '#4A4A4A', fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
+  tabText: { fontSize: 12, fontWeight: '600' },
+
+  // Difficulty filter
+  filterStrip: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+    marginHorizontal: 20, marginBottom: 12, padding: 12, borderRadius: 12, borderWidth: 1,
   },
-  filterChips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  filterChip: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-    backgroundColor: '#1A1C23', borderWidth: 1, borderColor: '#2A2C35',
+  filterLabel:    { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  filterChips:    { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  filterChip:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  filterChipText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+
+  // List
+  list:         { paddingHorizontal: 16, paddingBottom: 32 },
+  listHeader:   { marginBottom: 6, marginTop: 2 },
+  resultsCount: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  // Card
+  card: {
+    borderRadius: 18, padding: 16, marginBottom: 10, borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  filterChipActive: { backgroundColor: '#00D95F12', borderColor: '#00D95F' },
-  filterChipText: { fontSize: 11, color: '#8E8E8E', fontWeight: '500' },
-  filterChipTextActive: { color: '#00D95F', fontWeight: '600' },
-  searchList: { paddingHorizontal: 20, paddingBottom: 32 },
-  resultsLabel: { fontSize: 12, color: '#4A4A4A', marginBottom: 12, marginTop: 4 },
-  searchCard: {
-    backgroundColor: '#111827', borderRadius: 18, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#1F2A44',
-  },
-  searchCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  searchCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  catBadge: { backgroundColor: '#00D95F12', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 6 },
-  catBadgeText: { fontSize: 10, color: '#00D95F', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  cardTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  catBadge:  { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  catText:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   matchPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
-  matchDot: { width: 6, height: 6, borderRadius: 3 },
+  matchDot:  { width: 6, height: 6, borderRadius: 3 },
   matchScore: { fontSize: 11, fontWeight: '700' },
-  searchCardTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 5 },
-  searchCardDesc: { fontSize: 12, color: '#8E8E8E', lineHeight: 17, marginBottom: 10 },
-  searchCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pillsRow: { flexDirection: 'row', gap: 6, flex: 1 },
-  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  pillText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
-  earnings: { fontSize: 18, fontWeight: '800', color: '#00D95F', textShadowColor: 'rgba(0, 217, 95, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
-  widgetSection: { paddingTop: 4 },
-  widgetHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 20, marginBottom: 8,
+  cardTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 5, lineHeight: 22 },
+  cardDesc:   { fontSize: 12, lineHeight: 17 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  pillsRow:   { flexDirection: 'row', gap: 6, flex: 1 },
+  pill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  pillText:   { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
+  earnings: {
+    fontSize: 18, fontWeight: '800', color: '#00D95F',
+    textShadowColor: 'rgba(0, 217, 95, 0.25)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
-  widgetHeaderText: { fontSize: 10, color: '#00D95F', fontWeight: '800', letterSpacing: 1.5 },
-  guestBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: 20, marginBottom: 20, padding: 14,
-    backgroundColor: '#00D95F0A', borderRadius: 12, borderWidth: 1, borderColor: '#00D95F30',
+
+  // Loading / Empty
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { fontSize: 13 },
+  emptyState:  { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
+  emptyIconWrap: {
+    width: 80, height: 80, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 18,
   },
-  guestBannerText: { flex: 1, fontSize: 13, color: '#00D95F', fontWeight: '600' },
-  loadingCarousels: { paddingTop: 60, alignItems: 'center' },
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 15, color: '#8E8E8E', fontWeight: '600', marginTop: 14 },
-  emptySubtext: { fontSize: 12, color: '#4A4A4A', marginTop: 4 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
+  emptySub:   { fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 22 },
+  emptyBtn:   { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 10 },
+  emptyBtnText: { fontSize: 13, fontWeight: '700' },
 });
