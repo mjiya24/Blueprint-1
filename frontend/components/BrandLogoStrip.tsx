@@ -126,15 +126,26 @@ const inferPrimaryBrand = (item: any): BrandToken => {
 };
 
 // ─────────────────────────────────────────────
-// Single badge — owns its own error state
+// Build ordered list of logo sources per brand
+// ─────────────────────────────────────────────
+const buildSources = (domain: string): string[] => [
+  `https://logo.clearbit.com/${domain}`,
+  `https://cdn.brandfetch.io/${domain}/w/200/h/200/logo`,
+  `https://unavatar.io/${domain}`,
+  `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+];
+
+// ─────────────────────────────────────────────
+// Single badge — cycles through logo sources on error
 // ─────────────────────────────────────────────
 function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) {
-  const [imgError, setImgError] = useState(false);
+  const sources = brand.domain ? buildSources(brand.domain) : [];
+  const [srcIdx, setSrcIdx] = useState(0);
 
-  const clearbitUri = brand.domain ? `https://logo.clearbit.com/${brand.domain}` : null;
-  const showRemoteLogo = !!clearbitUri && !imgError;
+  const currentUri = sources[srcIdx] ?? null;
+  const showRemoteLogo = !!currentUri;
   const isCategory = brand.kind === 'category';
-
+  const handleImgError = () => setSrcIdx((i) => i + 1);
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   };
@@ -157,14 +168,14 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
           },
         ]}
       >
-        {/* ── Logo shell — brand-colored bg so white logos pop ── */}
+        {/* ── Logo shell — brand-colored bg so logos pop ── */}
         <View style={[styles.logoShell, showRemoteLogo ? { backgroundColor: brand.bg } : {}]}>
           {showRemoteLogo ? (
             <Image
-              source={{ uri: clearbitUri! }}
+              source={{ uri: currentUri! }}
               style={styles.logoImage}
               resizeMode="contain"
-              onError={() => setImgError(true)}
+              onError={handleImgError}
             />
           ) : isCategory ? (
             <View style={[styles.categoryIconWrap, { backgroundColor: brand.bg + '22' }]}>
@@ -215,10 +226,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    gap: 7,
     // floating shadow
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -226,36 +237,35 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logoShell: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    // subtle floating shadow
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
   logoImage: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
   },
   categoryIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoStub: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
