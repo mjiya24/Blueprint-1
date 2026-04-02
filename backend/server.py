@@ -1963,6 +1963,8 @@ REAL_LIFE_SEED_BLUEPRINTS.extend([
     {"title": "Biotech Lab Assistant Hiring Sprint", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,500/month", "horizon": "fast", "tags": ["college", "internship", "specialist", "f1-safe"]},
     {"title": "ERP Functional Consultant Track", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,500-$14,000/month", "horizon": "long", "tags": ["specialist", "career-switch", "professional"]},
     {"title": "Digital Marketing Specialist Rotation", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,500/month", "horizon": "medium", "tags": ["specialist", "new-grad", "professional"]},
+    {"title": "Vending Machine Business Route", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "high", "potential_earnings": "$500-$2,000/month", "horizon": "medium", "tags": ["passive", "local", "unverified"]},
+    {"title": "Casino Games Testing & Compliance", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$800-$3,500/month", "horizon": "fast", "tags": ["qa", "specialist", "unverified"]},
 ])
 
 
@@ -2029,6 +2031,11 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
         elif "career-switch" in tags:
             career_stage = "career-switch"
 
+        # Confidence score: unverified entries start at 0, others default based on verification readiness
+        confidence_score = 0
+        if "unverified" not in tags:
+            confidence_score = 45  # base confidence for source-linked entries
+
         payout_speed = "biweekly"
         if horizon == "fast":
             payout_speed = "weekly"
@@ -2076,6 +2083,7 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
             "verification_status": "source-linked",
             "verification_sources": verification_sources,
             "verification_last_checked": "2026-04-02",
+            "confidence_score": confidence_score,
         })
     return generated
 

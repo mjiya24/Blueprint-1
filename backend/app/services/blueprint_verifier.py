@@ -90,19 +90,21 @@ async def _fetch_bls(series_id: str, api_key: Optional[str] = None) -> dict:
     return {}
 
 
-async def _verify_one(db, doc_id: str, title: str) -> str:
+async def _verify_one(db, doc_id: str, title: str) -> dict:
     """
     Verify a single blueprint document.
     Escalates verification_status to 'bls-verified' when BLS data is found.
-    Returns the new status string.
+    Returns a dict with new status and confidence score (0-100).
     """
     series_id = _match_series(title)
     new_status = "source-linked"
+    confidence = 45  # base confidence for source-linked
 
     if series_id:
         bls = await _fetch_bls(series_id)
         if bls.get("value"):
             new_status = "bls-verified"
+            confidence = 85  # high confidence when BLS data found
 
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     await db["ideas"].update_one(
@@ -110,9 +112,10 @@ async def _verify_one(db, doc_id: str, title: str) -> str:
         {"$set": {
             "verification_status": new_status,
             "verification_last_checked": now_str,
+            "confidence_score": confidence,
         }},
     )
-    return new_status
+    return {"status": new_status, "confidence": confidence}
 
 
 async def verify_all_once(db) -> dict:
@@ -120,18 +123,19 @@ async def verify_all_once(db) -> dict:
     Single verification pass over every blueprint in the DB.
     Returns a summary dict suitable for the /api/verify/refresh response.
     """
-    logger.info("[Verifier] Starting single verification pass…")
+    logger.info("[Verifier] Starting nightly check…")
     counts: dict[str, int] = {}
     processed = 0
 
     cursor = db["ideas"].find({}, {"id": 1, "title": 1})
     async for doc in cursor:
-        status = await _verify_one(db, doc.get("id", ""), doc.get("title", ""))
+        result = await _verify_one(db, doc.get("id", ""), doc.get("title", ""))
+        status = result["status"]
         counts[status] = counts.get(status, 0) + 1
         processed += 1
         await asyncio.sleep(0.08)   # stay well under BLS rate limit (500 req/day)
 
-    logger.info(f"[Verifier] Pass complete — {processed} blueprints, results: {counts}")
+    logger.info(f"[Verifier] Nightly check complete. {processed} Blueprints updated. bls-verified: {counts.get('bls-verified', 0)}, source-linked: {counts.get('source-linked', 0)}")
     return {"processed": processed, "status_counts": counts}
 
 

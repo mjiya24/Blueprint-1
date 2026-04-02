@@ -43,18 +43,17 @@ const CATEGORY_TABS = [
 
 const PAY_FILTERS = [
   { key: 'all', label: 'Any Pay' },
-  { key: 'under-2k', label: '<$2k/mo' },
-  { key: '2k-5k', label: '$2k-$5k' },
-  { key: '5k-10k', label: '$5k-$10k' },
-  { key: '10k+', label: '$10k+' },
+  { key: 'under-250', label: 'Under $250' },
+  { key: '250-1500', label: '$250-$1500' },
+  { key: '1500-5000', label: '$1500-$5000' },
+  { key: '5000+', label: '$5000+' },
 ];
 
 const PAYOUT_FILTERS = [
   { key: 'all', label: 'Any Speed' },
-  { key: 'same-day', label: 'Same Day' },
+  { key: '48h', label: '48 hours' },
   { key: 'weekly', label: 'Weekly' },
-  { key: 'biweekly', label: 'Biweekly' },
-  { key: 'monthly', label: 'Monthly+' },
+  { key: 'monthly', label: 'Monthly' },
 ];
 
 export default function DiscoverScreen() {
@@ -137,17 +136,18 @@ export default function DiscoverScreen() {
   const inferPayoutSpeed = (bp: any): string => {
     if (bp?.payout_speed) return String(bp.payout_speed).toLowerCase();
     const tags = Array.isArray(bp?.tags) ? bp.tags.join(' ').toLowerCase() : '';
-    if (tags.includes('quick-win') || tags.includes('quick-cash') || String(bp?.time_horizon || '').toLowerCase() === 'fast') return 'weekly';
-    if (String(bp?.time_horizon || '').toLowerCase() === 'long') return 'monthly';
-    return 'biweekly';
+    const horizon = String(bp?.time_horizon || '').toLowerCase();
+    if (tags.includes('quick-win') || tags.includes('quick-cash') || horizon === 'fast') return '48h';
+    if (horizon === 'long') return 'monthly';
+    return 'weekly';
   };
 
   const inferPayBand = (bp: any): string => {
     const monthly = parseMonthlyEarnings(bp?.potential_earnings);
-    if (monthly < 2000) return 'under-2k';
-    if (monthly < 5000) return '2k-5k';
-    if (monthly < 10000) return '5k-10k';
-    return '10k+';
+    if (monthly < 250) return 'under-250';
+    if (monthly < 1500) return '250-1500';
+    if (monthly < 5000) return '1500-5000';
+    return '5000+';
   };
 
   const matchesPayBand = (bp: any, payBand: string) => payBand === 'all' || inferPayBand(bp) === payBand;
@@ -597,17 +597,29 @@ export default function DiscoverScreen() {
               <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
             ) : (
               <View style={styles.emptyState}>
-                <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
-                  <Ionicons name="compass-outline" size={38} color={theme.textMuted} />
-                </View>
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  {isSearchMode ? 'No results found' : 'No blueprints yet'}
-                </Text>
-                <Text style={[styles.emptySub, { color: theme.textMuted }]}>
-                  {isSearchMode
-                    ? 'Try a different keyword or clear your filters'
-                    : 'New blueprints are added daily — check back soon'}
-                </Text>
+                {verifiedOnly && displayData.length === 0 && !isSearchMode ? (
+                  <>
+                    <View style={[styles.emptyIconWrap, { backgroundColor: theme.accentLight }]}>
+                      <Ionicons name="layers-outline" size={40} color={theme.accent} />
+                    </View>
+                    <Text style={[styles.emptyTitle, { color: theme.text }]}>Curation in Progress</Text>
+                    <Text style={[styles.emptySub, { color: theme.textMuted }]}>We're verifying more blueprints daily. Check back soon for verified-only opportunities.</Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
+                      <Ionicons name="compass-outline" size={38} color={theme.textMuted} />
+                    </View>
+                    <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                      {isSearchMode ? 'No results found' : 'No blueprints yet'}
+                    </Text>
+                    <Text style={[styles.emptySub, { color: theme.textMuted }]}>
+                      {isSearchMode
+                        ? 'Try a different keyword or clear your filters'
+                        : 'New blueprints are added daily — check back soon'}
+                    </Text>
+                  </>
+                )}
                 {isSearchMode && (
                   <TouchableOpacity
                     style={[styles.emptyBtn, { backgroundColor: theme.accentLight }]}
@@ -640,6 +652,23 @@ export default function DiscoverScreen() {
             <Text style={[styles.modalBpTitle, { color: theme.textSub }]} numberOfLines={2}>
               {verifyModalBp?.title}
             </Text>
+            {typeof verifyModalBp?.confidence_score === 'number' && (
+              <View style={styles.confidenceRow}>
+                <Text style={[styles.confidenceLabel, { color: theme.textMuted }]}>Confidence Score</Text>
+                <View style={[
+                  styles.confidenceBadge,
+                  {
+                    backgroundColor: verifyModalBp.confidence_score >= 80 ? 'rgba(0,217,95,0.15)' : verifyModalBp.confidence_score >= 45 ? 'rgba(245,158,11,0.15)' : 'rgba(255,107,107,0.15)',
+                    borderColor: verifyModalBp.confidence_score >= 80 ? '#00D95F' : verifyModalBp.confidence_score >= 45 ? '#F59E0B' : '#FF6B6B',
+                  },
+                ]}>
+                  <Text style={[
+                    styles.confidenceScore,
+                    { color: verifyModalBp.confidence_score >= 80 ? '#00D95F' : verifyModalBp.confidence_score >= 45 ? '#F59E0B' : '#FF6B6B' },
+                  ]}>{verifyModalBp.confidence_score}%</Text>
+                </View>
+              </View>
+            )}
             <View style={[styles.modalDivider, { backgroundColor: theme.border }]} />
             {(verifyModalBp?.verification_sources || []).map((src: string, i: number) => (
               <View key={i} style={styles.modalSourceRow}>
@@ -778,7 +807,11 @@ const styles = StyleSheet.create({
   },
   modalHandle:      { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalTitle:       { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  modalBpTitle:     { fontSize: 13, lineHeight: 18, marginBottom: 14 },
+  modalBpTitle:     { fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  confidenceRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 },
+  confidenceLabel:  { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  confidenceBadge:  { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, minWidth: 70, alignItems: 'center' },
+  confidenceScore:  { fontSize: 14, fontWeight: '800' },
   modalDivider:     { height: 1, marginBottom: 12 },
   modalSourceRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 9 },
   modalSourceText:  { fontSize: 13, flex: 1, lineHeight: 19 },
