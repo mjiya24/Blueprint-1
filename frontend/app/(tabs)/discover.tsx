@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
+import * as Haptics from 'expo-haptics';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -132,6 +133,7 @@ export default function DiscoverScreen() {
 
   const handleCategoryTab = (key: string) => {
     setActiveCategory(key);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     // If in search mode, re-run search with new category
     if (isSearchMode && searchQuery) {
       triggerSearch(searchQuery, key, selectedDifficulty);
@@ -211,7 +213,7 @@ export default function DiscoverScreen() {
         <View>
           <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {isLoading ? 'Loading…' : `${blueprints.length > 0 ? blueprints.length + '+' : '99+'} income blueprints`}
+            {isLoading ? 'Loading…' : '99+ curated income blueprints'}
           </Text>
         </View>
         <TouchableOpacity
@@ -273,7 +275,7 @@ export default function DiscoverScreen() {
               onPress={() => handleCategoryTab(tab.key)}
               activeOpacity={0.7}
             >
-              <Ionicons name={tab.icon as any} size={12} color={active ? '#000' : theme.textMuted} />
+              <Ionicons name={tab.icon as any} size={14} color={active ? '#000' : theme.textMuted} />
               <Text style={[styles.tabText, { color: active ? '#000' : theme.textSub }]}>{tab.label}</Text>
             </TouchableOpacity>
           );
@@ -393,12 +395,12 @@ const styles = StyleSheet.create({
 
   // Category tabs
   tabsRow:    { marginBottom: 14, flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 20, gap: 8 },
   tab: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 22, borderWidth: 1,
   },
-  tabText: { fontSize: 12, fontWeight: '600' },
+  tabText: { fontSize: 13, fontWeight: '700' },
+  tabsContent: { paddingHorizontal: 20, gap: 10 },
 
   // Difficulty filter
   filterStrip: {
@@ -429,12 +431,13 @@ const styles = StyleSheet.create({
   matchScore: { fontSize: 11, fontWeight: '700' },
   cardTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 5, lineHeight: 22 },
   cardDesc:   { fontSize: 12, lineHeight: 17 },
+    cardDesc:   { fontSize: 12, lineHeight: 17, marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   pillsRow:   { flexDirection: 'row', gap: 6, flex: 1 },
   pill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   pillText:   { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   earnings: {
-    fontSize: 18, fontWeight: '800', color: '#00D95F',
+    fontSize: 22, fontWeight: '800', color: '#00D95F',
     textShadowColor: 'rgba(0, 217, 95, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,

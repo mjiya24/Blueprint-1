@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
@@ -80,7 +80,8 @@ const CATEGORY_MATCHERS: BrandToken[] = [
   { key: 'delivery',         label: 'Delivery',        short: 'DL', bg: '#0F6CBD', fg: '#FFF', kind: 'category', iconName: 'truck-fast',          aliases: ['delivery', 'courier', 'food delivery', 'grocery delivery', 'same-day delivery'] },
   { key: 'social-media',     label: 'Social Media',    short: 'SM', bg: '#7C3AED', fg: '#FFF', kind: 'category', iconName: 'share-nodes',          aliases: ['social media', 'tiktok', 'youtube', 'content creator'] },
   { key: 'ecommerce',        label: 'E-commerce',      short: 'EC', bg: '#F59E0B', fg: '#111', kind: 'category', iconName: 'bag-shopping',         aliases: ['e-commerce', 'ecommerce', 'reselling', 'dropshipping'] },
-  { key: 'pets',             label: 'Pet Care',        short: 'PT', bg: '#10B981', fg: '#FFF', kind: 'category', iconName: 'paw',                  aliases: ['pet', 'dog', 'cat', 'dog walking', 'pet sitting'] },
+  { key: 'domain-assets',    label: 'Digital Assets',  short: 'DA', bg: '#F59E0B', fg: '#111', kind: 'category', iconName: 'globe',                 aliases: ['domain name', 'domain flip', 'domain invest', 'digital asset', 'expired domain', 'afternic', 'flippa', 'namecheap', 'sedo', 'brandable'] },
+  { key: 'pets',             label: 'Pet Care',        short: 'PT', bg: '#10B981', fg: '#FFF', kind: 'category', iconName: 'paw',                  aliases: ['pet care', 'dog walking', 'dog sitting', 'cat sitting', 'for pets', 'pet sitting', 'rover.com', 'wag!'] },
   { key: 'local-service',    label: 'Service',         short: 'SV', bg: '#10B981', fg: '#FFF', kind: 'category', iconName: 'screwdriver-wrench',   aliases: ['service business', 'local service', 'cleaning', 'handyman', 'pressure washing'] },
   { key: 'marketplace',      label: 'Marketplace',     short: 'MK', bg: '#EC4899', fg: '#FFF', kind: 'category', iconName: 'store',                aliases: ['marketplace', 'resale', 'flip items'] },
   { key: 'investing',        label: 'Investing',       short: 'IV', bg: '#16A34A', fg: '#FFF', kind: 'category', iconName: 'chart-pie',            aliases: ['investing', 'dividend', 'stocks'] },
@@ -150,6 +151,26 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   };
 
+  const [imageLoaded, setImageLoaded] = useState(false);
+  useEffect(() => { setImageLoaded(false); }, [srcIdx]);
+
+  const handleImgLoad = (e: any) => {
+    const src = e?.nativeEvent?.source;
+    if (src?.width > 1 && src?.height > 1) setImageLoaded(true);
+    else handleImgError();
+  };
+
+  // Inline stub for reuse
+  const FallbackContent = () => isCategory ? (
+    <View style={[styles.categoryIconWrap, { backgroundColor: brand.bg + '22' }]}>
+      <FontAwesome6 name={brand.iconName as any} size={17} color={brand.bg} />
+    </View>
+  ) : (
+    <View style={[styles.logoStub, { backgroundColor: brand.bg }]}>
+      <Text style={[styles.logoStubText, { color: brand.fg }]}>{brand.short}</Text>
+    </View>
+  );
+
   return (
     <Pressable
       onPress={handlePress}
@@ -169,22 +190,24 @@ function SingleBadge({ brand, theme }: { brand: BrandToken; theme: ThemeLike }) 
         ]}
       >
         {/* ── Logo shell — brand-colored bg so logos pop ── */}
-        <View style={[styles.logoShell, showRemoteLogo ? { backgroundColor: brand.bg } : {}]}>
-          {showRemoteLogo ? (
+        {/* ── Logo shell — glassmorphism when no logo; brand-bg when logo confirmed loaded ── */}
+        <View style={[
+          styles.logoShell,
+          (showRemoteLogo && imageLoaded) ? { backgroundColor: brand.bg + 'D9' } : {},
+        ]}>
+          {/* Fallback always behind (absolute) — shows until image is confirmed valid */}
+          <View style={styles.stubAbsolute}>
+            <FallbackContent />
+          </View>
+          {/* Image loads silently on top; fades in only when confirmed valid+loaded */}
+          {showRemoteLogo && (
             <Image
               source={{ uri: currentUri! }}
-              style={styles.logoImage}
+              style={[styles.logoImage, { opacity: imageLoaded ? 1 : 0 }]}
               resizeMode="contain"
               onError={handleImgError}
+              onLoad={handleImgLoad}
             />
-          ) : isCategory ? (
-            <View style={[styles.categoryIconWrap, { backgroundColor: brand.bg + '22' }]}>
-              <FontAwesome6 name={brand.iconName as any} size={17} color={brand.bg} />
-            </View>
-          ) : (
-            <View style={[styles.logoStub, { backgroundColor: brand.bg }]}>
-              <Text style={[styles.logoStubText, { color: brand.fg }]}>{brand.short}</Text>
-            </View>
           )}
         </View>
 
@@ -240,9 +263,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -254,6 +277,12 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 28,
     height: 28,
+  },
+  stubAbsolute: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryIconWrap: {
     width: 36,
