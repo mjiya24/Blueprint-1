@@ -40,11 +40,22 @@ export default function HomeScreen() {
   };
   const [user, setUser] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
+  const [weeklyBlueprint, setWeeklyBlueprint] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
+
+  const pickWeeklyBlueprint = (pool: any[], seed: string = 'guest') => {
+    if (!pool || pool.length === 0) return null;
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const weekNumber = Math.floor((now.getTime() - yearStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const seedValue = seed.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    const idx = (weekNumber + seedValue) % pool.length;
+    return pool[idx];
+  };
 
   const loadData = async () => {
     try {
@@ -53,14 +64,18 @@ export default function HomeScreen() {
         const u = JSON.parse(userData);
         setUser(u);
         if (u.is_guest) {
-          const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 6 } });
-          setIdeas((res.data.ideas || []).slice(0, 6));
+          const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 150 } });
+          const allIdeas = res.data.ideas || [];
+          setIdeas(allIdeas.slice(0, 6));
+          setWeeklyBlueprint(pickWeeklyBlueprint(allIdeas, 'guest'));
         } else {
           const [ideasRes, streakRes] = await Promise.all([
             axios.get(`${API_URL}/api/ideas/personalized/${u.id}`),
             axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`).catch(() => ({ data: { streak_current: 0 } })),
           ]);
-          setIdeas(ideasRes.data.slice(0, 6));
+          const personalized = ideasRes.data || [];
+          setIdeas(personalized.slice(0, 6));
+          setWeeklyBlueprint(pickWeeklyBlueprint(personalized, u.id || 'user'));
           setStreak(streakRes.data.streak_current || 0);
         }
       }
@@ -163,6 +178,33 @@ export default function HomeScreen() {
           userState={user?.profile?.state || ''}
           userId={user?.id || ''}
         />
+
+        {/* Blueprint of the Week */}
+        {weeklyBlueprint && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Blueprint of the Week</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/discover')}>
+                <Text style={[styles.seeAll, { color: theme.accent }]}>Browse</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.weeklyCard, { backgroundColor: theme.surface, borderColor: theme.accent + '40' }, elevatedCard]}
+              onPress={() => router.push({ pathname: '/idea-detail', params: { id: weeklyBlueprint.id } })}
+              activeOpacity={0.78}
+            >
+              <View style={styles.weeklyTop}>
+                <View style={styles.weeklyBadge}>
+                  <Text style={styles.weeklyBadgeText}>WEEKLY PICK</Text>
+                </View>
+                <Text style={[styles.weeklyEarnings, { color: theme.accent }]}>{weeklyBlueprint.potential_earnings}</Text>
+              </View>
+              <Text style={[styles.weeklyTitle, { color: theme.text }]}>{weeklyBlueprint.title}</Text>
+              <Text style={[styles.weeklyDesc, { color: theme.textSub }]} numberOfLines={2}>{weeklyBlueprint.description}</Text>
+              <BrandLogoStrip item={weeklyBlueprint} theme={theme} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Stats row */}
         <View style={styles.statsRow}>
@@ -296,6 +338,17 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   seeAll: { fontSize: 13, color: '#00D95F', fontWeight: '600' },
+  weeklyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  weeklyTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  weeklyBadge: { backgroundColor: '#00D95F22', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  weeklyBadgeText: { color: '#00D95F', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
+  weeklyEarnings: { fontSize: 14, fontWeight: '800' },
+  weeklyTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
+  weeklyDesc: { fontSize: 13, lineHeight: 18, marginBottom: 10 },
   ideaCard: { backgroundColor: '#111827', borderRadius: 18, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: '#1F2A44' },
   ideaCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   categoryBadge: { backgroundColor: '#00D95F12', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },

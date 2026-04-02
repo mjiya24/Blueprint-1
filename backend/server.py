@@ -1928,6 +1928,16 @@ REAL_LIFE_SEED_BLUEPRINTS = [
     {"title": "AI Prospect Database Maintenance", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["ai", "data", "b2b"]},
     {"title": "Managed Blog Refresh Service", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$6,000/month", "horizon": "fast", "tags": ["content", "seo", "service"]},
     {"title": "No-Code Internal QA Dashboard", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$9,500/month", "horizon": "medium", "tags": ["dashboard", "no-code", "b2b"]},
+    {"title": "Fieldhouse Coach Assistant (Hiring Boards)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$600-$2,500/month", "horizon": "fast", "tags": ["student", "sports", "fieldhouse", "f1-safe", "internship"]},
+    {"title": "Youth Soccer Refereeing (Campus/Authorized Leagues)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$400-$2,000/month", "horizon": "fast", "tags": ["student", "soccer", "referee", "f1-safe"]},
+    {"title": "Campus Recreation Referee", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$300-$1,500/month", "horizon": "fast", "tags": ["student", "sports", "referee", "f1-safe"]},
+    {"title": "CPT Internship Pipeline Sprint", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,000-$5,000/month", "horizon": "medium", "tags": ["student", "cpt", "internship", "f1-safe"]},
+    {"title": "OPT Internship to Contract Conversion", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["student", "opt", "internship", "f1-safe"]},
+    {"title": "University Lab Research Assistant Outreach", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$500-$2,500/month", "horizon": "fast", "tags": ["student", "research", "campus", "f1-safe"]},
+    {"title": "Fieldhouse Performance Analytics Intern", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,200-$4,500/month", "horizon": "medium", "tags": ["student", "sports", "analytics", "internship", "f1-safe"]},
+    {"title": "Sports Operations Internship (Matchday)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$700-$3,000/month", "horizon": "fast", "tags": ["student", "sports", "operations", "internship", "f1-safe"]},
+    {"title": "Campus Media Production Internship", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,500/month", "horizon": "medium", "tags": ["student", "media", "internship", "f1-safe"]},
+    {"title": "International Student Career Fair Strategy", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,000/month", "horizon": "medium", "tags": ["student", "career", "internship", "f1-safe"]},
 ]
 
 
@@ -1954,6 +1964,15 @@ def _extra_action_steps(horizon: str) -> List[str]:
     ]
 
 
+def _f1_safe_steps() -> List[str]:
+    return [
+        "Confirm work authorization with your DSO before starting",
+        "Target on-campus roles or CPT/OPT-aligned internships",
+        "Keep documentation of authorization, hours, and role scope",
+        "Avoid unauthorized off-campus work and consult your school's international office"
+    ]
+
+
 def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     generated: List[Dict[str, Any]] = []
     for idx, row in enumerate(seed_rows, start=1):
@@ -1968,20 +1987,29 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
         if category == "Gig Economy":
             asset_reqs = ["car"]
 
+        tags = row.get("tags", [])
+        is_f1_safe = "f1-safe" in tags
+        description = f"A real-world {horizon}-term income blueprint in {category.lower()} focused on practical execution and reliable cashflow."
+        if is_f1_safe:
+            description = (
+                f"A real-world {horizon}-term blueprint for international students. "
+                "For F-1 students, pursue only authorized paths like on-campus work, CPT, OPT, or approved internships."
+            )
+
         generated.append({
             "id": f"rl-{idx:03d}",
             "title": row["title"],
-            "description": f"A real-world {horizon}-term income blueprint in {category.lower()} focused on practical execution and reliable cashflow.",
+            "description": description,
             "category": category,
             "required_skills": ["Execution", "Consistency", "Communication"],
             "startup_cost": row["startup_cost"],
             "time_needed": "flexible" if horizon == "fast" else "part-time",
             "is_location_based": location_based,
             "location_types": ["online"] if not location_based else ["urban", "suburban"],
-            "action_steps": _extra_action_steps(horizon),
+            "action_steps": _f1_safe_steps() if is_f1_safe else _extra_action_steps(horizon),
             "potential_earnings": row["potential_earnings"],
             "difficulty": row["difficulty"],
-            "tags": row.get("tags", []) + [horizon, "real-life"],
+            "tags": tags + [horizon, "real-life"],
             "environment_fit": ["outdoor", "any"] if location_based else ["home", "office"],
             "social_fit": ["customer-facing"] if category in ["Local & Service", "Agency & B2B", "Gig Economy"] else ["solo"],
             "asset_requirements": asset_reqs,

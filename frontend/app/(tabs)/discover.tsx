@@ -30,12 +30,14 @@ const normalizeBlueprintList = (payload: any): any[] => {
 
 const CATEGORY_TABS = [
   { key: 'All',                  label: 'All' },
+  { key: 'Gig Economy',          label: 'Gig' },
   { key: 'AI & Automation',      label: 'AI' },
   { key: 'Digital & Content',    label: 'Content' },
   { key: 'No-Code & SaaS',       label: 'No-Code' },
   { key: 'Passive & Investment', label: 'Passive' },
   { key: 'Agency & B2B',         label: 'Agency' },
   { key: 'Local & Service',      label: 'Local' },
+  { key: 'Student & Campus',     label: 'Student' },
 ];
 
 export default function DiscoverScreen() {
@@ -85,35 +87,36 @@ export default function DiscoverScreen() {
     }
   };
 
+  const matchesCategory = (bp: any, cat: string) => {
+    if (cat === 'All') return true;
+    const category = String(bp?.category || '');
+    if (category === cat) return true;
+    const catPrefix = cat.split(' & ')[0];
+    return category.startsWith(catPrefix);
+  };
+
+  const matchesDifficulty = (bp: any, diff: string) => {
+    if (diff === 'all') return true;
+    return String(bp?.difficulty || '').toLowerCase() === diff;
+  };
+
   const triggerSearch = async (q: string, cat: string, diff: string) => {
     setIsSearching(true);
     try {
-      const p: any = { limit: 40 };
-      if (q) p.q = q;
-      if (cat && cat !== 'All') p.category = cat;
-      if (diff && diff !== 'all') p.difficulty = diff;
-      if (user && !user.is_guest) p.user_id = user.id;
-
-      const res = await axios.get(`${API_URL}/api/blueprints/search`, { params: p });
-      let results = normalizeBlueprintList(res.data);
-
-      // Client-side fallback if search API returns empty
-      if (results.length === 0) {
-        results = blueprints.filter(bp => {
-          const haystack = `${bp.title} ${bp.description}`.toLowerCase();
-          const matchQ    = !q    || haystack.includes(q.toLowerCase());
-          const matchCat  = cat === 'All' || bp.category === cat;
-          const matchDiff = diff === 'all' || bp.difficulty?.toLowerCase() === diff;
-          return matchQ && matchCat && matchDiff;
-        });
-      }
+      const query = q.toLowerCase();
+      const results = blueprints.filter(bp => {
+        const haystack = `${bp.title} ${bp.description} ${bp.category}`.toLowerCase();
+        const matchQ = !query || haystack.includes(query);
+        return matchQ && matchesCategory(bp, cat) && matchesDifficulty(bp, diff);
+      });
       setSearchResults(results);
     } catch {
       // API failed — client-side filter only
       const results = blueprints.filter(bp => {
         const haystack = `${bp.title} ${bp.description}`.toLowerCase();
         return (!q || haystack.includes(q.toLowerCase())) &&
-               (cat === 'All' || bp.category === cat);
+               matchesCategory(bp, cat) &&
+               matchesDifficulty(bp, diff);
       });
       setSearchResults(results);
     } finally {
@@ -146,12 +149,9 @@ export default function DiscoverScreen() {
     searchRef.current?.blur();
   };
 
-  const filteredBlueprints = activeCategory === 'All'
-    ? blueprints
-    : blueprints.filter(bp => {
-        const catPrefix = activeCategory.split(' & ')[0]; // e.g. 'Local' from 'Local & Service'
-        return bp.category?.startsWith(catPrefix);
-      });
+  const filteredBlueprints = blueprints.filter(bp =>
+    matchesCategory(bp, activeCategory) && matchesDifficulty(bp, selectedDifficulty)
+  );
 
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
   const libraryCount = blueprints.length;
@@ -277,7 +277,7 @@ export default function DiscoverScreen() {
                 onPress={() => handleCategoryTab(tab.key)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.tabText, { color: active ? '#000' : theme.text }]}>#{tab.label}</Text>
+                <Text style={[styles.tabText, { color: active ? '#000' : theme.text }]}>{tab.label}</Text>
               </TouchableOpacity>
             );
           })}
