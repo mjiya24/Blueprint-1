@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { ArchitectPaywall } from '../components/ArchitectPaywall';
+import { BrandLogoStrip } from '../components/BrandLogoStrip';
 import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -98,6 +99,7 @@ export default function BlueprintDetailScreen() {
           </View>
           <Text style={[styles.title, { color: theme.text }]}>{blueprint.title}</Text>
           <Text style={[styles.description, { color: theme.textSub }]}>{blueprint.description}</Text>
+          <BrandLogoStrip item={blueprint} theme={theme} />
 
           {/* Local Market Signal — Sprint 5 */}
           {viability && (
@@ -245,12 +247,12 @@ export default function BlueprintDetailScreen() {
                       </View>
                     </View>
                   ) : (
-                    <View style={[styles.stepRow, styles.stepRowArchitect]}>
+                    <View style={[styles.stepRow, styles.stepRowArchitect, { backgroundColor: theme.surface, borderColor: '#00D95F30' }]}>
                       <View style={[styles.stepNumBadge, { backgroundColor: '#00D95F18', borderColor: '#00D95F30' }]}>
                         <Text style={[styles.stepNumText, { color: '#00D95F' }]}>{step.step_number}</Text>
                       </View>
                       <View style={styles.stepContent}>
-                        <Text style={styles.stepText}>{step.text}</Text>
+                        <Text style={[styles.stepText, { color: theme.text }]}>{step.text}</Text>
                         {step.common_wall && (
                           <View style={styles.wallNote}>
                             <Ionicons name="alert-circle-outline" size={12} color="#F59E0B" />

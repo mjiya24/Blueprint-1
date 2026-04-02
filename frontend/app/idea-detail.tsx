@@ -21,6 +21,8 @@ import { RewardedAdGate } from '../components/RewardedAdGate';
 import { useLocalSearchParams } from 'expo-router';
 import { VictoryLapModal } from '../components/VictoryLapModal';
 import { RescueModeModal } from '../components/RescueModeModal';
+import { BrandLogoStrip } from '../components/BrandLogoStrip';
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const HIGH_TICKET_IDS = new Set(['digital-001', 'digital-005', 'passive-002', 'passive-003', 'passive-004']);
@@ -52,6 +54,7 @@ const getMatchColor = (score: number) => score >= 75 ? '#00D95F' : score >= 50 ?
 export default function IdeaDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { theme } = useTheme();
   const [idea, setIdea] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [savedIdea, setSavedIdea] = useState<any>(null);
@@ -229,8 +232,8 @@ export default function IdeaDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
         <ActivityIndicator size="large" color="#00D95F" />
       </View>
     );
@@ -238,7 +241,7 @@ export default function IdeaDetailScreen() {
 
   if (!idea) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg }]}>
         <Text style={{ color: '#8E8E8E' }}>Blueprint not found</Text>
       </View>
     );
@@ -250,28 +253,28 @@ export default function IdeaDetailScreen() {
   const isStarted = !!savedIdea;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
 
       {/* Celebration overlay */}
       <CelebrationAnimation tier={celebrationTier} onDone={() => setCelebrationTier(null)} />
 
       {/* Header */}
       <View style={styles.navBar}>
-        <TouchableOpacity style={styles.navBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={[styles.navBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/home'))}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.navActions}>
           {idea.affiliate_link ? (
-            <TouchableOpacity style={styles.navBtn} onPress={() => Linking.openURL(idea.affiliate_link)}>
-              <Ionicons name="open-outline" size={20} color="#8E8E8E" />
+            <TouchableOpacity style={[styles.navBtn, { backgroundColor: theme.surfaceAlt }]} onPress={() => Linking.openURL(idea.affiliate_link)}>
+              <Ionicons name="open-outline" size={20} color={theme.textMuted} />
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity style={styles.navBtn} onPress={handleSaveToggle}>
+          <TouchableOpacity style={[styles.navBtn, { backgroundColor: theme.surfaceAlt }]} onPress={handleSaveToggle}>
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
               size={22}
-              color={isSaved ? '#00D95F' : '#8E8E8E'}
+              color={isSaved ? '#00D95F' : theme.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -285,7 +288,7 @@ export default function IdeaDetailScreen() {
             <Text style={[styles.matchBannerText, { color: getMatchColor(matchScore) }]}>
               {matchScore}% Match
             </Text>
-            <Text style={styles.matchBannerSub}>based on your profile</Text>
+            <Text style={[styles.matchBannerSub, { color: theme.textSub }]}>based on your profile</Text>
           </View>
         ) : (
           <TouchableOpacity style={styles.guestMatchBanner} onPress={() => router.push('/onboarding/auth')}>
@@ -338,15 +341,18 @@ export default function IdeaDetailScreen() {
 
           {/* Category + Title */}
           <View style={styles.ideaHeader}>
-            <IdeaIcon ideaId={id as string} size={52} />
+            <View style={[styles.ideaIconShell, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
+              <IdeaIcon ideaId={id as string} size={44} />
+            </View>
             <View style={styles.ideaHeaderText}>
               <View style={styles.categoryBadge}>
                 <Text style={styles.categoryText}>{idea.category}</Text>
               </View>
-              <Text style={styles.ideaTitle}>{idea.title}</Text>
+              <Text style={[styles.ideaTitle, { color: theme.text }]}>{idea.title}</Text>
             </View>
           </View>
-          <Text style={styles.ideaDesc}>{idea.description}</Text>
+          <Text style={[styles.ideaDesc, { color: theme.textSub }]}>{idea.description}</Text>
+          <BrandLogoStrip item={idea} theme={theme} />
 
           {/* Meta badges */}
           <View style={styles.metaRow}>
@@ -367,7 +373,7 @@ export default function IdeaDetailScreen() {
           </View>
 
           {/* Earnings card */}
-          <View style={styles.earningsCard}>
+          <View style={[styles.earningsCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View>
               <Text style={styles.earningsLabel}>Earnings Potential</Text>
               <Text style={styles.earningsValue}>{idea.potential_earnings}</Text>
@@ -389,10 +395,10 @@ export default function IdeaDetailScreen() {
 
           {/* Action Steps */}
           <View style={styles.stepsSection}>
-            <Text style={styles.stepsTitle}>
+            <Text style={[styles.stepsTitle, { color: theme.text }]}>
               {isStarted ? 'Your Action Plan' : 'Action Plan'}
             </Text>
-            <Text style={styles.stepsSubtitle}>
+            <Text style={[styles.stepsSubtitle, { color: theme.textSub }]}>
               {isStarted
                 ? `${actionSteps.filter((s: any) => s.completed).length} of ${actionSteps.length} steps completed`
                 : `${idea.action_steps?.length || 0} steps to launch`
@@ -403,7 +409,7 @@ export default function IdeaDetailScreen() {
             {isStarted && actionSteps.map((step: any, idx: number) => (
               <View key={step.step_number}>
                 <TouchableOpacity
-                  style={[styles.stepRow, step.completed && styles.stepRowCompleted]}
+                  style={[styles.stepRow, { backgroundColor: theme.surface, borderColor: theme.border }, step.completed && styles.stepRowCompleted]}
                   onPress={() => handleStepToggle(step.step_number, step.completed)}
                   activeOpacity={0.7}
                 >
@@ -411,8 +417,8 @@ export default function IdeaDetailScreen() {
                     {step.completed && <Ionicons name="checkmark" size={14} color="#000" />}
                   </View>
                   <View style={styles.stepContent}>
-                    <Text style={[styles.stepNum]}>Step {step.step_number}</Text>
-                    <Text style={[styles.stepText, step.completed && styles.stepTextCompleted]}>
+                    <Text style={[styles.stepNum, { color: theme.textMuted }]}>Step {step.step_number}</Text>
+                    <Text style={[styles.stepText, { color: theme.text }, step.completed && styles.stepTextCompleted]}>
                       {step.text}
                     </Text>
                   </View>
@@ -474,18 +480,22 @@ export default function IdeaDetailScreen() {
               return (
                 <View
                   key={idx}
-                  style={[styles.previewStep, isLocked && styles.previewStepLocked]}
+                  style={[
+                    styles.previewStep,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                    isLocked && [styles.previewStepLocked, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }],
+                  ]}
                 >
-                  <View style={styles.previewStepNum}>
-                    <Text style={styles.previewStepNumText}>{idx + 1}</Text>
+                  <View style={[styles.previewStepNum, { backgroundColor: theme.surfaceAlt }]}>
+                    <Text style={[styles.previewStepNumText, { color: theme.textMuted }]}>{idx + 1}</Text>
                   </View>
                   {isLocked ? (
                     <View style={styles.lockedStepContent}>
-                      <Ionicons name="lock-closed" size={16} color="#4A4A4A" />
-                      <Text style={styles.lockedStepText}>Unlock with free account</Text>
+                      <Ionicons name="lock-closed" size={16} color={theme.textMuted} />
+                      <Text style={[styles.lockedStepText, { color: theme.textMuted }]}>Unlock with free account</Text>
                     </View>
                   ) : (
-                    <Text style={styles.previewStepText}>{text}</Text>
+                    <Text style={[styles.previewStepText, { color: theme.text }]}>{text}</Text>
                   )}
                 </View>
               );
@@ -542,7 +552,7 @@ export default function IdeaDetailScreen() {
 
           {/* Architect Feature Section */}
           {!user?.is_guest && isStarted && (
-            <View style={styles.architectSection}>
+            <View style={[styles.architectSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.architectHeader}>
                 <View style={styles.architectBadge}>
                   <Ionicons name="flash" size={13} color="#000" />
@@ -552,7 +562,7 @@ export default function IdeaDetailScreen() {
               {/* Rescue Mode CTA — shown when stuck >72h */}
               {isStuck && (
                 <TouchableOpacity
-                  style={[styles.architectCard, styles.rescueCard]}
+                  style={[styles.architectCard, styles.rescueCard, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
                   onPress={() => setShowRescueModal(true)}
                   data-testid="rescue-mode-btn"
                 >
@@ -560,8 +570,8 @@ export default function IdeaDetailScreen() {
                     <Ionicons name="flash" size={22} color="#00D95F" />
                   </View>
                   <View style={styles.architectCardText}>
-                    <Text style={styles.architectCardTitle}>Quick-Cash Rescue</Text>
-                    <Text style={styles.architectCardDesc}>3 tasks to earn $50-$200 in 48h</Text>
+                    <Text style={[styles.architectCardTitle, { color: theme.text }]}>Quick-Cash Rescue</Text>
+                    <Text style={[styles.architectCardDesc, { color: theme.textSub }]}>3 tasks to earn $50-$200 in 48h</Text>
                   </View>
                   <View style={styles.rescuePulseBadge}>
                     <Text style={styles.rescuePulseText}>STUCK</Text>
@@ -570,7 +580,7 @@ export default function IdeaDetailScreen() {
               )}
               {/* Blueprint Guide CTA */}
               <TouchableOpacity
-                style={styles.architectCard}
+                style={[styles.architectCard, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
                 onPress={() => {
                   if (user?.is_architect) {
                     router.push({ pathname: '/blueprint-guide', params: { idea_id: id, idea_title: idea.title } });
@@ -584,8 +594,8 @@ export default function IdeaDetailScreen() {
                   <Ionicons name="chatbubble-ellipses" size={22} color="#00D95F" />
                 </View>
                 <View style={styles.architectCardText}>
-                  <Text style={styles.architectCardTitle}>Blueprint Guide</Text>
-                  <Text style={styles.architectCardDesc}>Ask your AI accountability coach anything</Text>
+                  <Text style={[styles.architectCardTitle, { color: theme.text }]}>Blueprint Guide</Text>
+                  <Text style={[styles.architectCardDesc, { color: theme.textSub }]}>Ask your AI accountability coach anything</Text>
                 </View>
                 {user?.is_architect
                   ? <Ionicons name="arrow-forward" size={18} color="#00D95F" />
@@ -594,16 +604,16 @@ export default function IdeaDetailScreen() {
               </TouchableOpacity>
               {/* Troubleshooting Matrix CTA */}
               <TouchableOpacity
-                style={styles.architectCard}
-                onPress={() => user?.is_architect ? null : setShowPaywall(true)}
-                data-testid="troubleshoot-matrix-btn"
-              >
-                <View style={[styles.architectCardIcon, { backgroundColor: '#F59E0B18' }]}>
-                  <Ionicons name="construct" size={22} color="#F59E0B" />
-                </View>
-                <View style={styles.architectCardText}>
-                  <Text style={styles.architectCardTitle}>Troubleshooting Matrix</Text>
-                  <Text style={styles.architectCardDesc}>Tap "Stuck?" on any step above to generate workarounds</Text>
+                  style={[styles.architectCard, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
+                  onPress={() => user?.is_architect ? null : setShowPaywall(true)}
+                  data-testid="troubleshoot-matrix-btn"
+                >
+                  <View style={[styles.architectCardIcon, { backgroundColor: '#F59E0B18' }]}>
+                    <Ionicons name="construct" size={22} color="#F59E0B" />
+                  </View>
+                  <View style={styles.architectCardText}>
+                    <Text style={[styles.architectCardTitle, { color: theme.text }]}>Troubleshooting Matrix</Text>
+                    <Text style={[styles.architectCardDesc, { color: theme.textSub }]}>Tap "Stuck?" on any step above to generate workarounds</Text>
                 </View>
                 {user?.is_architect
                   ? <Ionicons name="checkmark-circle" size={18} color="#00D95F" />
@@ -712,7 +722,7 @@ export default function IdeaDetailScreen() {
 
       {/* Bottom CTA */}
       {!isStarted && (
-        <View style={styles.ctaContainer}>
+        <View style={[styles.ctaContainer, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
           <TouchableOpacity
             style={[styles.ctaButton, isStarting && styles.ctaButtonDisabled]}
             onPress={handleStartBlueprint}
@@ -733,7 +743,7 @@ export default function IdeaDetailScreen() {
       )}
 
       {isStarted && progress < 100 && (
-        <View style={styles.ctaContainer}>
+        <View style={[styles.ctaContainer, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
           <View style={styles.progressCta}>
             <Ionicons name="checkmark-circle" size={20} color="#00D95F" />
             <Text style={styles.progressCtaText}>
@@ -744,7 +754,7 @@ export default function IdeaDetailScreen() {
       )}
 
       {isStarted && progress === 100 && (
-        <View style={styles.ctaContainer}>
+        <View style={[styles.ctaContainer, { backgroundColor: theme.bg, borderTopColor: theme.border }]}>
           <View style={[styles.progressCta, styles.progressCtaComplete]}>
             <Ionicons name="trophy" size={20} color="#000" />
             <Text style={[styles.progressCtaText, { color: '#000' }]}>Blueprint Complete — Time to Earn! 💰</Text>
@@ -784,6 +794,14 @@ const styles = StyleSheet.create({
   guestMatchText: { flex: 1, fontSize: 13, color: '#8E8E8E' },
   mainContent: { padding: 20 },
   ideaHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 12 },
+  ideaIconShell: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   ideaHeaderText: { flex: 1 },
   categoryBadge: { backgroundColor: '#00D95F12', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 6 },
   categoryText: { fontSize: 12, color: '#00D95F', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },

@@ -9,6 +9,8 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
 import { CategoryCarousel } from '../../components/discover/CategoryCarousel';
+import { BrandLogoStrip } from '../../components/BrandLogoStrip';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -20,8 +22,23 @@ const DIFF_COLORS: Record<string, string> = {
 const getMatchColor = (score: number) =>
   score >= 75 ? '#00D95F' : score >= 55 ? '#F59E0B' : '#FF6B6B';
 
+const normalizeBlueprintList = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.blueprints)) return payload.blueprints;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
 export default function DiscoverScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const elevatedCard = {
+    shadowColor: theme.isDark ? '#000000' : '#0F172A',
+    shadowOpacity: theme.isDark ? 0.32 : 0.08,
+    shadowRadius: theme.isDark ? 16 : 12,
+    shadowOffset: { width: 0, height: theme.isDark ? 8 : 5 },
+    elevation: theme.isDark ? 6 : 3,
+  };
   const params = useLocalSearchParams();
   const searchRef = useRef<TextInput>(null);
 
@@ -74,9 +91,30 @@ export default function DiscoverScreen() {
     try {
       const userId = user && !user.is_guest ? `?user_id=${user.id}` : '';
       const res = await axios.get(`${API_URL}/api/blueprints/carousels${userId}`);
-      setCarousels(res.data);
+      const carouselData = Array.isArray(res.data) ? res.data : [];
+      setCarousels(carouselData);
+
+      // Backward-compatible fallback: if carousels are empty, show a search-style feed.
+      if (carouselData.length === 0) {
+        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
+        const fallback = normalizeBlueprintList(fallbackRes.data);
+        if (fallback.length > 0) {
+          setSearchResults(fallback);
+          setIsSearchMode(true);
+        }
+      }
     } catch (e) {
       console.error('Carousels error:', e);
+      try {
+        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
+        const fallback = normalizeBlueprintList(fallbackRes.data);
+        if (fallback.length > 0) {
+          setSearchResults(fallback);
+          setIsSearchMode(true);
+        }
+      } catch (fallbackError) {
+        console.error('Discover fallback error:', fallbackError);
+      }
     } finally {
       setIsLoadingCarousels(false);
     }
@@ -92,7 +130,15 @@ export default function DiscoverScreen() {
       if (cost && cost !== 'all') params.startup_cost = cost;
       if (user && !user.is_guest) params.user_id = user.id;
       const res = await axios.get(`${API_URL}/api/blueprints/search`, { params });
-      setSearchResults(res.data);
+      let results = normalizeBlueprintList(res.data);
+
+      // Fallback for deployments where /search may return empty despite available blueprints.
+      if (results.length === 0 && !q && cat === 'All' && diff === 'all' && cost === 'all') {
+        const fallbackRes = await axios.get(`${API_URL}/api/blueprints`, { params: { limit: 40 } });
+        results = normalizeBlueprintList(fallbackRes.data);
+      }
+
+      setSearchResults(results);
     } catch (e) {
       console.error('Search error:', e);
     } finally {
@@ -123,7 +169,7 @@ export default function DiscoverScreen() {
     const matchColor = item.match_score ? getMatchColor(item.match_score) : null;
     return (
       <TouchableOpacity
-        style={styles.searchCard}
+        style={[styles.searchCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}
         onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: item.id } })}
         activeOpacity={0.75}
         data-testid={`search-result-${item.id}`}
@@ -141,8 +187,9 @@ export default function DiscoverScreen() {
             </View>
           )}
         </View>
-        <Text style={styles.searchCardTitle}>{item.title}</Text>
-        <Text style={styles.searchCardDesc} numberOfLines={2}>{item.description}</Text>
+        <Text style={[styles.searchCardTitle, { color: theme.text }]}>{item.title}</Text>
+        <Text style={[styles.searchCardDesc, { color: theme.textSub }]} numberOfLines={2}>{item.description}</Text>
+        <BrandLogoStrip item={item} theme={theme} />
         <View style={styles.searchCardFooter}>
           <View style={styles.pillsRow}>
             <View style={[styles.pill, { backgroundColor: diffColor + '18' }]}>
@@ -161,17 +208,25 @@ export default function DiscoverScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }] }>
+      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
 
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Discover</Text>
-          <Text style={styles.subtitle}>99+ income blueprints</Text>
+          <View style={styles.titleRow}>
+            <View style={[styles.titleAccentDot, { backgroundColor: theme.accent }]} />
+            <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
+          </View>
+          <Text style={[styles.subtitle, { color: theme.textSub }]}>99+ income blueprints</Text>
         </View>
         <TouchableOpacity
-          style={[styles.filterIconBtn, (showFilters || activeFilterCount > 0) && styles.filterIconBtnActive]}
+          style={[
+            styles.filterIconBtn,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+            (showFilters || activeFilterCount > 0) && [styles.filterIconBtnActive, { borderColor: theme.accent }],
+            elevatedCard,
+          ]}
           onPress={() => {
             setShowFilters(!showFilters);
             setIsSearchMode(true);
@@ -190,13 +245,13 @@ export default function DiscoverScreen() {
 
       {/* Search bar */}
       <View style={styles.searchRow}>
-        <View style={[styles.searchBox, isSearchMode && styles.searchBoxActive]}>
+        <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }, isSearchMode && [styles.searchBoxActive, { borderColor: theme.accent + '40' }], elevatedCard]}>
           <Ionicons name="search" size={16} color={isSearchMode ? '#00D95F' : '#4A4A4A'} />
           <TextInput
             ref={searchRef}
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.text }]}
             placeholder="Search blueprints, categories, tags..."
-            placeholderTextColor="#4A4A4A"
+            placeholderTextColor={theme.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onFocus={handleSearchFocus}
@@ -213,7 +268,7 @@ export default function DiscoverScreen() {
 
       {/* Filter panel */}
       {showFilters && (
-        <View style={styles.filterPanel}>
+        <View style={[styles.filterPanel, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }, elevatedCard]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>Category</Text>
@@ -221,11 +276,11 @@ export default function DiscoverScreen() {
                 {CATEGORIES.map(c => (
                   <TouchableOpacity
                     key={c}
-                    style={[styles.filterChip, selectedCategory === c && styles.filterChipActive]}
+                    style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedCategory === c && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
                     onPress={() => setSelectedCategory(c)}
                     data-testid={`category-filter-${c}`}
                   >
-                    <Text style={[styles.filterChipText, selectedCategory === c && styles.filterChipTextActive]}>
+                    <Text style={[styles.filterChipText, { color: theme.textSub }, selectedCategory === c && [styles.filterChipTextActive, { color: theme.accent }]]}>
                       {c === 'All' ? 'All' : c.split(' & ')[0]}
                     </Text>
                   </TouchableOpacity>
@@ -239,10 +294,10 @@ export default function DiscoverScreen() {
               {['all', 'easy', 'medium', 'hard'].map(d => (
                 <TouchableOpacity
                   key={d}
-                  style={[styles.filterChip, selectedDifficulty === d && styles.filterChipActive]}
+                  style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedDifficulty === d && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
                   onPress={() => setSelectedDifficulty(d)}
                 >
-                  <Text style={[styles.filterChipText, selectedDifficulty === d && styles.filterChipTextActive]}>
+                  <Text style={[styles.filterChipText, { color: theme.textSub }, selectedDifficulty === d && [styles.filterChipTextActive, { color: theme.accent }]]}>
                     {d === 'all' ? 'Any' : d}
                   </Text>
                 </TouchableOpacity>
@@ -253,10 +308,10 @@ export default function DiscoverScreen() {
               {['all', 'low', 'medium', 'high'].map(c => (
                 <TouchableOpacity
                   key={c}
-                  style={[styles.filterChip, selectedCost === c && styles.filterChipActive]}
+                  style={[styles.filterChip, { backgroundColor: theme.surface, borderColor: theme.border }, selectedCost === c && [styles.filterChipActive, { backgroundColor: theme.accentLight, borderColor: theme.accent }]]}
                   onPress={() => setSelectedCost(c)}
                 >
-                  <Text style={[styles.filterChipText, selectedCost === c && styles.filterChipTextActive]}>
+                  <Text style={[styles.filterChipText, { color: theme.textSub }, selectedCost === c && [styles.filterChipTextActive, { color: theme.accent }]]}>
                     {c === 'all' ? 'Any' : c}
                   </Text>
                 </TouchableOpacity>
@@ -276,7 +331,7 @@ export default function DiscoverScreen() {
           contentContainerStyle={styles.searchList}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.resultsLabel}>
+            <Text style={[styles.resultsLabel, { color: theme.textSub }] }>
               {isSearching ? 'Searching...' : `${searchResults.length} results`}
               {selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}
             </Text>
@@ -287,8 +342,8 @@ export default function DiscoverScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="search-outline" size={48} color="#2A2C35" />
-                <Text style={styles.emptyText}>No blueprints found</Text>
-                <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+                <Text style={[styles.emptyText, { color: theme.text }]}>No blueprints found</Text>
+                <Text style={[styles.emptySubtext, { color: theme.textSub }]}>Try adjusting your filters</Text>
               </View>
             )
           }
@@ -344,6 +399,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     paddingHorizontal: 20, paddingTop: 58, paddingBottom: 14,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  titleAccentDot: { width: 10, height: 10, borderRadius: 6, marginTop: 2 },
   title: { fontSize: 28, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   subtitle: { fontSize: 13, color: '#4A4A4A' },
   filterIconBtn: {
@@ -389,8 +446,8 @@ const styles = StyleSheet.create({
   searchList: { paddingHorizontal: 20, paddingBottom: 32 },
   resultsLabel: { fontSize: 12, color: '#4A4A4A', marginBottom: 12, marginTop: 4 },
   searchCard: {
-    backgroundColor: '#1A1C23', borderRadius: 16, padding: 16,
-    marginBottom: 10, borderWidth: 1, borderColor: '#2A2C35',
+    backgroundColor: '#1A1C23', borderRadius: 18, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: '#2A2C35',
   },
   searchCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   searchCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
