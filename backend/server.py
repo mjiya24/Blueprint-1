@@ -19,6 +19,18 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 logger = logging.getLogger(__name__)
 
+def is_local_mongo_url(url: str) -> bool:
+    if not url:
+        return False
+    normalized = url.strip().lower()
+    local_prefixes = [
+        "mongodb://localhost",
+        "mongodb://127.0.0.1",
+        "mongodb://[::1]",
+    ]
+    return any(normalized.startswith(prefix) for prefix in local_prefixes)
+
+
 def get_mongo_url():
     env_keys = [
         "MONGO_URL",
@@ -27,11 +39,23 @@ def get_mongo_url():
         "DATABASE_URL",
         "MONGODB_URL",
     ]
+    first_local_value = None
+    first_local_key = None
+
     for key in env_keys:
         value = os.getenv(key)
-        if value:
+        if not value:
+            continue
+        if not is_local_mongo_url(value):
             return value, key
+        if first_local_value is None:
+            first_local_value = value
+            first_local_key = key
+
+    if first_local_value is not None:
+        return first_local_value, first_local_key
     return "mongodb://localhost:27017", "default"
+
 
 mongo_url, mongo_url_source = get_mongo_url()
 if mongo_url_source == "default":
