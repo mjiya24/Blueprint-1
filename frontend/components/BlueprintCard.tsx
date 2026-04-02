@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { BrandLogoStrip } from './BrandLogoStrip';
 
 const CATEGORY_COLORS: Record<string, string> = {
   'AI & Automation': '#6366F1',
@@ -19,6 +21,7 @@ interface Props {
 
 export function BlueprintCard({ blueprint, showMatch = true }: Props) {
   const router = useRouter();
+  const { theme } = useTheme();
   const catColor = CATEGORY_COLORS[blueprint.category] || '#00D95F';
   const score = blueprint.match_score;
   const scoreColor = score >= 80 ? '#00D95F' : score >= 60 ? '#F59E0B' : '#4A4A4A';
@@ -52,6 +55,9 @@ export function BlueprintCard({ blueprint, showMatch = true }: Props) {
 
         {/* Earnings */}
         <Text style={styles.earnings} numberOfLines={1}>{blueprint.potential_earnings}</Text>
+
+        {/* Brand / Category badge */}
+        <BrandLogoStrip item={blueprint} theme={theme} />
 
         {/* Footer */}
         <View style={styles.footer}>

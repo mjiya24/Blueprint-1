@@ -7,6 +7,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { BrandLogoStrip } from '../../components/BrandLogoStrip';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -18,6 +20,14 @@ const getDifficultyColor = (d: string) => {
 
 export default function SavedScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
   const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +71,7 @@ export default function SavedScreen() {
   const getProgressColor = (p: number) => p === 100 ? '#00D95F' : p >= 50 ? '#F59E0B' : '#3B82F6';
 
   const renderCard = ({ item }: { item: any }) => (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}>
       <TouchableOpacity
         onPress={() => router.push({ pathname: '/idea-detail', params: { id: item.id } })}
         activeOpacity={0.75}
@@ -70,18 +80,19 @@ export default function SavedScreen() {
           <View style={styles.catBadge}>
             <Text style={styles.catText}>{item.category}</Text>
           </View>
-          <TouchableOpacity style={styles.unsaveBtn} onPress={() => handleUnsave(item.id)}>
+          <TouchableOpacity style={[styles.unsaveBtn, { backgroundColor: theme.accentLight }]} onPress={() => handleUnsave(item.id)}>
             <Ionicons name="bookmark" size={18} color="#00D95F" />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{item.title}</Text>
+        <Text style={[styles.cardDesc, { color: theme.textSub }]} numberOfLines={2}>{item.description}</Text>
+        <BrandLogoStrip item={item} theme={theme} />
 
         {/* Progress bar */}
         {item.progress_percentage !== undefined && (
           <View style={styles.progressSection}>
-            <View style={styles.progressTrack}>
+            <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
               <View style={[styles.progressFill, {
                 width: `${item.progress_percentage}%`,
                 backgroundColor: getProgressColor(item.progress_percentage),
@@ -99,7 +110,7 @@ export default function SavedScreen() {
               <Text style={[styles.pillText, { color: getDifficultyColor(item.difficulty) }]}>{item.difficulty}</Text>
             </View>
           </View>
-          <Text style={styles.earnings}>{item.potential_earnings}</Text>
+          <Text style={[styles.earnings, { color: theme.accent }]}>{item.potential_earnings}</Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -107,8 +118,8 @@ export default function SavedScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg }] }>
+        <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
         <ActivityIndicator size="large" color="#00D95F" />
       </View>
     );
@@ -116,17 +127,17 @@ export default function SavedScreen() {
 
   if (user?.is_guest) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <View style={[styles.container, { backgroundColor: theme.bg }] }>
+        <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
         <View style={styles.header}>
-          <Text style={styles.title}>My Plans</Text>
+          <Text style={[styles.title, { color: theme.text }]}>My Plans</Text>
         </View>
         <View style={styles.emptyState}>
-          <View style={styles.lockIcon}>
-            <Ionicons name="lock-closed" size={32} color="#4A4A4A" />
+          <View style={[styles.lockIcon, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
+            <Ionicons name="lock-closed" size={32} color={theme.textMuted} />
           </View>
-          <Text style={styles.emptyTitle}>Plans are locked in Guest Mode</Text>
-          <Text style={styles.emptyDesc}>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>Plans are locked in Guest Mode</Text>
+          <Text style={[styles.emptyDesc, { color: theme.textSub }]}>
             Create a free account to save blueprints and track your progress toward your first dollar.
           </Text>
           <TouchableOpacity style={styles.signUpButton} onPress={() => router.push('/onboarding/auth')}>
@@ -138,12 +149,12 @@ export default function SavedScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }] }>
+      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>My Plans</Text>
-          <Text style={styles.subtitle}>{savedIdeas.length} blueprints saved</Text>
+          <Text style={[styles.title, { color: theme.text }]}>My Plans</Text>
+          <Text style={[styles.subtitle, { color: theme.textSub }]}>{savedIdeas.length} blueprints saved</Text>
         </View>
         {savedIdeas.length > 0 && (
           <View style={styles.countBadge}>
@@ -160,9 +171,9 @@ export default function SavedScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D95F" />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="bookmark-outline" size={52} color="#2A2C35" />
-            <Text style={styles.emptyTitle}>No saved blueprints</Text>
-            <Text style={styles.emptyDesc}>Explore ideas and start your first Blueprint</Text>
+            <Ionicons name="bookmark-outline" size={52} color={theme.textMuted} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No saved blueprints</Text>
+            <Text style={[styles.emptyDesc, { color: theme.textSub }]}>Explore ideas and start your first Blueprint</Text>
             <TouchableOpacity style={styles.signUpButton} onPress={() => router.push('/(tabs)/discover')}>
               <Text style={styles.signUpText}>Discover Blueprints</Text>
             </TouchableOpacity>

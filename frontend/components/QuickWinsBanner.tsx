@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../contexts/ThemeContext';
+import { BrandLogoStrip } from './BrandLogoStrip';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -170,6 +171,9 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
                   <Text style={[styles.timeText, { color: theme.textMuted }]}>{win.time_to_first_dollar}</Text>
                 </View>
               )}
+
+              {/* Brand / Category badge */}
+              <BrandLogoStrip item={win} theme={theme} />
 
               {/* CTA */}
               <TouchableOpacity

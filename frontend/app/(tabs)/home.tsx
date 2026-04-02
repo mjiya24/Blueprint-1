@@ -11,6 +11,7 @@ import { StreakBadge } from '../../components/StreakBadge';
 import { DailyBlueprintWidget } from '../../components/DailyBlueprintWidget';
 import { LocalMarketPulseWidget } from '../../components/LocalMarketPulseWidget';
 import { QuickWinsBanner } from '../../components/QuickWinsBanner';
+import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -30,6 +31,13 @@ const getDifficultyColor = (d: string) => {
 export default function HomeScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const elevatedCard = theme.isDark ? null : {
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  };
   const [user, setUser] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,7 +107,7 @@ export default function HomeScreen() {
               {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized income roadmap."}
             </Text>
           </View>
-          <TouchableOpacity style={styles.notifBtn} data-testid="notif-btn">
+          <TouchableOpacity style={[styles.notifBtn, { backgroundColor: theme.surfaceAlt }]} data-testid="notif-btn">
             {streak > 0 && !user?.is_guest
               ? <StreakBadge streak={streak} isToday={true} />
               : <Ionicons name="notifications-outline" size={22} color={theme.textMuted} />
@@ -109,7 +117,7 @@ export default function HomeScreen() {
 
         {/* Guest upgrade banner */}
         {user?.is_guest && (
-          <TouchableOpacity style={styles.upgradeBanner} onPress={() => router.push('/onboarding/auth')}>
+          <TouchableOpacity style={[styles.upgradeBanner, { backgroundColor: theme.accentLight, borderColor: theme.accent + '40' }]} onPress={() => router.push('/onboarding/auth')}>
             <Ionicons name="lock-open" size={18} color="#00D95F" />
             <Text style={styles.upgradeText}>Unlock match scores — Create free account</Text>
             <Ionicons name="chevron-forward" size={16} color="#00D95F" />
@@ -119,7 +127,7 @@ export default function HomeScreen() {
         {/* Architect upgrade banner (logged in, not architect) */}
         {!user?.is_guest && !user?.is_architect && (
           <TouchableOpacity
-            style={styles.architectBanner}
+            style={[styles.architectBanner, { backgroundColor: theme.surface, borderColor: theme.accent + '40' }]}
             onPress={() => router.push('/architect-upgrade')}
             data-testid="architect-banner"
           >
@@ -128,8 +136,8 @@ export default function HomeScreen() {
                 <Ionicons name="flash" size={12} color="#000" />
               </View>
               <View>
-                <Text style={styles.architectBannerTitle}>Architect Tier Available</Text>
-                <Text style={styles.architectBannerSub}>AI coaching · Workarounds · $14.99/mo</Text>
+                <Text style={[styles.architectBannerTitle, { color: theme.text }]}>Architect Tier Available</Text>
+                <Text style={[styles.architectBannerSub, { color: theme.textSub }]}>AI coaching · Workarounds · $14.99/mo</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#00D95F" />
@@ -158,35 +166,35 @@ export default function HomeScreen() {
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNum}>{ideas.length}</Text>
-            <Text style={styles.statLabel}>Matched Ideas</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
+            <Text style={[styles.statNum, { color: theme.text }]}>{ideas.length}</Text>
+            <Text style={[styles.statLabel, { color: theme.text }]}>Matched Ideas</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNum}>99+</Text>
-            <Text style={styles.statLabel}>Blueprints</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
+            <Text style={[styles.statNum, { color: theme.text }]}>99+</Text>
+            <Text style={[styles.statLabel, { color: theme.text }]}>Blueprints</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNum}>8</Text>
-            <Text style={styles.statLabel}>Categories</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
+            <Text style={[styles.statNum, { color: theme.text }]}>8</Text>
+            <Text style={[styles.statLabel, { color: theme.text }]}>Categories</Text>
           </View>
         </View>
 
         {/* Ideas section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
               {user?.is_guest ? 'Top Ideas' : 'Your Top Matches'}
             </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/discover')}>
-              <Text style={styles.seeAll}>See All</Text>
+              <Text style={[styles.seeAll, { color: theme.accent }]}>See All</Text>
             </TouchableOpacity>
           </View>
 
           {ideas.map((idea) => (
             <TouchableOpacity
               key={idea.id}
-              style={styles.ideaCard}
+              style={[styles.ideaCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}
               onPress={() => router.push({ pathname: '/idea-detail', params: { id: idea.id } })}
               activeOpacity={0.75}
             >
@@ -210,8 +218,9 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              <Text style={styles.ideaTitle}>{idea.title}</Text>
-              <Text style={styles.ideaDesc} numberOfLines={2}>{idea.description}</Text>
+              <Text style={[styles.ideaTitle, { color: theme.text }]}>{idea.title}</Text>
+              <Text style={[styles.ideaDesc, { color: theme.textSub }]} numberOfLines={2}>{idea.description}</Text>
+              <BrandLogoStrip item={idea} theme={theme} />
 
               <View style={styles.ideaFooter}>
                 <View style={styles.ideaMeta}>
@@ -227,15 +236,15 @@ export default function HomeScreen() {
 
         {/* Quick actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/discover')}>
+            <TouchableOpacity style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]} onPress={() => router.push('/(tabs)/discover')}>
               <Ionicons name="compass" size={28} color="#00D95F" />
-              <Text style={styles.actionLabel}>Discover</Text>
+              <Text style={[styles.actionLabel, { color: theme.text }]}>Discover</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/saved')}>
+            <TouchableOpacity style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]} onPress={() => router.push('/(tabs)/saved')}>
               <Ionicons name="bookmark" size={28} color="#00D95F" />
-              <Text style={styles.actionLabel}>My Plans</Text>
+              <Text style={[styles.actionLabel, { color: theme.text }]}>My Plans</Text>
             </TouchableOpacity>
             {user?.is_guest && (
               <TouchableOpacity style={[styles.actionCard, styles.actionCardMint]} onPress={() => router.push('/onboarding/auth')}>
@@ -246,7 +255,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ height: 24 }} />
+		<View style={{ height: 24 }} />
       </ScrollView>
     </View>
   );

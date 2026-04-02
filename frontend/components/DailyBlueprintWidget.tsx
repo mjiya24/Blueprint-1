@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { BrandLogoStrip } from './BrandLogoStrip';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -82,6 +83,9 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
           </View>
         </View>
       </View>
+
+      {/* Brand / Category badge */}
+      <BrandLogoStrip item={blueprint} theme={theme} />
 
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
