@@ -819,6 +819,7 @@ const styles = StyleSheet.create({
   earningsValue: { fontSize: 22, fontWeight: '700', color: '#00D95F' },
   earningsIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#00D95F15', justifyContent: 'center', alignItems: 'center' },
   progressSection: { marginBottom: 16 },
+  stepsSection: { marginBottom: 20 },
   stuckBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     marginLeft: 8, marginTop: 2, marginBottom: 6,

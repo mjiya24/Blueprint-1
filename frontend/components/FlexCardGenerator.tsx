@@ -23,7 +23,7 @@ export function FlexCardGenerator({
 
   const handleShare = async () => {
     try {
-      const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'file' });
+      const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile' });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(uri, {

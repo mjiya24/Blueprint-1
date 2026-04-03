@@ -148,7 +148,7 @@ export function RewardedAdGate({ visible, onClose, onUnlocked, userId, featureId
                 <Ionicons name="play-circle-outline" size={40} color="#4A4A4A" />
                 <Text style={styles.adMockupText}>Advertisement</Text>
                 <Text style={styles.adMockupSub}>Your ad would play here</Text>
-                <Text style={styles.adMockupSub} style={{ fontSize: 10, color: '#2A2C35', marginTop: 4 }}>
+                <Text style={[styles.adMockupSub, { fontSize: 10, color: '#2A2C35', marginTop: 4 }]}>
                   ca-pub-7453043458871233
                 </Text>
               </View>
