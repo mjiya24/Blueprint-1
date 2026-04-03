@@ -11,7 +11,7 @@ import axios from 'axios';
 import { EarningsCommandCenter } from '../../components/EarningsCommandCenter';
 import { ReferralCard } from '../../components/ReferralCard';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const ENV_LABELS: Record<string, string> = {
   home: 'Work From Home', office: 'In an Office', outdoor: 'Outdoors'

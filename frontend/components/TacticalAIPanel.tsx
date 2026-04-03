@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface LocalLead {

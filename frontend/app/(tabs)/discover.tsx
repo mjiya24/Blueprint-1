@@ -12,7 +12,7 @@ import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const DIFF_COLORS: Record<string, string> = {
   easy: '#00D95F', medium: '#F59E0B', hard: '#FF6B6B',

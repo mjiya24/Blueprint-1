@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { BrandLogoStrip } from './BrandLogoStrip';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 interface Props {
   userId: string;

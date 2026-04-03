@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { WinCard } from '../../components/WinCard';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const CATEGORIES = ['All', 'AI & Automation', 'Digital & Content', 'Agency & B2B', 'No-Code & SaaS', 'Local & Service', 'Passive & Investment', 'Gig Economy'];
 

@@ -12,7 +12,7 @@ import { ArchitectPaywall } from '../components/ArchitectPaywall';
 import { BrandLogoStrip } from '../components/BrandLogoStrip';
 import { useTheme } from '../contexts/ThemeContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const CATEGORY_COLORS: Record<string, string> = {
   'AI & Automation': '#6366F1',

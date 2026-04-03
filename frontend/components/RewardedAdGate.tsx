@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const AD_DURATION = 30; // seconds
 

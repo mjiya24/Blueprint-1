@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const getDifficultyColor = (d: string) => {
   if (d === 'beginner') return '#00D95F';

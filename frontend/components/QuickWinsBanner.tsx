@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '../contexts/ThemeContext';
 import { BrandLogoStrip } from './BrandLogoStrip';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 // Speed-to-first-dollar sort order (lower = faster = shown first)
 const SPEED_ORDER: Record<string, number> = {

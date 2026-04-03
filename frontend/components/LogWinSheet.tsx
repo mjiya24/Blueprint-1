@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface Props {

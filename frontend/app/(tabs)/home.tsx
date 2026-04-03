@@ -14,7 +14,7 @@ import { QuickWinsBanner } from '../../components/QuickWinsBanner';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 const getMatchColor = (score: number) => {
   if (score >= 75) return '#00D95F';
@@ -64,19 +64,20 @@ export default function HomeScreen() {
         const u = JSON.parse(userData);
         setUser(u);
         if (u.is_guest) {
-          const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 150 } });
+          const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 60 }, timeout: 12000 });
           const allIdeas = res.data.ideas || [];
           setIdeas(allIdeas.slice(0, 6));
           setWeeklyBlueprint(pickWeeklyBlueprint(allIdeas, 'guest'));
         } else {
-          const [ideasRes, streakRes] = await Promise.all([
-            axios.get(`${API_URL}/api/ideas/personalized/${u.id}`),
-            axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`).catch(() => ({ data: { streak_current: 0 } })),
-          ]);
+          const ideasRes = await axios.get(`${API_URL}/api/ideas/personalized/${u.id}`, { timeout: 12000 });
           const personalized = ideasRes.data || [];
           setIdeas(personalized.slice(0, 6));
           setWeeklyBlueprint(pickWeeklyBlueprint(personalized, u.id || 'user'));
-          setStreak(streakRes.data.streak_current || 0);
+
+          // Do not block initial paint on streak check-in.
+          axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`)
+            .then((streakRes) => setStreak(streakRes.data?.streak_current || 0))
+            .catch(() => setStreak(0));
         }
       }
     } catch (e) {

@@ -24,7 +24,7 @@ import { RescueModeModal } from '../components/RescueModeModal';
 import { BrandLogoStrip } from '../components/BrandLogoStrip';
 import { useTheme } from '../contexts/ThemeContext';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 const HIGH_TICKET_IDS = new Set(['digital-001', 'digital-005', 'passive-002', 'passive-003', 'passive-004']);
 
 const calcMatchScore = (profile: any, idea: any): number => {

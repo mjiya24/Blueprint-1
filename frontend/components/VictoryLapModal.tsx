@@ -9,7 +9,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { FlexCardGenerator } from './FlexCardGenerator';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
 interface VictoryData {
   percentile: number;
