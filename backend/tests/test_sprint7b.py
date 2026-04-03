@@ -9,7 +9,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'https://quick-wins-3.preview.emergentagent.com')
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'http://localhost:8000')
 
 ARCTEST_EMAIL = "arctest2@blueprint.com"
 ARCTEST_PASSWORD = "Test123!"

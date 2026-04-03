@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, ActivityIndicator, Linking, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -15,6 +16,7 @@ type Plan = 'monthly' | 'annual';
 export default function ArchitectUpgradeScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
   const [isLoading, setIsLoading] = useState(false);
@@ -141,7 +143,7 @@ export default function ArchitectUpgradeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={theme.statusBar as any} backgroundColor={theme.bg} />
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: Platform.OS === 'web' ? 56 : insets.top + 12 }] }>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.surfaceAlt }]} onPress={handleBack}>
           <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>
@@ -161,14 +163,14 @@ export default function ArchitectUpgradeScreen() {
         </View>
 
         {/* ROI Clock — Risk Reversal */}
-        <View style={styles.roiSection}>
+        <View style={[styles.roiSection, { backgroundColor: theme.surface, borderColor: '#F59E0B30' }]}>
           <View style={styles.roiHeader}>
             <View style={styles.roiIconBox}>
               <Ionicons name="timer" size={20} color="#F59E0B" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.roiTitle}>Pays for itself in 2 hours</Text>
-              <Text style={styles.roiSub}>
+              <Text style={[styles.roiTitle, { color: theme.text }]}>Pays for itself in 2 hours</Text>
+              <Text style={[styles.roiSub, { color: theme.textMuted }]}>
                 {user?.profile?.city
                   ? `Based on Quick-Cash rates in ${user.profile.city}`
                   : 'Based on Quick-Cash blueprint averages'}
@@ -191,9 +193,9 @@ export default function ArchitectUpgradeScreen() {
               <Text style={[styles.roiCalcLabel, { color: theme.textMuted }]}>To break even</Text>
             </View>
           </View>
-          <View style={styles.guaranteeBadge}>
+          <View style={[styles.guaranteeBadge, { backgroundColor: theme.accentLight, borderColor: theme.accent + '20' }]}>
             <Ionicons name="shield-checkmark" size={14} color="#00D95F" />
-            <Text style={styles.guaranteeText}>
+            <Text style={[styles.guaranteeText, { color: theme.textSub }]}>
               30-Day ROI Guarantee: Earn $14.99+ in your first month using Rescue Mode, or your next month is free.
             </Text>
           </View>
@@ -221,7 +223,7 @@ export default function ArchitectUpgradeScreen() {
 
         {/* Plan Selection */}
         <View style={styles.plansSection}>
-          <Text style={styles.plansLabel}>CHOOSE YOUR PLAN</Text>
+          <Text style={[styles.plansLabel, { color: theme.textMuted }]}>CHOOSE YOUR PLAN</Text>
           <TouchableOpacity
             style={[styles.planOption, { backgroundColor: theme.surface, borderColor: theme.border }, selectedPlan === 'monthly' && styles.planOptionSelected]}
             onPress={() => setSelectedPlan('monthly')}
@@ -234,7 +236,7 @@ export default function ArchitectUpgradeScreen() {
                 <Text style={[styles.planBill, { color: theme.textSub }]}>Billed every month</Text>
               </View>
             </View>
-            <Text style={[styles.planPrice, { color: theme.text }]}>$14.99<Text style={styles.planPer}>/mo</Text></Text>
+            <Text style={[styles.planPrice, { color: theme.text }]}>$14.99<Text style={[styles.planPer, { color: theme.textMuted }]}>/mo</Text></Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -253,7 +255,7 @@ export default function ArchitectUpgradeScreen() {
               </View>
             </View>
             <Text style={[styles.planPrice, { color: theme.text }, selectedPlan === 'annual' && { color: '#00D95F' }]}>
-              $99<Text style={styles.planPer}>/yr</Text>
+              $99<Text style={[styles.planPer, { color: theme.textMuted }]}>/yr</Text>
             </Text>
           </TouchableOpacity>
         </View>

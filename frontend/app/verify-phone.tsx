@@ -59,8 +59,20 @@ export default function VerifyPhoneScreen() {
     } catch (e: any) {
       console.error('Send OTP error:', e);
       let msg = 'Failed to send code. ';
+      const errMsg = String(e?.message || '');
       if (e.code === 'auth/invalid-phone-number') msg += 'Invalid phone number format.';
       else if (e.code === 'auth/too-many-requests') msg += 'Too many attempts. Wait a few minutes.';
+      else if (e.code === 'auth/invalid-api-key') {
+        msg = 'Firebase API key is invalid. Check EXPO_PUBLIC_FIREBASE_API_KEY in your frontend env.';
+      } else if (errMsg.includes('Missing Firebase config:')) {
+        msg = `${errMsg}. Add these EXPO_PUBLIC_FIREBASE_* vars, then restart Expo.`;
+      } else if (e.code === 'auth/internal-error' || errMsg.toLowerCase().includes('initializeauth')) {
+        msg = 'Firebase Auth failed to initialize. Verify your Firebase web config values and restart Expo.';
+      } else if (e.code === 'auth/operation-not-allowed') {
+        msg = 'Phone auth is disabled in Firebase Console. Enable Phone provider under Authentication > Sign-in method.';
+      } else if (e.code === 'auth/captcha-check-failed') {
+        msg = 'reCAPTCHA verification failed. Refresh the page and try again.';
+      }
       else if (e.code === 'auth/unauthorized-domain') {
         msg = 'This domain is not authorized in Firebase. Add it to Firebase Console → Authentication → Settings → Authorized domains.';
       } else msg += e.message || 'Check your phone number and try again.';

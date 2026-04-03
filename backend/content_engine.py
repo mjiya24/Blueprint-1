@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from app.services.gemini_native import generate_json_strict, validate_blueprint_payload
 
 load_dotenv()
 logger = logging.getLogger("content_engine")
@@ -30,7 +30,7 @@ def get_env_var(name, alt_name=None, default=None, required=False):
 
 MONGO_URL = get_env_var("MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017")
 DB_NAME = get_env_var("DB_NAME", "DATABASE_NAME", default="blueprint_db")
-LLM_KEY = get_env_var("EMERGENT_LLM_KEY", "GEMINI_API_KEY", required=True)
+GEMINI_API_KEY = get_env_var("GEMINI_API_KEY", required=True)
 
 # ============================================================
 # 100 HIGH-SIGNAL NICHES
@@ -192,37 +192,37 @@ BLUEPRINT_SCHEMA = """{
 
 
 async def generate_single_blueprint(niche: dict) -> Optional[dict]:
-    session_id = f"blueprint-gen-{uuid.uuid4().hex}"
     try:
-        chat = LlmChat(
-            api_key=LLM_KEY,
-            session_id=session_id,
-            system_message=MASTER_ARCHITECT_SYSTEM,
-        )
-        chat.with_model("gemini", "gemini-3-flash-preview")
         prompt = (
             f"Generate a 17-step blueprint for: {niche['title']}\n"
             f"Category: {niche['category']}\n"
             f"Tags: {', '.join(niche['tags'])}\n\n"
             f"Return ONLY valid JSON matching this schema exactly:\n{BLUEPRINT_SCHEMA}"
         )
-        response = await chat.send_message(UserMessage(text=prompt))
-        clean = re.sub(r"```json\n?|```\n?", "", response).strip()
-        # Remove BOM if present
-        if clean.startswith('\ufeff'):
-            clean = clean[1:]
-        data = json.loads(clean)
+        data = await generate_json_strict(
+            prompt=prompt,
+            system_message=MASTER_ARCHITECT_SYSTEM,
+            required_keys=[
+                "title",
+                "description",
+                "category",
+                "tags",
+                "match_tags",
+                "difficulty",
+                "difficulty_score",
+                "startup_cost",
+                "startup_cost_range",
+                "time_to_first_dollar",
+                "potential_earnings",
+                "action_steps",
+            ],
+        )
+        data = validate_blueprint_payload(data)
         data["id"] = f"bp-{uuid.uuid4().hex[:10]}"
         data["version"] = "2.0"
         data["status"] = "AI-Drafted"
         data["win_count"] = 0
         data["created_at"] = datetime.utcnow().isoformat()
-        # Ensure all steps have required fields
-        for step in data.get("action_steps", []):
-            step.setdefault("is_locked", step.get("step_number", 1) > 5)
-            step.setdefault("common_wall", None)
-            step.setdefault("workaround_hint", None)
-            step.setdefault("completed", False)
         logger.info(f"Generated: {data['title']}")
         return data
     except Exception as e:

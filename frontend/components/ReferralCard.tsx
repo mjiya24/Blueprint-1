@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Share,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -53,11 +53,19 @@ export function ReferralCard({ userId, userName = '' }: Props) {
   const handleShare = async () => {
     if (!refData?.referral_link) return;
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `I'm making money with Blueprint! Use my code ${refData.referral_code} to get a bonus when you sign up: ${refData.referral_link}`,
         url: refData.referral_link,
       });
+
+      // User cancellation is expected and should not be treated as an error.
+      if (result?.action === Share.dismissedAction) return;
     } catch (e) {
+      const err = e as { name?: string; message?: string };
+      const message = String(err?.message || '').toLowerCase();
+      const isCanceled = err?.name === 'AbortError' || message.includes('cancellation of share');
+      if (isCanceled) return;
+
       console.error('Share error:', e);
     }
   };

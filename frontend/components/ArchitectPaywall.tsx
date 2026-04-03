@@ -1,10 +1,11 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   visible: boolean;
@@ -14,13 +15,15 @@ interface Props {
 
 export function ArchitectPaywall({ visible, onClose, feature = 'this feature' }: Props) {
   const router = useRouter();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} />
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border, paddingBottom: insets.bottom + 24 }]}>
         {/* Handle */}
-        <View style={styles.handle} />
+        <View style={[styles.handle, { backgroundColor: theme.border }]} />
 
         {/* Header */}
         <View style={styles.badgeRow}>
@@ -30,8 +33,8 @@ export function ArchitectPaywall({ visible, onClose, feature = 'this feature' }:
           </View>
         </View>
 
-        <Text style={styles.title}>Unlock {feature}</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: theme.text }]}>Unlock {feature}</Text>
+        <Text style={[styles.subtitle, { color: theme.textSub }]}>
           Get the full Blueprint execution stack — AI coaching, troubleshooting,
           and high-ticket income blueprints.
         </Text>
@@ -45,24 +48,24 @@ export function ArchitectPaywall({ visible, onClose, feature = 'this feature' }:
         ].map((f, i) => (
           <View key={i} style={styles.featureRow}>
             <Ionicons name="checkmark-circle" size={18} color="#00D95F" />
-            <Text style={styles.featureText}>{f}</Text>
+            <Text style={[styles.featureText, { color: theme.text }]}>{f}</Text>
           </View>
         ))}
 
         {/* Plans */}
         <View style={styles.plansRow}>
-          <View style={styles.planCard}>
-            <Text style={styles.planLabel}>Monthly</Text>
-            <Text style={styles.planPrice}>$14.99</Text>
-            <Text style={styles.planPer}>/month</Text>
+          <View style={[styles.planCard, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
+            <Text style={[styles.planLabel, { color: theme.textSub }]}>Monthly</Text>
+            <Text style={[styles.planPrice, { color: theme.text }]}>$14.99</Text>
+            <Text style={[styles.planPer, { color: theme.textMuted }]}>/month</Text>
           </View>
-          <View style={[styles.planCard, styles.planCardBest]}>
+          <View style={[styles.planCard, styles.planCardBest, { backgroundColor: theme.accentLight }] }>
             <View style={styles.bestBadge}>
               <Text style={styles.bestText}>BEST VALUE</Text>
             </View>
             <Text style={[styles.planLabel, { color: '#00D95F' }]}>Annual</Text>
             <Text style={[styles.planPrice, { color: '#00D95F' }]}>$99</Text>
-            <Text style={styles.planPer}>/year · save 45%</Text>
+            <Text style={[styles.planPer, { color: theme.textMuted }]}>/year · save 45%</Text>
           </View>
         </View>
 
@@ -77,7 +80,7 @@ export function ArchitectPaywall({ visible, onClose, feature = 'this feature' }:
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onClose} style={styles.dismissBtn}>
-          <Text style={styles.dismissText}>Maybe later</Text>
+          <Text style={[styles.dismissText, { color: theme.textMuted }]}>Maybe later</Text>
         </TouchableOpacity>
       </View>
     </Modal>

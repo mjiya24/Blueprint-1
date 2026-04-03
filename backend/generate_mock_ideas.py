@@ -9,8 +9,8 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 from motor.motor_asyncio import AsyncIOMotorClient
+from app.services.gemini_native import generate_json_strict
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -29,7 +29,7 @@ def get_env_var(name, alt_name=None, default=None, required=False):
 # MongoDB connection
 mongo_url = get_env_var('MONGO_URL', 'DATABASE_URL', default='mongodb://localhost:27017')
 db_name = get_env_var('DB_NAME', 'DATABASE_NAME', default='blueprint_db')
-emergent_key = get_env_var('EMERGENT_LLM_KEY', 'GEMINI_API_KEY', required=True)
+gemini_key = get_env_var('GEMINI_API_KEY', required=True)
 
 # Idea generation prompt
 IDEA_GENERATION_PROMPT = """You are an expert in side hustles, entrepreneurship, and creative money-making strategies. Generate a unique, realistic money-making idea with the following structure. Be creative and include both traditional and gray area (but legal) opportunities.
@@ -64,24 +64,28 @@ CATEGORIES = [
     "Digital Products"
 ]
 
-async def generate_idea_with_gemini(chat: LlmChat, idea_number: int, category: str) -> dict:
+async def generate_idea_with_gemini(idea_number: int, category: str) -> dict:
     """Generate a single idea using Gemini API"""
     try:
         prompt = f"{IDEA_GENERATION_PROMPT}\n\nFocus on the '{category}' category. Make it unique and different from common ideas (idea #{idea_number})."
         
-        message = UserMessage(text=prompt)
-        response = await chat.send_message(message)
-        
-        # Parse JSON from response
-        response_text = response.strip()
-        
-        # Try to extract JSON if there's extra text
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
-        
-        idea = json.loads(response_text)
+        idea = await generate_json_strict(
+            prompt=prompt,
+            system_message="You are an expert in entrepreneurship and creative money-making strategies. Return valid JSON only.",
+            required_keys=[
+                "title",
+                "description",
+                "category",
+                "required_skills",
+                "startup_cost",
+                "time_needed",
+                "is_location_based",
+                "action_steps",
+                "potential_earnings",
+                "difficulty",
+                "tags",
+            ],
+        )
         
         # Add unique ID
         import uuid
@@ -90,10 +94,6 @@ async def generate_idea_with_gemini(chat: LlmChat, idea_number: int, category: s
         print(f"✅ Generated idea #{idea_number}: {idea['title']}")
         return idea
         
-    except json.JSONDecodeError as e:
-        print(f"❌ Failed to parse JSON for idea #{idea_number}: {e}")
-        print(f"Response: {response_text[:200]}...")
-        return None
     except Exception as e:
         print(f"❌ Error generating idea #{idea_number}: {e}")
         return None
@@ -103,12 +103,9 @@ async def generate_mock_ideas(num_ideas: int = 60):
     
     print(f"\n🚀 Starting Mock Idea Generation (Target: {num_ideas} ideas)\n")
     
-    # Initialize Gemini chat
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id="mock-idea-generator",
-        system_message="You are an expert in entrepreneurship and creative money-making strategies. Generate diverse, realistic business ideas in valid JSON format."
-    ).with_model("gemini", "gemini-2.5-flash")
+    # Ensure key is set before we queue requests
+    if not gemini_key:
+        raise RuntimeError("GEMINI_API_KEY is required")
     
     # Create tasks for concurrent generation (batches of 5)
     all_tasks = []
@@ -119,14 +116,14 @@ async def generate_mock_ideas(num_ideas: int = 60):
     
     for category in CATEGORIES:
         for i in range(ideas_per_category):
-            all_tasks.append((chat, idea_number, category))
+            all_tasks.append((idea_number, category))
             idea_number += 1
     
     # Generate remaining ideas
     remaining = num_ideas - len(all_tasks)
     for i in range(remaining):
         category = CATEGORIES[i % len(CATEGORIES)]
-        all_tasks.append((chat, idea_number, category))
+        all_tasks.append((idea_number, category))
         idea_number += 1
     
     # Process in batches of 5 for faster generation
@@ -139,7 +136,7 @@ async def generate_mock_ideas(num_ideas: int = 60):
         
         # Generate ideas concurrently in this batch
         batch_results = await asyncio.gather(
-            *[generate_idea_with_gemini(chat, num, cat) for chat, num, cat in batch],
+            *[generate_idea_with_gemini(num, cat) for num, cat in batch],
             return_exceptions=True
         )
         

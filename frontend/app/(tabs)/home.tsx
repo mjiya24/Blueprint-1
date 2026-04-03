@@ -110,6 +110,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D95F" />}
       >
+        {React.Children.toArray(
+          <>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.bg }]}>
           <View>
@@ -297,7 +299,9 @@ export default function HomeScreen() {
           </View>
         </View>
 
-		<View style={{ height: 24 }} />
+        <View style={{ height: 24 }} />
+          </>
+        ).filter((child) => typeof child !== 'string')}
       </ScrollView>
     </View>
   );

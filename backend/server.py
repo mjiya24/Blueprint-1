@@ -1,11 +1,15 @@
 import asyncio
+import json
+import re
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import PyMongoError
 import os
 import logging
+import sys
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
@@ -14,59 +18,22 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 from bson import ObjectId
 import httpx
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+import stripe
 
 ROOT_DIR = Path(__file__).parent
+REPO_ROOT = ROOT_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
+from app.services.gemini_native import generate_json_strict, generate_text, ping_gemini
+
 load_dotenv(ROOT_DIR / '.env')
 logger = logging.getLogger(__name__)
 
-def is_local_mongo_url(url: str) -> bool:
-    if not url:
-        return False
-    normalized = url.strip().lower()
-    local_prefixes = [
-        "mongodb://localhost",
-        "mongodb://127.0.0.1",
-        "mongodb://[::1]",
-    ]
-    return any(normalized.startswith(prefix) for prefix in local_prefixes)
-
-
-def get_mongo_url():
-    env_keys = [
-        "MONGO_URL",
-        "MONGO_URI",
-        "MONGODB_URI",
-        "DATABASE_URL",
-        "MONGODB_URL",
-    ]
-    first_local_value = None
-    first_local_key = None
-
-    for key in env_keys:
-        value = os.getenv(key)
-        if not value:
-            continue
-        if not is_local_mongo_url(value):
-            return value, key
-        if first_local_value is None:
-            first_local_value = value
-            first_local_key = key
-
-    if first_local_value is not None:
-        return first_local_value, first_local_key
-    return "mongodb://localhost:27017", "default"
-
-
-mongo_url, mongo_url_source = get_mongo_url()
+mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+mongo_url_source = "MONGO_URL" if os.getenv("MONGO_URL") else "default"
 if mongo_url_source == "default":
-    logger.warning("No Mongo env variable found; falling back to localhost")
-
-if not mongo_url:
-    raise RuntimeError(
-        "One of MONGO_URL, MONGO_URI, MONGODB_URI, DATABASE_URL, or MONGODB_URL is required"
-    )
+    logger.warning("MONGO_URL not set; falling back to localhost")
 
 db_name = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "blueprint_db"
 client = AsyncIOMotorClient(
@@ -76,6 +43,8 @@ client = AsyncIOMotorClient(
     socketTimeoutMS=10000,
 )
 db = client[db_name]
+offline_mode = False
+gemini_online = False
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -2259,58 +2228,74 @@ async def update_user_location(user_id: str, location_data: Dict[str, Any]):
 
 async def ensure_ideas_seeded():
     """Seed ideas if DB is empty or if ideas lack new schema fields (Sprint 9: Scrambly added)"""
-    count = await db.ideas.count_documents({})
-    expected_total = len(PRE_POPULATED_IDEAS)
-    if count == 0:
-        await db.ideas.insert_many(PRE_POPULATED_IDEAS)
-        return
-    # Migration: check if ideas have new fields
-    old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
-    qw_count = await db.ideas.count_documents({"is_quick_win": True})
-    expected_qw = len([i for i in PRE_POPULATED_IDEAS if i.get("is_quick_win")])
-    if old_ideas > 0 or qw_count < expected_qw or count < expected_total:
-        await db.ideas.delete_many({})
-        await db.ideas.insert_many(PRE_POPULATED_IDEAS)
+    try:
+        count = await db.ideas.count_documents({})
+        expected_total = len(PRE_POPULATED_IDEAS)
+        if count == 0:
+            await db.ideas.insert_many(PRE_POPULATED_IDEAS)
+            return
+        # Migration: check if ideas have new fields
+        old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
+        qw_count = await db.ideas.count_documents({"is_quick_win": True})
+        expected_qw = len([i for i in PRE_POPULATED_IDEAS if i.get("is_quick_win")])
+        if old_ideas > 0 or qw_count < expected_qw or count < expected_total:
+            await db.ideas.delete_many({})
+            await db.ideas.insert_many(PRE_POPULATED_IDEAS)
+    except PyMongoError as exc:
+        logger.error("MongoDB unavailable while seeding ideas", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 @api_router.get("/ideas")
 async def get_all_ideas(skip: int = 0, limit: int = 100, category: str = None, difficulty: str = None, cost: str = None):
     await ensure_ideas_seeded()
-    query = {}
-    if category and category != "All":
-        query["category"] = category
-    if difficulty and difficulty != "all":
-        query["difficulty"] = difficulty
-    if cost and cost != "all":
-        query["startup_cost"] = cost
-    ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-    total = await db.ideas.count_documents(query)
-    return {"ideas": ideas, "total": total, "skip": skip, "limit": limit}
+    try:
+        query = {}
+        if category and category != "All":
+            query["category"] = category
+        if difficulty and difficulty != "all":
+            query["difficulty"] = difficulty
+        if cost and cost != "all":
+            query["startup_cost"] = cost
+        ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+        total = await db.ideas.count_documents(query)
+        return {"ideas": ideas, "total": total, "skip": skip, "limit": limit}
+    except PyMongoError as exc:
+        logger.error("MongoDB unavailable in /api/ideas", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 @api_router.get("/ideas/personalized/{user_id}")
 async def get_personalized_ideas(user_id: str):
     await ensure_ideas_seeded()
-    user = await db.users.find_one({"id": user_id})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    profile = user.get("profile", {})
-    ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
-    scored_ideas = []
-    for idea in ideas:
-        idea["match_score"] = calculate_match_score(profile, idea)
-        scored_ideas.append(idea)
-    scored_ideas.sort(key=lambda x: x["match_score"], reverse=True)
-    return scored_ideas
+    try:
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        profile = user.get("profile", {})
+        ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
+        scored_ideas = []
+        for idea in ideas:
+            idea["match_score"] = calculate_match_score(profile, idea)
+            scored_ideas.append(idea)
+        scored_ideas.sort(key=lambda x: x["match_score"], reverse=True)
+        return scored_ideas
+    except PyMongoError as exc:
+        logger.error("MongoDB unavailable in /api/ideas/personalized", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 @api_router.get("/ideas/{idea_id}")
 async def get_idea(idea_id: str, user_id: str = None):
-    idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
-    if not idea:
-        raise HTTPException(status_code=404, detail="Idea not found")
-    if user_id:
-        user = await db.users.find_one({"id": user_id})
-        if user:
-            idea["match_score"] = calculate_match_score(user.get("profile", {}), idea)
-    return idea
+    try:
+        idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
+        if not idea:
+            raise HTTPException(status_code=404, detail="Idea not found")
+        if user_id:
+            user = await db.users.find_one({"id": user_id})
+            if user:
+                idea["match_score"] = calculate_match_score(user.get("profile", {}), idea)
+        return idea
+    except PyMongoError as exc:
+        logger.error("MongoDB unavailable in /api/ideas/{idea_id}", exc_info=exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 @api_router.post("/saved-ideas")
 async def save_idea(saved: SavedIdea):
@@ -2471,24 +2456,29 @@ async def create_checkout(data: CheckoutRequest, request: Request):
         raise HTTPException(status_code=400, detail="Invalid plan type")
     plan = ARCHITECT_PLANS[data.plan_type]
     stripe_key = os.environ["STRIPE_API_KEY"]
-    host_url = str(request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+    stripe.api_key = stripe_key
     success_url = f"{data.origin_url}?session_id={{CHECKOUT_SESSION_ID}}&payment=success"
     cancel_url = f"{data.origin_url}?payment=cancelled"
     metadata = {"user_id": data.user_id, "plan_type": data.plan_type}
-    checkout_req = CheckoutSessionRequest(
-        amount=plan["amount"],
-        currency=plan["currency"],
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": plan["currency"],
+                "unit_amount": int(round(plan["amount"] * 100)),
+                "product_data": {"name": f"Architect {plan['label']}"},
+            },
+            "quantity": 1,
+        }],
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata,
     )
-    session = await stripe.create_checkout_session(checkout_req)
     # Create pending transaction record
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
-        "session_id": session.session_id,
+        "session_id": session.id,
         "user_id": data.user_id,
         "plan_type": data.plan_type,
         "amount": plan["amount"],
@@ -2497,7 +2487,7 @@ async def create_checkout(data: CheckoutRequest, request: Request):
         "status": "initiated",
         "created_at": datetime.utcnow().isoformat(),
     })
-    return {"url": session.url, "session_id": session.session_id}
+    return {"url": session.url, "session_id": session.id}
 
 @api_router.get("/payments/status/{session_id}")
 async def get_payment_status(session_id: str):
@@ -2508,9 +2498,11 @@ async def get_payment_status(session_id: str):
     if existing.get("payment_status") == "paid":
         return {"payment_status": "paid", "status": "complete", "is_architect": True}
     stripe_key = os.environ["STRIPE_API_KEY"]
-    stripe = StripeCheckout(api_key=stripe_key, webhook_url="")
-    result = await stripe.get_checkout_status(session_id)
-    if result.payment_status == "paid":
+    stripe.api_key = stripe_key
+    session = stripe.checkout.Session.retrieve(session_id)
+    payment_status = session.get("payment_status", "unpaid")
+    status = session.get("status", "open")
+    if payment_status == "paid":
         user_id = existing.get("user_id")
         await db.payment_transactions.update_one(
             {"session_id": session_id},
@@ -2519,25 +2511,31 @@ async def get_payment_status(session_id: str):
         if user_id:
             await db.users.update_one({"id": user_id}, {"$set": {"is_architect": True}})
     return {
-        "payment_status": result.payment_status,
-        "status": result.status,
-        "is_architect": result.payment_status == "paid",
+        "payment_status": payment_status,
+        "status": status,
+        "is_architect": payment_status == "paid",
     }
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     stripe_key = os.environ["STRIPE_API_KEY"]
-    host_url = str(request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+    stripe.api_key = stripe_key
     body = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
     try:
-        event = await stripe.handle_webhook(body, sig)
-        if event.payment_status == "paid":
-            meta = event.metadata or {}
+        secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        if secret and sig:
+            event = stripe.Webhook.construct_event(body, sig, secret)
+        else:
+            event = json.loads(body.decode("utf-8"))
+
+        if event.get("type") == "checkout.session.completed":
+            obj = event.get("data", {}).get("object", {})
+            if obj.get("payment_status") != "paid":
+                return {"received": True}
+            meta = obj.get("metadata") or {}
             user_id = meta.get("user_id")
-            session_id = event.session_id
+            session_id = obj.get("id")
             existing = await db.payment_transactions.find_one({"session_id": session_id, "payment_status": "paid"})
             if not existing:
                 await db.payment_transactions.update_one(
@@ -2610,20 +2608,25 @@ GUIDELINES:
 - Keep responses under 200 words unless detail is needed.
 - Speak like an experienced mentor who has done this before.
 - Address them as a fellow entrepreneur."""
-    llm_key = os.environ["EMERGENT_LLM_KEY"]
+    if not gemini_online:
+        raise HTTPException(status_code=503, detail="Gemini unavailable")
     session_id = f"blueprint-guide-{user_id}-{data.idea_id}"
-    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message=system_message)
-    chat.with_model("gemini", "gemini-3-flash-preview")
     # Restore prior conversation from MongoDB (for persistence across server restarts)
     prior = await db.chat_messages.find(
         {"session_id": session_id}, {"_id": 0}
     ).sort("created_at", 1).to_list(20)
+    convo_lines = []
     for msg in prior:
-        if msg["role"] == "user":
-            chat._add_user_message(msg["content"])
-        elif msg["role"] == "assistant":
-            chat._add_assistant_message(msg["content"])
-    response = await chat.send_message(UserMessage(text=data.message))
+        role = "User" if msg.get("role") == "user" else "Assistant"
+        convo_lines.append(f"{role}: {msg.get('content', '')}")
+    history = "\n".join(convo_lines[-20:])
+    prompt = (
+        "Conversation so far:\n"
+        f"{history}\n\n"
+        f"User: {data.message}\n"
+        "Assistant:"
+    )
+    response = await generate_text(prompt=prompt, system_message=system_message)
     # Store messages
     ts = datetime.utcnow().isoformat()
     await db.chat_messages.insert_many([
@@ -2690,18 +2693,16 @@ Return EXACTLY this JSON format (no markdown, no extra text):
     }}
   ]
 }}"""
-    llm_key = os.environ["EMERGENT_LLM_KEY"]
-    session_id = f"troubleshoot-{uuid.uuid4()}"  # Fresh each time
-    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are the Blueprint Troubleshooting Matrix AI. Return only valid JSON.")
-    chat.with_model("gemini", "gemini-3-flash-preview")
-    response_text = await chat.send_message(UserMessage(text=prompt))
-    import json, re
+    if not gemini_online:
+        raise HTTPException(status_code=503, detail="Gemini unavailable")
     try:
-        # Strip any markdown code blocks if present
-        clean = re.sub(r"```json\n?|```\n?", "", response_text).strip()
-        matrix = json.loads(clean)
+        matrix = await generate_json_strict(
+            prompt=prompt,
+            system_message="You are the Blueprint Troubleshooting Matrix AI. Return valid JSON only.",
+            required_keys=["step_summary", "workarounds"],
+        )
     except Exception:
-        matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": response_text, "difficulty": "medium", "time_to_implement": "varies"}]}
+        matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": "Break the step into smaller actions and test one workaround now.", "difficulty": "medium", "time_to_implement": "varies"}]}
     return matrix
 
 # ============= Sprint 3: Community Wins, Streak System, Content Engine =============
@@ -3067,15 +3068,13 @@ Return EXACTLY this JSON (no markdown, no extra text):
   "local_tools": ["tool1", "tool2"]
 }}"""
     try:
-        llm_key = os.environ["EMERGENT_LLM_KEY"]
-        session_id = f"viability-{blueprint_id}-{city}-{country_code}"
-        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a local market analyst. Always return valid JSON.")
-        chat.with_model("gemini", "gemini-3-flash-preview")
-        response = await chat.send_message(UserMessage(text=prompt))
-        import re as _re, json as _json
-        match = _re.search(r'\{.*\}', response, _re.DOTALL)
-        if match:
-            return _json.loads(match.group())
+        if not gemini_online:
+            raise HTTPException(status_code=503, detail="Gemini unavailable")
+        return await generate_json_strict(
+            prompt=prompt,
+            system_message="You are a local market analyst. Return valid JSON only.",
+            required_keys=["score", "demand_level", "reason", "local_tip", "local_tools"],
+        )
     except Exception as e:
         logger.error(f"Viability generation error: {e}")
     return {"score": 72, "demand_level": "Medium", "reason": f"Market data for {location_str} is currently being analyzed.", "local_tip": "Research local demand before launching.", "local_tools": []}
@@ -3149,18 +3148,16 @@ Return EXACTLY this JSON (no markdown):
   ]
 }}"""
     try:
-        llm_key = os.environ["EMERGENT_LLM_KEY"]
-        session_id = f"rescue-{user_id}-{idea_id}-{datetime.now().strftime('%Y%m%d')}"
-        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a financial rescue specialist. Always return valid JSON only.")
-        chat.with_model("gemini", "gemini-3-flash-preview")
-        response = await chat.send_message(UserMessage(text=prompt))
-        import re as _re, json as _json
-        match = _re.search(r'\{.*\}', response, _re.DOTALL)
-        if match:
-            result = _json.loads(match.group())
-            result["stuck_step"] = stuck_step_text
-            result["stuck_step_num"] = stuck_step_num
-            return result
+        if not gemini_online:
+            raise HTTPException(status_code=503, detail="Gemini unavailable")
+        result = await generate_json_strict(
+            prompt=prompt,
+            system_message="You are a financial rescue specialist. Return valid JSON only.",
+            required_keys=["rescue_message", "tasks"],
+        )
+        result["stuck_step"] = stuck_step_text
+        result["stuck_step_num"] = stuck_step_num
+        return result
     except Exception as e:
         logger.error(f"Rescue generation error: {e}")
     raise HTTPException(status_code=500, detail="Failed to generate rescue tasks")
@@ -3444,21 +3441,13 @@ Generate a tactical execution package with EXACTLY this JSON structure (no markd
 }}"""
 
     try:
-        llm_key = os.environ["EMERGENT_LLM_KEY"]
-        session_id = f"tactical-{data.user_id}-{data.idea_id}-{uuid.uuid4().hex[:8]}"
-        chat = LlmChat(
-            api_key=llm_key,
-            session_id=session_id,
-            system_message="You are a tactical business development AI. Always return valid JSON only. No markdown. No explanations outside the JSON."
+        if not gemini_online:
+            raise HTTPException(status_code=503, detail="Gemini unavailable")
+        return await generate_json_strict(
+            prompt=prompt,
+            system_message="You are a tactical business development AI. Return valid JSON only.",
+            required_keys=["summary", "local_leads", "dm_script", "objection_guide"],
         )
-        chat.with_model("gemini", "gemini-3-flash-preview")
-        response_text = await chat.send_message(UserMessage(text=prompt))
-        import re as _re, json as _json
-        # Extract JSON from response
-        match = _re.search(r'\{.*\}', response_text, _re.DOTALL)
-        if match:
-            result = _json.loads(match.group())
-            return result
     except Exception as e:
         logger.error(f"Tactical AI error: {e}")
     # Fallback response
@@ -3476,6 +3465,7 @@ Generate a tactical execution package with EXACTLY this JSON structure (no markd
 
 ADSENSE_PUBLISHER_ID = "ca-pub-7453043458871233"
 GOOGLE_ADS_ACCOUNT = "915-268-4915"
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:8081")
 
 # ads.txt endpoint (must be accessible at /ads.txt for the domain)
 @api_router.get("/ads.txt", include_in_schema=False)
@@ -3572,7 +3562,7 @@ async def get_referral_info(user_id: str):
     
     return {
         "referral_code": ref_code,
-        "referral_link": f"https://quick-wins-3.preview.emergentagent.com?ref={ref_code}",
+        "referral_link": f"{FRONTEND_BASE_URL}?ref={ref_code}",
         "referred_count": referred_count,
         "arc_from_referrals": arc_from_referrals,
         "reward_per_referral": 100,
@@ -3675,6 +3665,19 @@ def mask_mongo_url(url: str) -> str:
 
 @app.get("/health")
 async def health_check(debug: bool = False):
+    if offline_mode:
+        if debug:
+            return {
+                "status": "error",
+                "detail": "Database unavailable (Offline Mode)",
+                "offline_mode": True,
+                "gemini_online": gemini_online,
+                "mongo_url_source": mongo_url_source,
+                "db_name": db_name,
+                "mongo_url_preview": mask_mongo_url(mongo_url),
+            }
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
     try:
         await client.admin.command("ping")
         result = {"status": "ok", "database": "connected"}
@@ -3692,6 +3695,7 @@ async def health_check(debug: bool = False):
 
     if debug:
         result.update({
+            "gemini_online": gemini_online,
             "mongo_url_source": mongo_url_source,
             "db_name": db_name,
             "mongo_url_preview": mask_mongo_url(mongo_url),
@@ -3720,13 +3724,25 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup_event():
-    """Schedule the nightly blueprint verification pass on startup."""
+    """Verify Atlas + Gemini connectivity and schedule verifier when online."""
+    global offline_mode, gemini_online
     try:
+        await client.admin.command("ping")
+        offline_mode = False
+        logger.info("[Startup] Atlas ping successful.")
         from app.services.blueprint_verifier import run_nightly_verifier
         asyncio.create_task(run_nightly_verifier(db))
         logger.info("[Startup] Nightly verifier task scheduled.")
     except Exception as exc:
-        logger.warning(f"[Startup] Could not schedule verifier: {exc}")
+        offline_mode = True
+        logger.error(f"Atlas Connection Error: {exc}")
+        logger.warning("[Startup] Running in Offline Mode. DB-backed endpoints will return 503.")
+
+    gemini_online = await ping_gemini()
+    if gemini_online:
+        logger.info("[Startup] Gemini ping successful.")
+    else:
+        logger.error("Gemini Connection Error: ping failed")
 
 
 @api_router.get("/verify/status")
