@@ -69,16 +69,25 @@ export function EarningsCommandCenter({ userId }: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setData(null);
+      return;
+    }
     loadEarnings();
   }, [userId]);
 
   const loadEarnings = async () => {
+    if (!userId) return;
     try {
-      const res = await axios.get(`${API_URL}/api/earnings/dashboard/${userId}`);
+      const res = await axios.get(`${API_URL}/api/earnings/dashboard/${userId}`, { timeout: 10000 });
       setData(res.data);
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
     } catch (e) {
-      console.error('Earnings load error:', e);
+      setData(null);
+      if (__DEV__) {
+        console.log('Earnings dashboard unavailable, showing zero state.');
+      }
     } finally {
       setLoading(false);
     }

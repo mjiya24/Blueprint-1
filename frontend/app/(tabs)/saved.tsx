@@ -42,12 +42,15 @@ export default function SavedScreen() {
         const u = JSON.parse(userData);
         setUser(u);
         if (!u.is_guest) {
-          const res = await axios.get(`${API_URL}/api/saved-ideas/${u.id}`);
+          const res = await axios.get(`${API_URL}/api/saved-ideas/${u.id}`, { timeout: 10000 });
           setSavedIdeas(res.data);
         }
       }
     } catch (e) {
-      console.error('Error loading saved ideas:', e);
+      setSavedIdeas([]);
+      if (__DEV__) {
+        console.log('Saved ideas unavailable, showing empty state.');
+      }
     } finally {
       setIsLoading(false);
     }

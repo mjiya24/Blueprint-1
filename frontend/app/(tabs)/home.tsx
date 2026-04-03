@@ -75,13 +75,17 @@ export default function HomeScreen() {
           setWeeklyBlueprint(pickWeeklyBlueprint(personalized, u.id || 'user'));
 
           // Do not block initial paint on streak check-in.
-          axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`)
+          axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`, undefined, { timeout: 8000 })
             .then((streakRes) => setStreak(streakRes.data?.streak_current || 0))
             .catch(() => setStreak(0));
         }
       }
     } catch (e) {
-      console.error('Error loading home:', e);
+      setIdeas([]);
+      setWeeklyBlueprint(null);
+      if (__DEV__) {
+        console.log('Home data unavailable, showing fallback UI.');
+      }
     } finally {
       setIsLoading(false);
     }
