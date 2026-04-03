@@ -63,29 +63,30 @@ export default function HomeScreen() {
       if (userData) {
         const u = JSON.parse(userData);
         setUser(u);
+
+        // Use a timeout so the app doesn't hang forever
+        const config = { timeout: 8000 };
+
         if (u.is_guest) {
-          const res = await axios.get(`${API_URL}/api/ideas`, { params: { limit: 60 }, timeout: 12000 });
+          const res = await axios.get(`${API_URL}/api/ideas`, config);
           const allIdeas = res.data.ideas || [];
           setIdeas(allIdeas.slice(0, 6));
-          setWeeklyBlueprint(pickWeeklyBlueprint(allIdeas, 'guest'));
+          setWeeklyBlueprint(pickWeeklyBlueprint(allIdeas, new Date().toDateString()));
         } else {
-          const ideasRes = await axios.get(`${API_URL}/api/ideas/personalized/${u.id}`, { timeout: 12000 });
-          const personalized = ideasRes.data || [];
-          setIdeas(personalized.slice(0, 6));
-          setWeeklyBlueprint(pickWeeklyBlueprint(personalized, u.id || 'user'));
-
-          // Do not block initial paint on streak check-in.
-          axios.post(`${API_URL}/api/users/${u.id}/streak/checkin`, undefined, { timeout: 8000 })
-            .then((streakRes) => setStreak(streakRes.data?.streak_current || 0))
-            .catch(() => setStreak(0));
+          // Wrap in try/catch so one failure doesn't kill the whole screen
+          try {
+            const [ideasRes] = await Promise.all([
+              axios.get(`${API_URL}/api/ideas/personalized/${u.id}`, config)
+            ]);
+            setIdeas(ideasRes.data.ideas || []);
+          } catch (e) {
+            console.log('Non-blocking error: Personalized ideas failed');
+          }
         }
       }
-    } catch (e) {
-      setIdeas([]);
-      setWeeklyBlueprint(null);
-      if (__DEV__) {
-        console.log('Home data unavailable, showing fallback UI.');
-      }
+    } catch (error) {
+      // This is the "Armor" - we log it to the console, not a red screen
+      console.log('Silent Error: Home data failed to load');
     } finally {
       setIsLoading(false);
     }

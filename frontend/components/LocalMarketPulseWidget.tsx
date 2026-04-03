@@ -40,11 +40,15 @@ export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
   const loadTrending = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/blueprints/local-trending`, {
+        timeout: 10000,
         params: { city, country_code: countryCode, user_id: userId },
       });
       setBlueprints(res.data.blueprints || []);
     } catch (e) {
-      console.error('Local trending error:', e);
+      setBlueprints([]);
+      if (__DEV__) {
+        console.log('Local trending unavailable, hiding widget.');
+      }
     } finally {
       setLoading(false);
     }

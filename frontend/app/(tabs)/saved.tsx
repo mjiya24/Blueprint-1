@@ -64,10 +64,12 @@ export default function SavedScreen() {
 
   const handleUnsave = async (ideaId: string) => {
     try {
-      await axios.delete(`${API_URL}/api/saved-ideas/${user.id}/${ideaId}`);
+      await axios.delete(`${API_URL}/api/saved-ideas/${user.id}/${ideaId}`, { timeout: 10000 });
       setSavedIdeas(prev => prev.filter(i => i.id !== ideaId));
     } catch (e) {
-      console.error('Error removing saved idea:', e);
+      if (__DEV__) {
+        console.log('Could not remove saved idea right now.');
+      }
     }
   };
 

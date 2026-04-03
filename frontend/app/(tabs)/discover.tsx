@@ -93,15 +93,18 @@ export default function DiscoverScreen() {
       // Try /api/ideas first (always seeded), fall back to /api/blueprints
       let items: any[] = [];
       try {
-        const res = await axios.get(`${API_URL}/api/ideas`, { params });
+        const res = await axios.get(`${API_URL}/api/ideas`, { params, timeout: 12000 });
         items = normalizeBlueprintList(res.data);
       } catch {
-        const res = await axios.get(`${API_URL}/api/blueprints`, { params });
+        const res = await axios.get(`${API_URL}/api/blueprints`, { params, timeout: 12000 });
         items = normalizeBlueprintList(res.data);
       }
       setBlueprints(items);
     } catch (e) {
-      console.error('Discover load error:', e);
+      setBlueprints([]);
+      if (__DEV__) {
+        console.log('Discover data unavailable, showing empty state.');
+      }
     } finally {
       setIsLoading(false);
     }

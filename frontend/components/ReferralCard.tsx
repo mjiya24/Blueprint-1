@@ -29,15 +29,24 @@ export function ReferralCard({ userId, userName = '' }: Props) {
   };
 
   useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setRefData(null);
+      return;
+    }
     loadReferral();
   }, [userId]);
 
   const loadReferral = async () => {
+    if (!userId) return;
     try {
-      const res = await axios.get(`${API_URL}/api/referrals/${userId}`);
+      const res = await axios.get(`${API_URL}/api/referrals/${userId}`, { timeout: 10000 });
       setRefData(res.data);
     } catch (e) {
-      console.error('Referral load error:', e);
+      setRefData(null);
+      if (__DEV__) {
+        console.log('Referral data unavailable, hiding referral card.');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,7 +75,9 @@ export function ReferralCard({ userId, userName = '' }: Props) {
       const isCanceled = err?.name === 'AbortError' || message.includes('cancellation of share');
       if (isCanceled) return;
 
-      console.error('Share error:', e);
+      if (__DEV__) {
+        console.log('Share failed to open.');
+      }
     }
   };
 

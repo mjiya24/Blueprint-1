@@ -107,7 +107,7 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
       const params: any = {};
       if (userState) params.user_state = userState;
       if (userId) params.user_id = userId;
-      const res = await axios.get(`${API_URL}/api/quick-wins`, { params });
+      const res = await axios.get(`${API_URL}/api/quick-wins`, { params, timeout: 10000 });
       // Sort by speed-to-first-dollar so fastest payouts appear first
       const sorted = (res.data || []).sort((a: QuickWin, b: QuickWin) => {
         const aScore = SPEED_ORDER[a.time_to_first_dollar || ''] ?? 99;
@@ -116,7 +116,10 @@ export function QuickWinsBanner({ userState = '', userId = '', onPressCard }: Pr
       });
       setWins(sorted);
     } catch (e) {
-      console.error('QuickWins load error:', e);
+      setWins([]);
+      if (__DEV__) {
+        console.log('QuickWins unavailable, skipping banner.');
+      }
     } finally {
       setLoading(false);
     }
