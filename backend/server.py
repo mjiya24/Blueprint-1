@@ -25,10 +25,13 @@ REPO_ROOT = ROOT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
-from app.services.gemini_native import generate_json_strict, generate_text, ping_gemini
+# Load .env BEFORE any module that reads os.getenv at import/configure time
+_env_path = ROOT_DIR / '.env'
+load_dotenv(_env_path, override=True)
 
-load_dotenv(ROOT_DIR / '.env')
 logger = logging.getLogger(__name__)
+
+from app.services.gemini_native import generate_json_strict, generate_text, ping_gemini
 
 mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 mongo_url_source = "MONGO_URL" if os.getenv("MONGO_URL") else "default"

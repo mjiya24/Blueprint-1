@@ -9,7 +9,7 @@ import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+_DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 _CONFIGURED = False
 
 

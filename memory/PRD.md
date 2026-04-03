@@ -65,7 +65,7 @@ Build a premium, highly personalized fintech mobile app named "Blueprint" with t
 - **Frontend:** React Native + Expo (runs as web via Expo Web)
 - **Backend:** FastAPI (Python)
 - **Database:** MongoDB (Atlas)
-- **AI:** Gemini 3 Flash via `emergentintegrations` (Emergent LLM Key)
+- **AI:** Gemini via native Google Generative AI SDK (GEMINI_API_KEY)
 - **Payments:** Stripe (test mode)
 - **Push Notifications:** expo-notifications
 
@@ -195,7 +195,7 @@ saved_ideas: { user_id, idea_id, status, notes, action_steps, progress_percentag
 - **Community Wins Feed:** Hardcoded mock data in server.py
 - **Market Pulse:** Hardcoded per-idea mock news
 - **Blueprint Veterans:** Hardcoded mock reviews
-- **Stripe:** Test mode (`sk_test_emergent`) — needs live key
+- **Stripe:** Test mode (`sk_test_placeholder`) — needs live key
 
 ## Test Credentials
 - Sprint 4: `TEST_sprint4_tester@blueprint.com` / `TestPass123`
