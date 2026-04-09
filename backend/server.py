@@ -3997,3 +3997,6 @@ async def get_actions(user_id: str):
     for a in actions:
         a["_id"] = str(a["_id"]) # Convert MongoDB ID to string
     return actions
+
+
+app.include_router(api_router)
