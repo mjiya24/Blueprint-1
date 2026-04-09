@@ -12,7 +12,12 @@ import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
+const DEFAULT_API_URL = 'https://blueprint-1-mnvh.onrender.com';
+const API_CANDIDATES = Array.from(new Set([
+  process.env.EXPO_PUBLIC_BACKEND_URL,
+  DEFAULT_API_URL,
+].filter(Boolean) as string[]));
+const DISCOVER_CACHE_KEY = 'discover_blueprints_cache_v1';
 
 const DIFF_COLORS: Record<string, string> = {
   easy: '#00D95F', medium: '#F59E0B', hard: '#FF6B6B',
@@ -27,6 +32,36 @@ const normalizeBlueprintList = (payload: any): any[] => {
   if (Array.isArray(payload?.blueprints)) return payload.blueprints; // /api/blueprints
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
+};
+
+const normalizeBlueprintItem = (item: any, index: number) => {
+  const fallbackId = `bp-${index}-${String(item?.title || '').slice(0, 24)}`;
+  return {
+    ...item,
+    id: String(item?.id || fallbackId),
+    title: item?.title || 'Untitled Blueprint',
+    description: item?.description || 'Details coming soon.',
+    category: item?.category || 'General',
+  };
+};
+
+const sanitizeBlueprintList = (items: any[]): any[] => {
+  const byId = new Map<string, any>();
+  items.forEach((item, index) => {
+    const normalized = normalizeBlueprintItem(item, index);
+    byId.set(normalized.id, normalized);
+  });
+  return Array.from(byId.values());
+};
+
+const fetchBlueprintsFromApi = async (apiBaseUrl: string, params: any, timeout: number): Promise<any[]> => {
+  try {
+    const ideasRes = await axios.get(`${apiBaseUrl}/api/ideas`, { params, timeout });
+    return sanitizeBlueprintList(normalizeBlueprintList(ideasRes.data));
+  } catch {
+    const blueprintsRes = await axios.get(`${apiBaseUrl}/api/blueprints`, { params, timeout });
+    return sanitizeBlueprintList(normalizeBlueprintList(blueprintsRes.data));
+  }
 };
 
 const CATEGORY_TABS = [
@@ -75,6 +110,7 @@ export default function DiscoverScreen() {
   const [showFilters, setShowFilters]           = useState(false);
   const [verifyModalBp, setVerifyModalBp]       = useState<any>(null);
   const [verifiedOnly, setVerifiedOnly]         = useState(false);
+  const [hasLoadError, setHasLoadError]         = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -86,22 +122,55 @@ export default function DiscoverScreen() {
   };
 
   const loadBlueprints = async (u?: any) => {
-    setIsLoading(true);
+    const cachedRaw = await AsyncStorage.getItem(DISCOVER_CACHE_KEY);
+    const cachedItems = cachedRaw ? sanitizeBlueprintList(JSON.parse(cachedRaw)) : [];
+
+    if (cachedItems.length > 0) {
+      setBlueprints(cachedItems);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
+    setHasLoadError(false);
     try {
       const params: any = { limit: 150 };
       if (u && !u.is_guest) params.user_id = u.id;
-      // Try /api/ideas first (always seeded), fall back to /api/blueprints
+
       let items: any[] = [];
-      try {
-        const res = await axios.get(`${API_URL}/api/ideas`, { params, timeout: 12000 });
-        items = normalizeBlueprintList(res.data);
-      } catch {
-        const res = await axios.get(`${API_URL}/api/blueprints`, { params, timeout: 12000 });
-        items = normalizeBlueprintList(res.data);
+      let fetched = false;
+      const timeoutAttempts = [12000, 22000];
+
+      for (const apiBaseUrl of API_CANDIDATES) {
+        for (const timeout of timeoutAttempts) {
+          try {
+            const result = await fetchBlueprintsFromApi(apiBaseUrl, params, timeout);
+            items = result;
+            fetched = true;
+            if (items.length > 0) break;
+          } catch {
+            // Continue through timeout and endpoint fallbacks.
+          }
+        }
+        if (items.length > 0) break;
       }
-      setBlueprints(items);
-    } catch (e) {
-      setBlueprints([]);
+
+      if (fetched) {
+        setBlueprints(items);
+        if (items.length > 0) {
+          await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
+        }
+      } else {
+        setHasLoadError(true);
+        if (cachedItems.length === 0) {
+          setBlueprints([]);
+        }
+      }
+    } catch {
+      setHasLoadError(true);
+      if (cachedItems.length === 0) {
+        setBlueprints([]);
+      }
       if (__DEV__) {
         console.log('Discover data unavailable, showing empty state.');
       }
@@ -608,6 +677,20 @@ export default function DiscoverScreen() {
                     <Text style={[styles.emptyTitle, { color: theme.text }]}>Curation in Progress</Text>
                       <Text style={[styles.emptySub, { color: theme.textMuted }]}>We&apos;re verifying more blueprints daily. Check back soon for verified-only opportunities.</Text>
                   </>
+                  ) : hasLoadError && !isSearchMode && libraryCount === 0 ? (
+                    <>
+                      <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}> 
+                        <Ionicons name="cloud-offline-outline" size={38} color={theme.textMuted} />
+                      </View>
+                      <Text style={[styles.emptyTitle, { color: theme.text }]}>Connection issue</Text>
+                      <Text style={[styles.emptySub, { color: theme.textMuted }]}>We couldn&apos;t load fresh blueprints. Check your connection and retry.</Text>
+                      <TouchableOpacity
+                        style={[styles.emptyBtn, { backgroundColor: theme.accentLight }]}
+                        onPress={() => loadBlueprints(user)}
+                      >
+                        <Text style={[styles.emptyBtnText, { color: theme.accent }]}>Retry</Text>
+                      </TouchableOpacity>
+                    </>
                 ) : (
                   <>
                     <View style={[styles.emptyIconWrap, { backgroundColor: theme.surface }]}>
