@@ -1,15 +1,9 @@
-import asyncio
-import json
-import re
-
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.errors import PyMongoError
 import os
 import logging
-import sys
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
@@ -18,135 +12,18 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 from bson import ObjectId
 import httpx
-import stripe
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
-REPO_ROOT = ROOT_DIR.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.append(str(REPO_ROOT))
+load_dotenv(ROOT_DIR / '.env')
 
-# Load .env BEFORE any module that reads os.getenv at import/configure time
-_env_path = ROOT_DIR / '.env'
-load_dotenv(_env_path, override=True)
-
-logger = logging.getLogger(__name__)
-
-from app.services.gemini_native import generate_json_strict, generate_text, ping_gemini
-
-mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-mongo_url_source = "MONGO_URL" if os.getenv("MONGO_URL") else "default"
-if mongo_url_source == "default":
-    logger.warning("MONGO_URL not set; falling back to localhost")
-
-db_name = os.getenv("DB_NAME") or os.getenv("DATABASE_NAME") or "blueprint_db"
-client = AsyncIOMotorClient(
-    mongo_url,
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=5000,
-    socketTimeoutMS=10000,
-)
-db = client[db_name]
-offline_mode = False
-gemini_online = False
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
-
-
-def _serialize_live_action(action: dict) -> dict:
-    action["id"] = str(action.pop("_id"))
-    return action
-
-
-@app.get("/api/actions/{user_id}/goal")
-async def get_action_goal_live(user_id: str):
-    goal = await db.user_action_goals.find_one({"user_id": user_id})
-    if not goal:
-        return {"user_id": user_id, "daily_revenue_goal": 0.0}
-
-    return {
-        "user_id": user_id,
-        "daily_revenue_goal": goal.get("daily_revenue_goal", 0.0),
-        "updated_at": goal.get("updated_at"),
-    }
-
-
-@app.put("/api/actions/{user_id}/goal")
-async def set_action_goal_live(user_id: str, payload: Dict[str, Any]):
-    daily_revenue_goal = max(0.0, float(payload.get("daily_revenue_goal", 0.0) or 0.0))
-    await db.user_action_goals.update_one(
-        {"user_id": user_id},
-        {
-            "$set": {
-                "user_id": user_id,
-                "daily_revenue_goal": daily_revenue_goal,
-                "updated_at": datetime.now(timezone.utc),
-            }
-        },
-        upsert=True,
-    )
-    return await get_action_goal_live(user_id)
-
-
-@app.get("/api/actions/{user_id}")
-async def get_actions_live(user_id: str):
-    cursor = db.user_actions.find({"user_id": user_id}).sort("created_at", -1)
-    actions = await cursor.to_list(length=100)
-    return [_serialize_live_action(action) for action in actions]
-
-
-@app.post("/api/actions")
-async def add_action_live(payload: Dict[str, Any]):
-    title = str(payload.get("title", "")).strip()
-    if not title:
-        raise HTTPException(status_code=400, detail="Action title is required")
-
-    user_id = str(payload.get("user_id", "")).strip()
-    if not user_id:
-        raise HTTPException(status_code=400, detail="User id is required")
-
-    status = str(payload.get("status", "pending"))
-    if status not in {"pending", "completed"}:
-        raise HTTPException(status_code=400, detail="Invalid action status")
-
-    action_dict = {
-        "user_id": user_id,
-        "title": title,
-        "description": payload.get("description"),
-        "status": status,
-        "potential_revenue": max(0.0, float(payload.get("potential_revenue", 0.0) or 0.0)),
-        "created_at": datetime.now(timezone.utc),
-        "completed_at": datetime.now(timezone.utc) if status == "completed" else None,
-    }
-    result = await db.user_actions.insert_one(action_dict)
-    created = await db.user_actions.find_one({"_id": result.inserted_id})
-    return _serialize_live_action(created)
-
-
-@app.patch("/api/actions/item/{action_id}")
-async def update_action_status_live(action_id: str, payload: Dict[str, Any]):
-    status = payload.get("status")
-    if status not in {"pending", "completed"}:
-        raise HTTPException(status_code=400, detail="Invalid action status")
-
-    if not ObjectId.is_valid(action_id):
-        raise HTTPException(status_code=404, detail="Action not found")
-
-    update_fields = {"status": status}
-    if status == "completed":
-        update_fields["completed_at"] = datetime.now(timezone.utc)
-    else:
-        update_fields["completed_at"] = None
-
-    result = await db.user_actions.update_one(
-        {"_id": ObjectId(action_id)},
-        {"$set": update_fields},
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Action not found")
-
-    updated = await db.user_actions.find_one({"_id": ObjectId(action_id)})
-    return _serialize_live_action(updated)
 
 # ============= Models =============
 
@@ -158,13 +35,7 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-class UserAction(BaseModel):
-    user_id: str
-    title: str
-    description: Optional[str] = None
-    status: str = "pending"
-    potential_revenue: float = 0.0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class UserProfile(BaseModel):
     interests: List[str] = []
     skills: List[str] = []
@@ -184,14 +55,6 @@ class UserProfile(BaseModel):
     country_code: str = ""
     currency_code: str = ""
     currency_symbol: str = ""
-
-
-class ActionStatusUpdate(BaseModel):
-    status: str
-
-
-class RevenueGoalUpdate(BaseModel):
-    daily_revenue_goal: float = Field(default=0.0, ge=0.0)
 
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1257,924 +1120,7 @@ PRE_POPULATED_IDEAS = [
         "time_to_first_dollar": "Same day",
         "minimum_payout": "$2"
     }
-    ,
-    # === AI & AUTOMATION ===
-    {
-        "id": "ai-001",
-        "title": "AI Prompt Engineer (Freelance)",
-        "description": "Get paid to write, test, and optimize prompts for ChatGPT, Claude, and Midjourney. Businesses pay top dollar for prompts that reliably produce quality outputs. Zero coding required.",
-        "category": "AI & Automation",
-        "required_skills": ["Writing", "Critical Thinking", "AI Familiarity"],
-        "startup_cost": "free",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Create free accounts on ChatGPT, Claude, and Midjourney",
-            "Study prompt engineering basics on PromptBase and LearnPrompting.org",
-            "Build a portfolio of 10 high-quality prompts across different use cases",
-            "List your prompts for sale on PromptBase ($5-$20 per prompt)",
-            "Offer prompt audit packages on Fiverr for $50-$200",
-            "Join AI-focused Slack and Discord communities to find direct clients",
-            "Scale by creating prompt packs and templates for recurring revenue"
-        ],
-        "potential_earnings": "$2,000-$8,000/month",
-        "difficulty": "beginner",
-        "tags": ["ai", "freelance", "remote", "no-code"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "ai-002",
-        "title": "AI Content Agency",
-        "description": "Run a one-person content agency using AI tools. Use ChatGPT + Jasper to produce blog posts, social captions, and email sequences for small businesses at 10x the speed of traditional writers.",
-        "category": "AI & Automation",
-        "required_skills": ["Writing", "Client Communication", "AI Tools"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Pick a niche: real estate, e-commerce, or SaaS companies",
-            "Create a simple portfolio site with 3 sample AI-generated pieces",
-            "Offer a free trial piece to 10 local businesses via cold email",
-            "Close first retainer at $500-$1,500/month for 8 posts/month",
-            "Use ChatGPT + Surfer SEO to produce each post in under 30 minutes",
-            "Hire a VA at $5/hr to handle research and formatting",
-            "Scale to 10 clients at $1,000/month = $10,000 MRR"
-        ],
-        "potential_earnings": "$3,000-$12,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "agency", "content", "remote"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["solo", "team"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "ai-003",
-        "title": "AI Faceless YouTube Channel",
-        "description": "Build a monetized YouTube channel without ever showing your face. Use AI voiceovers (ElevenLabs), AI video (Pictory), and ChatGPT scripts to publish finance or history content at scale.",
-        "category": "AI & Automation",
-        "required_skills": ["Video Editing Basics", "Content Research", "Consistency"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Choose a proven niche: finance tips, true crime, or history facts",
-            "Script 5 videos using ChatGPT (ask for 'YouTube script, 8 minutes')",
-            "Generate AI voiceover with ElevenLabs ($5/month plan)",
-            "Create video with Pictory or CapCut using stock footage",
-            "Upload weekly for 90 days to hit YouTube Partner Program threshold",
-            "Enable monetization at 1,000 subs + 4,000 watch hours",
-            "Layer in affiliate links in descriptions for extra passive revenue"
-        ],
-        "potential_earnings": "$1,000-$10,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "youtube", "passive", "content"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "ai-004",
-        "title": "AI Chatbot Builder for Local Businesses",
-        "description": "Build and sell AI-powered customer service chatbots to restaurants, salons, and real estate agents using no-code tools like Botpress or ManyChat. Charge setup + monthly retainer.",
-        "category": "AI & Automation",
-        "required_skills": ["Client Communication", "No-Code Tools", "Problem Solving"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Learn Botpress or ManyChat with free tutorials (3-5 hours)",
-            "Build a demo chatbot for a fictional restaurant in your niche",
-            "Cold call or DM 20 local businesses offering a free demo",
-            "Charge $300-$800 setup fee + $150/month maintenance",
-            "Duplicate your template for each new client (1-2 hours per setup)",
-            "Offer an Instagram DM automation add-on for $50/month extra",
-            "Scale to 20 clients for $3,000+/month pure recurring revenue"
-        ],
-        "potential_earnings": "$2,000-$8,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "saas", "no-code", "agency", "automation"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "ai-005",
-        "title": "AI Resume & LinkedIn Optimizer",
-        "description": "Charge job seekers $75-$200 to rewrite their resume and LinkedIn profile using AI. With GPT-4, you can process 5-8 clients daily. High-demand service with desperate, motivated buyers.",
-        "category": "AI & Automation",
-        "required_skills": ["Writing", "HR Knowledge", "AI Tools"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Study ATS (Applicant Tracking System) formatting best practices",
-            "Build a custom GPT prompt that transforms weak resumes instantly",
-            "Create a Gumroad or Fiverr listing for '$99 AI Resume Rewrite'",
-            "Post before/after resume examples on LinkedIn and TikTok",
-            "Offer 24-hour turnaround as your key differentiator",
-            "Upsell LinkedIn profile optimization for $75 extra",
-            "Bundle into a 'Full Job Search Package' at $249 for higher AOV"
-        ],
-        "potential_earnings": "$1,500-$6,000/month",
-        "difficulty": "beginner",
-        "tags": ["ai", "freelance", "remote", "writing"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance", "education"]
-    },
-    # === NO-CODE & SAAS ===
-    {
-        "id": "nocode-001",
-        "title": "No-Code SaaS App (Bubble)",
-        "description": "Build and monetize a web app without writing a single line of code using Bubble. Thousands of solo founders generate $2k-$20k/month from niche tools built in under 30 days.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Problem Solving", "Basic UI Design", "Marketing"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Find a micro-SaaS problem: niche invoice tool, habit tracker, or booking app",
-            "Complete Bubble's free 2-hour beginner course",
-            "Build an MVP version in 20-30 hours on Bubble's free plan",
-            "Launch on Product Hunt and post in Reddit communities for feedback",
-            "Charge $9-$49/month via Stripe integration (built into Bubble)",
-            "Get first 10 paying customers through direct outreach",
-            "Upgrade to Bubble's $32/month plan as you scale beyond 100 users"
-        ],
-        "potential_earnings": "$2,000-$20,000/month",
-        "difficulty": "intermediate",
-        "tags": ["no-code", "saas", "software", "passive"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-002",
-        "title": "Notion Template Store",
-        "description": "Design and sell Notion templates for productivity, budgeting, or business management. Top sellers on Gumroad earn $5,000-$20,000/month. Design once, sell forever with zero fulfillment.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Notion", "Design Thinking", "Marketing"],
-        "startup_cost": "free",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Master Notion databases, linked views, and formulas (free YouTuhe tutorials)",
-            "Identify a pain point: freelancer invoice tracker, student planner, business OS",
-            "Design your template with a clean, visual layout",
-            "Set up a Gumroad or Lemon Squeezy store for free",
-            "Price at $9-$49 based on complexity and audience",
-            "Create a TikTok or YouTube demo video showing the template in action",
-            "Build a free starter version to capture emails for upsells"
-        ],
-        "potential_earnings": "$500-$10,000/month",
-        "difficulty": "beginner",
-        "tags": ["no-code", "digital-product", "passive", "notion"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "nocode-003",
-        "title": "Webflow Website Agency",
-        "description": "Build premium websites for small businesses using Webflow — no coding required. Charge $1,500-$5,000 per site and repeat. Webflow experts are in extreme demand as businesses ditch WordPress.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Design Sense", "Client Communication", "Webflow Basics"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Complete the free Webflow University course (10 hours)",
-            "Clone 3 templates and customize them to build your portfolio",
-            "Create a personal site on Webflow showcasing your work",
-            "Reach out to 20 local businesses with outdated websites",
-            "Offer a 'Website in 5 Days' package for $1,500-$3,000",
-            "Charge $100/month for hosting and maintenance after delivery",
-            "Hire offshore designers to scale to 4-6 sites per month"
-        ],
-        "potential_earnings": "$3,000-$15,000/month",
-        "difficulty": "intermediate",
-        "tags": ["no-code", "agency", "design", "webflow"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "nocode-004",
-        "title": "Zapier / Make.com Automation Consultant",
-        "description": "Get paid to connect apps and automate workflows for businesses using Zapier or Make.com. With zero coding, you can save clients 20+ hours per week and charge $500-$2,000 per project.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Logical Thinking", "Process Mapping", "Zapier or Make"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Learn Zapier fundamentals with their free certification course",
-            "Build 5 free automations for your own projects as proof of work",
-            "Join freelance platforms and list 'Zapier Automation' as a service",
-            "Target e-commerce stores, coaches, and real estate agents",
-            "Offer a free 30-minute 'automation audit' call to find pain points",
-            "Charge $500-$2,000 per automation build depending on complexity",
-            "Convert best clients to $300/month retainer for ongoing maintenance"
-        ],
-        "potential_earnings": "$2,000-$10,000/month",
-        "difficulty": "beginner",
-        "tags": ["no-code", "automation", "consulting", "saas"],
-        "environment_fit": ["home"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-005",
-        "title": "Digital Product Store (Gumroad)",
-        "description": "Sell digital downloads — eBooks, templates, guides, or toolkits — on Gumroad with zero inventory. A single high-quality $27 product sold to 100 customers/month is $2,700 in passive income.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Writing or Design", "Niche Knowledge", "Basic Marketing"],
-        "startup_cost": "free",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Pick a topic you know better than 90% of people",
-            "Create a 15-30 page PDF guide or template kit using Canva",
-            "Set up a free Gumroad store and upload your product",
-            "Price between $9-$97 based on perceived value and niche",
-            "Post about the problem your product solves on Twitter/X and Reddit",
-            "Build an email list by offering a free 'teaser' version",
-            "Launch an affiliate program through Gumroad at 30-40% commission"
-        ],
-        "potential_earnings": "$500-$8,000/month",
-        "difficulty": "beginner",
-        "tags": ["digital-product", "passive", "no-code", "ecommerce"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    # === PASSIVE & INVESTMENT ===
-    {
-        "id": "passive-006",
-        "title": "High-Yield Savings + T-Bills Ladder",
-        "description": "Park your emergency fund and savings in a high-yield savings account (5%+ APY) or 3-6 month Treasury Bills. With $20,000 invested, earn $1,000-$1,500/year with zero risk and full liquidity.",
-        "category": "Passive & Investment",
-        "required_skills": ["Basic Financial Literacy"],
-        "startup_cost": "high",
-        "time_needed": "minimal",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Open a high-yield savings account (Marcus, Ally, or SoFi — all 4.5-5%+ APY)",
-            "Transfer your existing savings into the HYSA today",
-            "Research 3-month and 6-month Treasury Bills on TreasuryDirect.gov",
-            "Create a T-Bill ladder: buy bills that mature every 1-3 months",
-            "Reinvest matured bills automatically for compounding returns",
-            "Keep 3-month expenses as liquid HYSA; ladder the rest in T-Bills",
-            "Monitor rate changes quarterly and adjust ladder duration accordingly"
-        ],
-        "potential_earnings": "$1,000-$5,000/year",
-        "difficulty": "beginner",
-        "tags": ["passive", "investment", "finance", "no-risk"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["investment"],
-        "interest_tags": ["finance"]
-    },
-    {
-        "id": "passive-007",
-        "title": "Dividend Stock Portfolio",
-        "description": "Build a portfolio of dividend-paying stocks and ETFs that send you monthly or quarterly cash. With $50,000 invested at 4% yield, earn $2,000/year in passive dividends — with growth potential on top.",
-        "category": "Passive & Investment",
-        "required_skills": ["Basic Investing Knowledge", "Patience"],
-        "startup_cost": "high",
-        "time_needed": "minimal",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Open a brokerage account on Fidelity, Schwab, or M1 Finance",
-            "Start with broad dividend ETFs: SCHD, VYM, or JEPI",
-            "Enable DRIP (Dividend Reinvestment Plan) for automatic compounding",
-            "Invest consistently every month regardless of market conditions",
-            "Research individual dividend aristocrats for core positions (JNJ, ABBV, KO)",
-            "Diversify across sectors: utilities, consumer staples, financials, healthcare",
-            "Track dividend income with a spreadsheet; target $500/month milestone"
-        ],
-        "potential_earnings": "$2,000-$15,000/year",
-        "difficulty": "intermediate",
-        "tags": ["passive", "investment", "stocks", "dividends"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["investment"],
-        "interest_tags": ["finance"]
-    },
-    {
-        "id": "passive-008",
-        "title": "Short-Term Rental Arbitrage (Airbnb)",
-        "description": "Rent an apartment at market rate and re-list it on Airbnb at 2-3x the monthly cost. No property ownership required. Hosts using this model net $1,000-$4,000 profit per unit per month.",
-        "category": "Passive & Investment",
-        "required_skills": ["Negotiation", "Hospitality", "Basic Operations"],
-        "startup_cost": "high",
-        "time_needed": "part-time",
-        "is_location_based": True,
-        "location_types": ["urban", "suburban"],
-        "action_steps": [
-            "Research short-term rental demand in your city using AirDNA",
-            "Find a landlord willing to allow short-term subletting (offer higher rent)",
-            "Furnish the unit for under $3,000 using Facebook Marketplace and IKEA",
-            "Create a high-converting Airbnb listing with professional photos",
-            "Set dynamic pricing with PriceLabs or Wheelhouse",
-            "Automate messaging and check-ins using Hospitable",
-            "Aim for 70%+ occupancy rate to net $1,500-$4,000 profit after costs"
-        ],
-        "potential_earnings": "$1,500-$4,000/month",
-        "difficulty": "advanced",
-        "tags": ["passive", "airbnb", "real-estate", "arbitrage"],
-        "environment_fit": ["outdoor"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["investment"],
-        "interest_tags": ["real-estate", "finance"]
-    },
-    {
-        "id": "passive-009",
-        "title": "Stock Photo & Video Licensing",
-        "description": "Upload photos and videos to Shutterstock, Adobe Stock, and Getty Images. Every download earns a royalty. A portfolio of 500+ images can generate $500-$2,000/month on autopilot.",
-        "category": "Passive & Investment",
-        "required_skills": ["Photography or Videography", "Editing Basics"],
-        "startup_cost": "low",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Sign up as a contributor on Shutterstock, Adobe Stock, and Getty",
-            "Start with lifestyle, food, business, and technology categories (highest demand)",
-            "Shoot in RAW format and edit with Lightroom for professional quality",
-            "Upload 20-30 images per week with keyword-rich titles",
-            "Research top-selling concepts at Shutterstock's trending search tool",
-            "Aim for 500+ approved images in first 6 months",
-            "Add video clips for 10x higher royalty rates per download"
-        ],
-        "potential_earnings": "$500-$3,000/month",
-        "difficulty": "intermediate",
-        "tags": ["passive", "photography", "creative", "royalties"],
-        "environment_fit": ["outdoor", "home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["camera"],
-        "interest_tags": ["creative", "finance"]
-    },
-    {
-        "id": "passive-010",
-        "title": "Digital Course Creator (Teachable)",
-        "description": "Turn your expertise into a $197-$497 online course on Teachable or Kajabi. A single evergreen course can generate thousands monthly through automated email sequences and organic search traffic.",
-        "category": "Passive & Investment",
-        "required_skills": ["Expertise in Any Topic", "Video Recording", "Marketing"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": [
-            "Identify a skill you have that people pay to learn (cooking, coding, fitness, finance)",
-            "Validate demand: search for competitors selling courses on Udemy or Teachable",
-            "Outline 8-12 video modules; record with Loom or OBS (both free)",
-            "Upload to Teachable's free plan and set price at $97-$497",
-            "Build a simple sales page using Teachable's built-in editor",
-            "Grow an email list by offering the first module free",
-            "Run a 'founding member' launch at 40% discount to first 50 buyers"
-        ],
-        "potential_earnings": "$2,000-$20,000/month",
-        "difficulty": "intermediate",
-        "tags": ["passive", "education", "course", "digital-product"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["education", "finance", "creative"]
-    },
-    {
-        "id": "ai-006",
-        "title": "AI Email Newsletter Ghostwriter",
-        "description": "Write weekly AI-assisted newsletters for founders and coaches using a repeatable brief-to-draft workflow.",
-        "category": "AI & Automation",
-        "required_skills": ["Writing", "Editing", "Research"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Pick a niche", "Build 3 samples", "Pitch 20 creators", "Close monthly retainers"],
-        "potential_earnings": "$1,500-$6,000/month",
-        "difficulty": "beginner",
-        "tags": ["ai", "writing", "freelance"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative", "finance"]
-    },
-    {
-        "id": "ai-007",
-        "title": "AI Customer Support SOP Builder",
-        "description": "Package AI-generated support macros and playbooks for Shopify stores to cut response time and improve CSAT.",
-        "category": "AI & Automation",
-        "required_skills": ["Support Ops", "Prompting", "Documentation"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Map support flows", "Generate macro packs", "Install in helpdesk", "Charge setup + retainer"],
-        "potential_earnings": "$2,000-$7,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "ops", "ecommerce"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "ai-008",
-        "title": "AI Podcast Clip Factory",
-        "description": "Turn long-form podcasts into short clips using AI scene detection and captioning, then sell as monthly packages.",
-        "category": "AI & Automation",
-        "required_skills": ["Content Ops", "Editing", "Client Mgmt"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Define clip style", "Automate clipping", "Create posting calendar", "Upsell distribution"],
-        "potential_earnings": "$2,500-$9,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "content", "agency"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "creative"]
-    },
-    {
-        "id": "ai-009",
-        "title": "AI Sales Prospecting Assistant Service",
-        "description": "Deliver AI-generated lead lists and personalized first-line emails for B2B teams on a weekly retainer.",
-        "category": "AI & Automation",
-        "required_skills": ["Sales Research", "Copywriting", "Data Hygiene"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Choose ICP", "Build lead pipeline", "Generate personalization", "Send weekly packs"],
-        "potential_earnings": "$2,000-$8,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "sales", "b2b"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "ai-010",
-        "title": "AI Knowledge Base Builder",
-        "description": "Build searchable internal knowledge bases for startups and pair them with AI Q&A assistants.",
-        "category": "AI & Automation",
-        "required_skills": ["Documentation", "Information Architecture", "No-Code"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Audit docs", "Structure wiki", "Attach assistant", "Train team"],
-        "potential_earnings": "$2,500-$10,000/month",
-        "difficulty": "intermediate",
-        "tags": ["ai", "knowledge", "automation"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["team"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-006",
-        "title": "Airtable CRM Setup Specialist",
-        "description": "Set up custom Airtable CRMs for service businesses and connect forms, automations, and dashboards.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Airtable", "Workflow Design", "Client Communication"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Create CRM template", "Map pipeline", "Automate reminders", "Hand off SOP"],
-        "potential_earnings": "$1,500-$6,500/month",
-        "difficulty": "beginner",
-        "tags": ["no-code", "crm", "consulting"],
-        "environment_fit": ["home"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-007",
-        "title": "Glide Internal Tools Builder",
-        "description": "Build mobile internal apps for field teams using Glide and Google Sheets, then charge maintenance retainers.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Glide", "Spreadsheet Logic", "UX Basics"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Prototype app", "Connect sheets", "Deploy to team", "Charge monthly support"],
-        "potential_earnings": "$2,000-$9,000/month",
-        "difficulty": "intermediate",
-        "tags": ["no-code", "saas", "b2b"],
-        "environment_fit": ["home", "office"],
-        "social_fit": ["customer-facing"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-008",
-        "title": "Framer Landing Page Studio",
-        "description": "Build high-converting Framer landing pages for creators and startups with fast turnaround packages.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Design", "Copy Basics", "Framer"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Build starter templates", "Offer fixed packages", "Ship in 72 hours", "Upsell analytics"],
-        "potential_earnings": "$2,000-$11,000/month",
-        "difficulty": "intermediate",
-        "tags": ["no-code", "design", "agency"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["creative", "tech", "finance"]
-    },
-    {
-        "id": "nocode-009",
-        "title": "No-Code Marketplace Directory",
-        "description": "Launch a niche directory with paid listings using Softr + Airtable and monetize through subscriptions.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Niche Research", "Softr", "SEO Basics"],
-        "startup_cost": "low",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Pick micro-niche", "Import seed listings", "Launch with free tier", "Convert to paid spots"],
-        "potential_earnings": "$1,000-$7,000/month",
-        "difficulty": "beginner",
-        "tags": ["no-code", "directory", "passive"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance"]
-    },
-    {
-        "id": "nocode-010",
-        "title": "Automation Template Packs",
-        "description": "Sell prebuilt Zapier/Make automation templates to agencies and e-commerce stores as one-time digital products.",
-        "category": "No-Code & SaaS",
-        "required_skills": ["Automation", "Documentation", "Marketing"],
-        "startup_cost": "free",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Build 10 templates", "Record setup videos", "List on Gumroad", "Run partner promos"],
-        "potential_earnings": "$800-$6,000/month",
-        "difficulty": "beginner",
-        "tags": ["no-code", "automation", "digital-product"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["tech", "finance", "creative"]
-    },
-    {
-        "id": "passive-011",
-        "title": "Niche Affiliate Blog",
-        "description": "Build SEO content around a high-intent niche and monetize with affiliate programs and ad revenue.",
-        "category": "Passive & Investment",
-        "required_skills": ["SEO", "Writing", "Patience"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Pick niche", "Publish 40 articles", "Join affiliate programs", "Optimize winners"],
-        "potential_earnings": "$500-$8,000/month",
-        "difficulty": "intermediate",
-        "tags": ["passive", "affiliate", "seo"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["finance", "tech"]
-    },
-    {
-        "id": "passive-012",
-        "title": "Micro-Niche Newsletter Sponsorships",
-        "description": "Grow a niche newsletter and monetize via recurring sponsorship slots and premium archives.",
-        "category": "Passive & Investment",
-        "required_skills": ["Writing", "Audience Growth", "Sales"],
-        "startup_cost": "free",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Choose niche", "Publish weekly", "Grow to 2k subscribers", "Sell sponsorship slots"],
-        "potential_earnings": "$1,000-$9,000/month",
-        "difficulty": "intermediate",
-        "tags": ["passive", "newsletter", "media"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["creative", "finance"]
-    },
-    {
-        "id": "passive-013",
-        "title": "Long-Term YouTube Evergreen Library",
-        "description": "Publish evergreen search-driven videos that continue generating ad and affiliate revenue over time.",
-        "category": "Passive & Investment",
-        "required_skills": ["Video Scripting", "Basic Editing", "SEO"],
-        "startup_cost": "low",
-        "time_needed": "part-time",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Research evergreen topics", "Publish weekly", "Optimize thumbnails", "Stack affiliate offers"],
-        "potential_earnings": "$1,000-$12,000/month",
-        "difficulty": "intermediate",
-        "tags": ["passive", "youtube", "content"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["creative", "finance", "tech"]
-    },
-    {
-        "id": "passive-014",
-        "title": "App Theme / UI Kit Marketplace",
-        "description": "Design and sell UI kits/themes on marketplaces; each asset can sell repeatedly with minimal maintenance.",
-        "category": "Passive & Investment",
-        "required_skills": ["Design", "Market Research", "Packaging"],
-        "startup_cost": "low",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Create kit pack", "Publish marketplace listing", "Gather reviews", "Release add-ons"],
-        "potential_earnings": "$700-$7,500/month",
-        "difficulty": "beginner",
-        "tags": ["passive", "design", "digital-product"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["laptop"],
-        "interest_tags": ["creative", "finance", "tech"]
-    },
-    {
-        "id": "passive-015",
-        "title": "Domain Portfolio Leasing",
-        "description": "Acquire premium domains and lease them monthly to startups before buyout, creating recurring income.",
-        "category": "Passive & Investment",
-        "required_skills": ["Negotiation", "Market Research", "Branding"],
-        "startup_cost": "high",
-        "time_needed": "flexible",
-        "is_location_based": False,
-        "location_types": ["online"],
-        "action_steps": ["Acquire brandable domains", "List lease options", "Outreach to founders", "Close recurring contracts"],
-        "potential_earnings": "$1,500-$15,000/month",
-        "difficulty": "advanced",
-        "tags": ["passive", "domain", "investment", "digital-asset"],
-        "environment_fit": ["home"],
-        "social_fit": ["solo"],
-        "asset_requirements": ["investment"],
-        "interest_tags": ["tech", "finance"]
-    }
 ]
-
-REAL_LIFE_SEED_BLUEPRINTS = [
-    # Fast cash
-    {"title": "Mobile Notary Service", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,500-$6,000/month", "horizon": "fast", "tags": ["local", "service", "quick-cash"]},
-    {"title": "Weekend Event Staffing", "category": "Gig Economy", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,000/month", "horizon": "fast", "tags": ["gig", "events", "quick-cash"]},
-    {"title": "Furniture Assembly Service", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,200-$5,500/month", "horizon": "fast", "tags": ["local", "task", "quick-cash"]},
-    {"title": "Local Flyer Distribution", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$700-$2,500/month", "horizon": "fast", "tags": ["local", "marketing", "quick-cash"]},
-    {"title": "Restaurant Menu Photography", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$1,000-$4,000/month", "horizon": "fast", "tags": ["content", "photo", "quick-cash"]},
-    {"title": "Craigslist Lead Response Assistant", "category": "Agency & B2B", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$900-$3,500/month", "horizon": "fast", "tags": ["b2b", "assistant", "quick-cash"]},
-    {"title": "Real Estate Open House Assistant", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$3,800/month", "horizon": "fast", "tags": ["real-estate", "local", "quick-cash"]},
-    {"title": "Etsy Listing Optimization Service", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$4,500/month", "horizon": "fast", "tags": ["etsy", "seo", "quick-cash"]},
-    {"title": "YouTube Thumbnail Pack Designer", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$5,000/month", "horizon": "fast", "tags": ["youtube", "design", "quick-cash"]},
-    {"title": "Podcast Show Notes Writing", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,800/month", "horizon": "fast", "tags": ["content", "writing", "quick-cash"]},
-    {"title": "Shopify Product Upload Assistant", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,000/month", "horizon": "fast", "tags": ["shopify", "assistant", "quick-cash"]},
-    {"title": "Fiverr Voiceover Gig", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$700-$3,200/month", "horizon": "fast", "tags": ["fiverr", "content", "quick-cash"]},
-
-    # Medium-term builders
-    {"title": "Niche Lead Gen Landing Pages", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["no-code", "lead-gen", "business"]},
-    {"title": "Appointment Setter Agency", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$12,000/month", "horizon": "medium", "tags": ["agency", "sales", "b2b"]},
-    {"title": "Google Maps Rank Service", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$10,000/month", "horizon": "medium", "tags": ["local-seo", "agency", "b2b"]},
-    {"title": "No-Code Client Portal Builder", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$11,000/month", "horizon": "medium", "tags": ["no-code", "portal", "saas"]},
-    {"title": "Automated Cold Email Service", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$12,000/month", "horizon": "medium", "tags": ["ai", "automation", "b2b"]},
-    {"title": "Short-Form Video Repurposing", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["content", "video", "agency"]},
-    {"title": "Newsletter Ops for Founders", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$7,500/month", "horizon": "medium", "tags": ["newsletter", "ops", "b2b"]},
-    {"title": "Micro-Influencer Outreach Agency", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$10,000/month", "horizon": "medium", "tags": ["marketing", "agency", "b2b"]},
-    {"title": "UGC Creator Management", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$12,000/month", "horizon": "medium", "tags": ["ugc", "content", "agency"]},
-    {"title": "Niche Job Board with Sponsorships", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,500-$8,000/month", "horizon": "medium", "tags": ["job-board", "no-code", "saas"]},
-    {"title": "LinkedIn Ghostwriting Retainers", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["linkedin", "writing", "b2b"]},
-    {"title": "Community Management Studio", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$8,500/month", "horizon": "medium", "tags": ["community", "agency", "b2b"]},
-    {"title": "AI FAQ Bot for Ecommerce", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$9,500/month", "horizon": "medium", "tags": ["ai", "ecommerce", "automation"]},
-    {"title": "Klaviyo Email Flow Setup Service", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$11,000/month", "horizon": "medium", "tags": ["email", "agency", "ecommerce"]},
-
-    # Long-term cashflow
-    {"title": "Niche SaaS Churn Analyzer", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$25,000/month", "horizon": "long", "tags": ["saas", "analytics", "long-term"]},
-    {"title": "B2B Data API Reseller", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$20,000/month", "horizon": "long", "tags": ["api", "data", "saas"]},
-    {"title": "Niche Affiliate Comparison Site", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,500-$15,000/month", "horizon": "long", "tags": ["affiliate", "seo", "passive"]},
-    {"title": "Digital Asset Newsletter Portfolio", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$12,000/month", "horizon": "long", "tags": ["newsletter", "portfolio", "passive"]},
-    {"title": "Micro-SaaS Template Licensing", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$18,000/month", "horizon": "long", "tags": ["saas", "templates", "licensing"]},
-    {"title": "Evergreen Course Funnel", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$20,000/month", "horizon": "long", "tags": ["course", "funnel", "passive"]},
-    {"title": "Niche Podcast Ad Network", "category": "Digital & Content", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$25,000/month", "horizon": "long", "tags": ["podcast", "ads", "media"]},
-    {"title": "Portfolio of Local Service Brands", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "high", "potential_earnings": "$5,000-$30,000/month", "horizon": "long", "tags": ["local", "services", "portfolio"]},
-    {"title": "Programmatic SEO Sites", "category": "Passive & Investment", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$2,500-$40,000/month", "horizon": "long", "tags": ["seo", "passive", "long-term"]},
-    {"title": "Domain Leasing Portfolio", "category": "Passive & Investment", "difficulty": "advanced", "startup_cost": "high", "potential_earnings": "$1,500-$25,000/month", "horizon": "long", "tags": ["domains", "investment", "passive"]},
-    {"title": "Creator Education Membership", "category": "Digital & Content", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$22,000/month", "horizon": "long", "tags": ["membership", "education", "content"]},
-    {"title": "Niche Research Subscription", "category": "Passive & Investment", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$14,000/month", "horizon": "long", "tags": ["research", "subscription", "passive"]},
-    {"title": "B2B Reporting-as-a-Service", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$18,000/month", "horizon": "long", "tags": ["b2b", "reporting", "service"]},
-    {"title": "AI Workflow Productized Service", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$20,000/month", "horizon": "long", "tags": ["ai", "automation", "service"]},
-    {"title": "Vertical Marketplace Ops Agency", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$16,000/month", "horizon": "long", "tags": ["marketplace", "ops", "b2b"]},
-    {"title": "AI-Powered Translation Pipeline", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$10,000/month", "horizon": "medium", "tags": ["ai", "translation", "service"]},
-    {"title": "Freelancer Finance Spreadsheet Packs", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$500-$5,000/month", "horizon": "medium", "tags": ["spreadsheets", "digital-product", "finance"]},
-    {"title": "Warehouse Overflow Delivery Contracts", "category": "Gig Economy", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,800-$7,000/month", "horizon": "fast", "tags": ["delivery", "contracts", "gig"]},
-    {"title": "Pressure Washing Route Builder", "category": "Local & Service", "difficulty": "intermediate", "startup_cost": "medium", "potential_earnings": "$2,000-$9,000/month", "horizon": "medium", "tags": ["local", "service", "route"]},
-    {"title": "AI Sales Call Summaries Service", "category": "AI & Automation", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,500-$6,500/month", "horizon": "fast", "tags": ["ai", "sales", "ops"]},
-    {"title": "Commercial Cleaning Bid Agency", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,500-$18,000/month", "horizon": "long", "tags": ["cleaning", "agency", "local"]},
-    {"title": "TikTok Shop Product Sourcing", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$12,000/month", "horizon": "medium", "tags": ["tiktok", "ecommerce", "content"]},
-    {"title": "Local Lead Arbitrage Network", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$3,000-$20,000/month", "horizon": "long", "tags": ["lead-gen", "local", "b2b"]},
-    {"title": "Printable Education Bundle Store", "category": "Passive & Investment", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$600-$6,000/month", "horizon": "medium", "tags": ["printables", "education", "passive"]},
-    {"title": "AI Prospect Database Maintenance", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["ai", "data", "b2b"]},
-    {"title": "Managed Blog Refresh Service", "category": "Digital & Content", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$6,000/month", "horizon": "fast", "tags": ["content", "seo", "service"]},
-    {"title": "No-Code Internal QA Dashboard", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$9,500/month", "horizon": "medium", "tags": ["dashboard", "no-code", "b2b"]},
-    {"title": "Fieldhouse Coach Assistant (Hiring Boards)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$600-$2,500/month", "horizon": "fast", "tags": ["student", "sports", "fieldhouse", "f1-safe", "internship"]},
-    {"title": "Youth Soccer Refereeing (Campus/Authorized Leagues)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "low", "potential_earnings": "$400-$2,000/month", "horizon": "fast", "tags": ["student", "soccer", "referee", "f1-safe"]},
-    {"title": "Campus Recreation Referee", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$300-$1,500/month", "horizon": "fast", "tags": ["student", "sports", "referee", "f1-safe"]},
-    {"title": "CPT Internship Pipeline Sprint", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,000-$5,000/month", "horizon": "medium", "tags": ["student", "cpt", "internship", "f1-safe"]},
-    {"title": "OPT Internship to Contract Conversion", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,000-$8,000/month", "horizon": "medium", "tags": ["student", "opt", "internship", "f1-safe"]},
-    {"title": "University Lab Research Assistant Outreach", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$500-$2,500/month", "horizon": "fast", "tags": ["student", "research", "campus", "f1-safe"]},
-    {"title": "Fieldhouse Performance Analytics Intern", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,200-$4,500/month", "horizon": "medium", "tags": ["student", "sports", "analytics", "internship", "f1-safe"]},
-    {"title": "Sports Operations Internship (Matchday)", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$700-$3,000/month", "horizon": "fast", "tags": ["student", "sports", "operations", "internship", "f1-safe"]},
-    {"title": "Campus Media Production Internship", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$800-$3,500/month", "horizon": "medium", "tags": ["student", "media", "internship", "f1-safe"]},
-    {"title": "International Student Career Fair Strategy", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,000/month", "horizon": "medium", "tags": ["student", "career", "internship", "f1-safe"]},
-]
-
-REAL_LIFE_SEED_BLUEPRINTS.extend([
-    {"title": "Data Analyst Specialist Track", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$9,000/month", "horizon": "medium", "tags": ["specialist", "analytics", "college", "new-grad"]},
-    {"title": "Cloud Support Specialist", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,500-$10,000/month", "horizon": "medium", "tags": ["specialist", "cloud", "new-grad", "professional"]},
-    {"title": "Clinical Research Coordinator Path", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$8,500/month", "horizon": "long", "tags": ["specialist", "healthcare", "career-switch"]},
-    {"title": "Cybersecurity SOC Analyst Entry", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,000-$11,000/month", "horizon": "long", "tags": ["specialist", "security", "new-grad", "career-switch"]},
-    {"title": "RevOps Specialist for SaaS", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$12,000/month", "horizon": "long", "tags": ["specialist", "revops", "professional"]},
-    {"title": "UX Research Apprenticeship Route", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,500-$8,000/month", "horizon": "medium", "tags": ["specialist", "ux", "career-switch", "internship"]},
-    {"title": "Accounting to FP&A Career Switch", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$10,000/month", "horizon": "long", "tags": ["career-switch", "finance", "professional"]},
-    {"title": "Teacher to Instructional Design", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$2,500-$7,500/month", "horizon": "medium", "tags": ["career-switch", "education", "content"]},
-    {"title": "Nursing to Healthcare Tech Ops", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,500-$10,500/month", "horizon": "long", "tags": ["career-switch", "healthcare", "specialist"]},
-    {"title": "Mechanical Engineer to Product Ops", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$4,000-$12,000/month", "horizon": "long", "tags": ["career-switch", "product", "professional"]},
-    {"title": "Campus IT Helpdesk to SysAdmin", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,200-$5,000/month", "horizon": "medium", "tags": ["college", "new-grad", "specialist", "f1-safe"]},
-    {"title": "Graduate Research Assistant to Data Engineer", "category": "Student & Campus", "difficulty": "advanced", "startup_cost": "free", "potential_earnings": "$2,500-$9,500/month", "horizon": "long", "tags": ["college", "new-grad", "specialist", "f1-safe"]},
-    {"title": "Junior QA Tester Specialist", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,500-$6,000/month", "horizon": "medium", "tags": ["new-grad", "specialist", "career-switch"]},
-    {"title": "Supply Chain Analyst Career Launch", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,000/month", "horizon": "medium", "tags": ["new-grad", "professional", "specialist"]},
-    {"title": "GIS Specialist Transition Program", "category": "Local & Service", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,000-$8,500/month", "horizon": "long", "tags": ["career-switch", "specialist", "professional"]},
-    {"title": "Local Government Fellowship Pipeline", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,200-$5,500/month", "horizon": "medium", "tags": ["college", "new-grad", "internship", "f1-safe"]},
-    {"title": "Sales Engineer Specialist Path", "category": "Agency & B2B", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$5,000-$15,000/month", "horizon": "long", "tags": ["specialist", "professional", "career-switch"]},
-    {"title": "Biotech Lab Assistant Hiring Sprint", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$1,000-$4,500/month", "horizon": "fast", "tags": ["college", "internship", "specialist", "f1-safe"]},
-    {"title": "ERP Functional Consultant Track", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "medium", "potential_earnings": "$4,500-$14,000/month", "horizon": "long", "tags": ["specialist", "career-switch", "professional"]},
-    {"title": "Digital Marketing Specialist Rotation", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,500/month", "horizon": "medium", "tags": ["specialist", "new-grad", "professional"]},
-    {"title": "Vending Machine Business Route", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "high", "potential_earnings": "$500-$2,000/month", "horizon": "medium", "tags": ["passive", "local", "unverified"]},
-    {"title": "Casino Games Testing & Compliance", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$800-$3,500/month", "horizon": "fast", "tags": ["qa", "specialist", "unverified"]},
-])
-
-
-def _extra_action_steps(horizon: str) -> List[str]:
-    if horizon == "fast":
-        return [
-            "Set up profiles and basic tools today",
-            "Pitch or apply to 20 opportunities this week",
-            "Close the first paid job within 7 days",
-            "Reinvest first earnings into better tools and outreach"
-        ]
-    if horizon == "long":
-        return [
-            "Validate demand and define a clear niche",
-            "Build repeatable systems and SOPs",
-            "Acquire customers consistently for 90+ days",
-            "Scale with automation, referrals, and retained revenue"
-        ]
-    return [
-        "Choose a profitable niche and offer",
-        "Create a simple portfolio or landing page",
-        "Land 3 paying clients or customers",
-        "Systemize delivery and scale monthly"
-    ]
-
-
-def _f1_safe_steps() -> List[str]:
-    return [
-        "Confirm work authorization with your DSO before starting",
-        "Target on-campus roles or CPT/OPT-aligned internships",
-        "Keep documentation of authorization, hours, and role scope",
-        "Avoid unauthorized off-campus work and consult your school's international office"
-    ]
-
-
-def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    generated: List[Dict[str, Any]] = []
-    for idx, row in enumerate(seed_rows, start=1):
-        category = row["category"]
-        horizon = row.get("horizon", "medium")
-        location_based = category in ["Local & Service", "Gig Economy"]
-        asset_reqs = ["none"]
-        if category in ["No-Code & SaaS", "AI & Automation", "Digital & Content", "Agency & B2B"]:
-            asset_reqs = ["laptop"]
-        if category == "Passive & Investment" and row.get("startup_cost") in ["medium", "high"]:
-            asset_reqs = ["investment"]
-        if category == "Gig Economy":
-            asset_reqs = ["car"]
-
-        tags = row.get("tags", [])
-        is_f1_safe = "f1-safe" in tags
-        description = f"A real-world {horizon}-term income blueprint in {category.lower()} focused on practical execution and reliable cashflow."
-        if is_f1_safe:
-            description = (
-                f"A real-world {horizon}-term blueprint for international students. "
-                "For F-1 students, pursue only authorized paths like on-campus work, CPT, OPT, or approved internships."
-            )
-
-        career_stage = "professional"
-        if any(t in tags for t in ["college", "student"]):
-            career_stage = "college"
-        elif "new-grad" in tags:
-            career_stage = "new-grad"
-        elif "career-switch" in tags:
-            career_stage = "career-switch"
-
-        # Confidence score: unverified entries start at 0, others default based on verification readiness
-        confidence_score = 0
-        if "unverified" not in tags:
-            confidence_score = 45  # base confidence for source-linked entries
-
-        payout_speed = "weekly"
-        if horizon == "fast":
-            payout_speed = "48h"
-        elif horizon == "long":
-            payout_speed = "monthly"
-
-        verification_sources = [
-            "BLS Occupational Outlook Handbook",
-            "Indeed Job Trends",
-            "LinkedIn Jobs",
-            "Glassdoor Salary Benchmarks",
-        ]
-        if "f1-safe" in tags:
-            verification_sources = [
-                "USCIS F-1 Employment Guidance",
-                "University International Office Guidelines",
-                "NACE Internship Data",
-            ]
-        
-        # Override payout_speed for unverified entries (slower payout expected)
-        if "unverified" in tags and payout_speed == "48h":
-            payout_speed = "weekly"
-
-        generated.append({
-            "id": f"rl-{idx:03d}",
-            "title": row["title"],
-            "description": description,
-            "category": category,
-            "required_skills": ["Execution", "Consistency", "Communication"],
-            "required_credentials": ["Resume", "Portfolio" if category in ["Digital & Content", "AI & Automation", "No-Code & SaaS"] else "Background Check"],
-            "requirements_summary": "Resume + role-specific skill proof",
-            "startup_cost": row["startup_cost"],
-            "time_needed": "flexible" if horizon == "fast" else "part-time",
-            "is_location_based": location_based,
-            "location_types": ["online"] if not location_based else ["urban", "suburban"],
-            "available_regions": ["US", "CA", "GB", "IN"],
-            "action_steps": _f1_safe_steps() if is_f1_safe else _extra_action_steps(horizon),
-            "potential_earnings": row["potential_earnings"],
-            "difficulty": row["difficulty"],
-            "tags": tags + [horizon, "real-life"],
-            "environment_fit": ["outdoor", "any"] if location_based else ["home", "office"],
-            "social_fit": ["customer-facing"] if category in ["Local & Service", "Agency & B2B", "Gig Economy"] else ["solo"],
-            "asset_requirements": asset_reqs,
-            "interest_tags": ["finance", "tech"] if category in ["AI & Automation", "No-Code & SaaS"] else ["finance", "creative"],
-            "time_horizon": horizon,
-            "career_stage": career_stage,
-            "payout_speed": payout_speed,
-            "pay_band": row.get("pay_band") or "market-linked",
-            "verification_status": "source-linked",
-            "verification_sources": verification_sources,
-            "verification_last_checked": "2026-04-02",
-            "confidence_score": confidence_score,
-        })
-    return generated
-
-
-PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(REAL_LIFE_SEED_BLUEPRINTS))
 
 # ============= Sprint 5: Currency & Location Constants =============
 
@@ -2195,32 +1141,17 @@ CURRENCY_MAP: Dict[str, Dict[str, str]] = {
 
 @api_router.post("/auth/signup")
 async def signup(user_data: UserSignup):
-    try:
-        existing_user = await db.users.find_one({"email": user_data.email})
-    except Exception as exc:
-        logger.error("Database error during signup", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    existing_user = await db.users.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-
     password_hash = hash_password(user_data.password)
     user = User(email=user_data.email, name=user_data.name, password_hash=password_hash)
-    try:
-        await db.users.insert_one(user.dict())
-    except Exception as exc:
-        logger.error("Database error inserting user during signup", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
-
+    await db.users.insert_one(user.dict())
     return {"id": user.id, "email": user.email, "name": user.name, "is_guest": False, "is_architect": False, "profile": user.profile.dict()}
 
 @api_router.post("/auth/login")
 async def login(credentials: UserLogin):
-    try:
-        user = await db.users.find_one({"email": credentials.email})
-    except Exception as exc:
-        logger.error("Database error during login", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
-
+    user = await db.users.find_one({"email": credentials.email})
     if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {
@@ -2234,11 +1165,7 @@ async def login(credentials: UserLogin):
 @api_router.post("/auth/guest")
 async def create_guest():
     guest = GuestUser()
-    try:
-        await db.users.insert_one(guest.dict())
-    except Exception as exc:
-        logger.error("Database error creating guest user", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    await db.users.insert_one(guest.dict())
     return {"id": guest.id, "name": guest.name, "is_guest": True, "profile": guest.profile.dict()}
 
 # ============= Sprint 7B: Firebase Phone Verification =============
@@ -2341,74 +1268,57 @@ async def update_user_location(user_id: str, location_data: Dict[str, Any]):
 
 async def ensure_ideas_seeded():
     """Seed ideas if DB is empty or if ideas lack new schema fields (Sprint 9: Scrambly added)"""
-    try:
-        count = await db.ideas.count_documents({})
-        expected_total = len(PRE_POPULATED_IDEAS)
-        if count == 0:
-            await db.ideas.insert_many(PRE_POPULATED_IDEAS)
-            return
-        # Migration: check if ideas have new fields
-        old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
-        qw_count = await db.ideas.count_documents({"is_quick_win": True})
-        expected_qw = len([i for i in PRE_POPULATED_IDEAS if i.get("is_quick_win")])
-        if old_ideas > 0 or qw_count < expected_qw or count < expected_total:
-            await db.ideas.delete_many({})
-            await db.ideas.insert_many(PRE_POPULATED_IDEAS)
-    except PyMongoError as exc:
-        logger.error("MongoDB unavailable while seeding ideas", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    count = await db.ideas.count_documents({})
+    if count == 0:
+        await db.ideas.insert_many(PRE_POPULATED_IDEAS)
+        return
+    # Migration: check if ideas have new fields
+    old_ideas = await db.ideas.count_documents({"environment_fit": {"$exists": False}})
+    qw_count = await db.ideas.count_documents({"is_quick_win": True})
+    expected_qw = len([i for i in PRE_POPULATED_IDEAS if i.get("is_quick_win")])
+    if old_ideas > 0 or qw_count < expected_qw:
+        await db.ideas.delete_many({})
+        await db.ideas.insert_many(PRE_POPULATED_IDEAS)
 
 @api_router.get("/ideas")
 async def get_all_ideas(skip: int = 0, limit: int = 100, category: str = None, difficulty: str = None, cost: str = None):
     await ensure_ideas_seeded()
-    try:
-        query = {}
-        if category and category != "All":
-            query["category"] = category
-        if difficulty and difficulty != "all":
-            query["difficulty"] = difficulty
-        if cost and cost != "all":
-            query["startup_cost"] = cost
-        ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-        total = await db.ideas.count_documents(query)
-        return {"ideas": ideas, "total": total, "skip": skip, "limit": limit}
-    except PyMongoError as exc:
-        logger.error("MongoDB unavailable in /api/ideas", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    query = {}
+    if category and category != "All":
+        query["category"] = category
+    if difficulty and difficulty != "all":
+        query["difficulty"] = difficulty
+    if cost and cost != "all":
+        query["startup_cost"] = cost
+    ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    total = await db.ideas.count_documents(query)
+    return {"ideas": ideas, "total": total, "skip": skip, "limit": limit}
 
 @api_router.get("/ideas/personalized/{user_id}")
 async def get_personalized_ideas(user_id: str):
     await ensure_ideas_seeded()
-    try:
-        user = await db.users.find_one({"id": user_id})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        profile = user.get("profile", {})
-        ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
-        scored_ideas = []
-        for idea in ideas:
-            idea["match_score"] = calculate_match_score(profile, idea)
-            scored_ideas.append(idea)
-        scored_ideas.sort(key=lambda x: x["match_score"], reverse=True)
-        return scored_ideas
-    except PyMongoError as exc:
-        logger.error("MongoDB unavailable in /api/ideas/personalized", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    profile = user.get("profile", {})
+    ideas = await db.ideas.find({}, {"_id": 0}).to_list(1000)
+    scored_ideas = []
+    for idea in ideas:
+        idea["match_score"] = calculate_match_score(profile, idea)
+        scored_ideas.append(idea)
+    scored_ideas.sort(key=lambda x: x["match_score"], reverse=True)
+    return scored_ideas
 
 @api_router.get("/ideas/{idea_id}")
 async def get_idea(idea_id: str, user_id: str = None):
-    try:
-        idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
-        if not idea:
-            raise HTTPException(status_code=404, detail="Idea not found")
-        if user_id:
-            user = await db.users.find_one({"id": user_id})
-            if user:
-                idea["match_score"] = calculate_match_score(user.get("profile", {}), idea)
-        return idea
-    except PyMongoError as exc:
-        logger.error("MongoDB unavailable in /api/ideas/{idea_id}", exc_info=exc)
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    idea = await db.ideas.find_one({"id": idea_id}, {"_id": 0})
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    if user_id:
+        user = await db.users.find_one({"id": user_id})
+        if user:
+            idea["match_score"] = calculate_match_score(user.get("profile", {}), idea)
+    return idea
 
 @api_router.post("/saved-ideas")
 async def save_idea(saved: SavedIdea):
@@ -2569,29 +1479,24 @@ async def create_checkout(data: CheckoutRequest, request: Request):
         raise HTTPException(status_code=400, detail="Invalid plan type")
     plan = ARCHITECT_PLANS[data.plan_type]
     stripe_key = os.environ["STRIPE_API_KEY"]
-    stripe.api_key = stripe_key
+    host_url = str(request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
     success_url = f"{data.origin_url}?session_id={{CHECKOUT_SESSION_ID}}&payment=success"
     cancel_url = f"{data.origin_url}?payment=cancelled"
     metadata = {"user_id": data.user_id, "plan_type": data.plan_type}
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        payment_method_types=["card"],
-        line_items=[{
-            "price_data": {
-                "currency": plan["currency"],
-                "unit_amount": int(round(plan["amount"] * 100)),
-                "product_data": {"name": f"Architect {plan['label']}"},
-            },
-            "quantity": 1,
-        }],
+    checkout_req = CheckoutSessionRequest(
+        amount=plan["amount"],
+        currency=plan["currency"],
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata,
     )
+    session = await stripe.create_checkout_session(checkout_req)
     # Create pending transaction record
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
-        "session_id": session.id,
+        "session_id": session.session_id,
         "user_id": data.user_id,
         "plan_type": data.plan_type,
         "amount": plan["amount"],
@@ -2600,7 +1505,7 @@ async def create_checkout(data: CheckoutRequest, request: Request):
         "status": "initiated",
         "created_at": datetime.utcnow().isoformat(),
     })
-    return {"url": session.url, "session_id": session.id}
+    return {"url": session.url, "session_id": session.session_id}
 
 @api_router.get("/payments/status/{session_id}")
 async def get_payment_status(session_id: str):
@@ -2611,11 +1516,9 @@ async def get_payment_status(session_id: str):
     if existing.get("payment_status") == "paid":
         return {"payment_status": "paid", "status": "complete", "is_architect": True}
     stripe_key = os.environ["STRIPE_API_KEY"]
-    stripe.api_key = stripe_key
-    session = stripe.checkout.Session.retrieve(session_id)
-    payment_status = session.get("payment_status", "unpaid")
-    status = session.get("status", "open")
-    if payment_status == "paid":
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url="")
+    result = await stripe.get_checkout_status(session_id)
+    if result.payment_status == "paid":
         user_id = existing.get("user_id")
         await db.payment_transactions.update_one(
             {"session_id": session_id},
@@ -2624,31 +1527,25 @@ async def get_payment_status(session_id: str):
         if user_id:
             await db.users.update_one({"id": user_id}, {"$set": {"is_architect": True}})
     return {
-        "payment_status": payment_status,
-        "status": status,
-        "is_architect": payment_status == "paid",
+        "payment_status": result.payment_status,
+        "status": result.status,
+        "is_architect": result.payment_status == "paid",
     }
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     stripe_key = os.environ["STRIPE_API_KEY"]
-    stripe.api_key = stripe_key
+    host_url = str(request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
     body = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
     try:
-        secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        if secret and sig:
-            event = stripe.Webhook.construct_event(body, sig, secret)
-        else:
-            event = json.loads(body.decode("utf-8"))
-
-        if event.get("type") == "checkout.session.completed":
-            obj = event.get("data", {}).get("object", {})
-            if obj.get("payment_status") != "paid":
-                return {"received": True}
-            meta = obj.get("metadata") or {}
+        event = await stripe.handle_webhook(body, sig)
+        if event.payment_status == "paid":
+            meta = event.metadata or {}
             user_id = meta.get("user_id")
-            session_id = obj.get("id")
+            session_id = event.session_id
             existing = await db.payment_transactions.find_one({"session_id": session_id, "payment_status": "paid"})
             if not existing:
                 await db.payment_transactions.update_one(
@@ -2721,25 +1618,20 @@ GUIDELINES:
 - Keep responses under 200 words unless detail is needed.
 - Speak like an experienced mentor who has done this before.
 - Address them as a fellow entrepreneur."""
-    if not gemini_online:
-        raise HTTPException(status_code=503, detail="Gemini unavailable")
+    llm_key = os.environ["EMERGENT_LLM_KEY"]
     session_id = f"blueprint-guide-{user_id}-{data.idea_id}"
+    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message=system_message)
+    chat.with_model("gemini", "gemini-3-flash-preview")
     # Restore prior conversation from MongoDB (for persistence across server restarts)
     prior = await db.chat_messages.find(
         {"session_id": session_id}, {"_id": 0}
     ).sort("created_at", 1).to_list(20)
-    convo_lines = []
     for msg in prior:
-        role = "User" if msg.get("role") == "user" else "Assistant"
-        convo_lines.append(f"{role}: {msg.get('content', '')}")
-    history = "\n".join(convo_lines[-20:])
-    prompt = (
-        "Conversation so far:\n"
-        f"{history}\n\n"
-        f"User: {data.message}\n"
-        "Assistant:"
-    )
-    response = await generate_text(prompt=prompt, system_message=system_message)
+        if msg["role"] == "user":
+            chat._add_user_message(msg["content"])
+        elif msg["role"] == "assistant":
+            chat._add_assistant_message(msg["content"])
+    response = await chat.send_message(UserMessage(text=data.message))
     # Store messages
     ts = datetime.utcnow().isoformat()
     await db.chat_messages.insert_many([
@@ -2806,16 +1698,18 @@ Return EXACTLY this JSON format (no markdown, no extra text):
     }}
   ]
 }}"""
-    if not gemini_online:
-        raise HTTPException(status_code=503, detail="Gemini unavailable")
+    llm_key = os.environ["EMERGENT_LLM_KEY"]
+    session_id = f"troubleshoot-{uuid.uuid4()}"  # Fresh each time
+    chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are the Blueprint Troubleshooting Matrix AI. Return only valid JSON.")
+    chat.with_model("gemini", "gemini-3-flash-preview")
+    response_text = await chat.send_message(UserMessage(text=prompt))
+    import json, re
     try:
-        matrix = await generate_json_strict(
-            prompt=prompt,
-            system_message="You are the Blueprint Troubleshooting Matrix AI. Return valid JSON only.",
-            required_keys=["step_summary", "workarounds"],
-        )
+        # Strip any markdown code blocks if present
+        clean = re.sub(r"```json\n?|```\n?", "", response_text).strip()
+        matrix = json.loads(clean)
     except Exception:
-        matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": "Break the step into smaller actions and test one workaround now.", "difficulty": "medium", "time_to_implement": "varies"}]}
+        matrix = {"step_summary": step_text, "workarounds": [{"title": "Try a different approach", "description": response_text, "difficulty": "medium", "time_to_implement": "varies"}]}
     return matrix
 
 # ============= Sprint 3: Community Wins, Streak System, Content Engine =============
@@ -3181,13 +2075,15 @@ Return EXACTLY this JSON (no markdown, no extra text):
   "local_tools": ["tool1", "tool2"]
 }}"""
     try:
-        if not gemini_online:
-            raise HTTPException(status_code=503, detail="Gemini unavailable")
-        return await generate_json_strict(
-            prompt=prompt,
-            system_message="You are a local market analyst. Return valid JSON only.",
-            required_keys=["score", "demand_level", "reason", "local_tip", "local_tools"],
-        )
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"viability-{blueprint_id}-{city}-{country_code}"
+        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a local market analyst. Always return valid JSON.")
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        match = _re.search(r'\{.*\}', response, _re.DOTALL)
+        if match:
+            return _json.loads(match.group())
     except Exception as e:
         logger.error(f"Viability generation error: {e}")
     return {"score": 72, "demand_level": "Medium", "reason": f"Market data for {location_str} is currently being analyzed.", "local_tip": "Research local demand before launching.", "local_tools": []}
@@ -3261,16 +2157,18 @@ Return EXACTLY this JSON (no markdown):
   ]
 }}"""
     try:
-        if not gemini_online:
-            raise HTTPException(status_code=503, detail="Gemini unavailable")
-        result = await generate_json_strict(
-            prompt=prompt,
-            system_message="You are a financial rescue specialist. Return valid JSON only.",
-            required_keys=["rescue_message", "tasks"],
-        )
-        result["stuck_step"] = stuck_step_text
-        result["stuck_step_num"] = stuck_step_num
-        return result
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"rescue-{user_id}-{idea_id}-{datetime.now().strftime('%Y%m%d')}"
+        chat = LlmChat(api_key=llm_key, session_id=session_id, system_message="You are a financial rescue specialist. Always return valid JSON only.")
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        match = _re.search(r'\{.*\}', response, _re.DOTALL)
+        if match:
+            result = _json.loads(match.group())
+            result["stuck_step"] = stuck_step_text
+            result["stuck_step_num"] = stuck_step_num
+            return result
     except Exception as e:
         logger.error(f"Rescue generation error: {e}")
     raise HTTPException(status_code=500, detail="Failed to generate rescue tasks")
@@ -3554,13 +2452,21 @@ Generate a tactical execution package with EXACTLY this JSON structure (no markd
 }}"""
 
     try:
-        if not gemini_online:
-            raise HTTPException(status_code=503, detail="Gemini unavailable")
-        return await generate_json_strict(
-            prompt=prompt,
-            system_message="You are a tactical business development AI. Return valid JSON only.",
-            required_keys=["summary", "local_leads", "dm_script", "objection_guide"],
+        llm_key = os.environ["EMERGENT_LLM_KEY"]
+        session_id = f"tactical-{data.user_id}-{data.idea_id}-{uuid.uuid4().hex[:8]}"
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=session_id,
+            system_message="You are a tactical business development AI. Always return valid JSON only. No markdown. No explanations outside the JSON."
         )
+        chat.with_model("gemini", "gemini-3-flash-preview")
+        response_text = await chat.send_message(UserMessage(text=prompt))
+        import re as _re, json as _json
+        # Extract JSON from response
+        match = _re.search(r'\{.*\}', response_text, _re.DOTALL)
+        if match:
+            result = _json.loads(match.group())
+            return result
     except Exception as e:
         logger.error(f"Tactical AI error: {e}")
     # Fallback response
@@ -3578,7 +2484,6 @@ Generate a tactical execution package with EXACTLY this JSON structure (no markd
 
 ADSENSE_PUBLISHER_ID = "ca-pub-7453043458871233"
 GOOGLE_ADS_ACCOUNT = "915-268-4915"
-FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:8081")
 
 # ads.txt endpoint (must be accessible at /ads.txt for the domain)
 @api_router.get("/ads.txt", include_in_schema=False)
@@ -3675,7 +2580,7 @@ async def get_referral_info(user_id: str):
     
     return {
         "referral_code": ref_code,
-        "referral_link": f"{FRONTEND_BASE_URL}?ref={ref_code}",
+        "referral_link": f"https://quick-wins-3.preview.emergentagent.com?ref={ref_code}",
         "referred_count": referred_count,
         "arc_from_referrals": arc_from_referrals,
         "reward_per_referral": 100,
@@ -3768,150 +2673,9 @@ async def get_ads_config():
         "banner_enabled": True,
     }
 
-def mask_mongo_url(url: str) -> str:
-    if "mongodb+srv" in url:
-        return "mongodb+srv://<hidden>"
-    if "mongodb://" in url:
-        return "mongodb://<hidden>"
-    return "<hidden>"
-
-
-@app.get("/health")
-async def health_check(debug: bool = False):
-    if offline_mode:
-        if debug:
-            return {
-                "status": "error",
-                "detail": "Database unavailable (Offline Mode)",
-                "offline_mode": True,
-                "gemini_online": gemini_online,
-                "mongo_url_source": mongo_url_source,
-                "db_name": db_name,
-                "mongo_url_preview": mask_mongo_url(mongo_url),
-            }
-        raise HTTPException(status_code=503, detail="Database unavailable")
-
-    try:
-        await client.admin.command("ping")
-        result = {"status": "ok", "database": "connected"}
-    except Exception as exc:
-        logger.error("Health check failed", exc_info=exc)
-        if debug:
-            return {
-                "status": "error",
-                "detail": "Database unavailable",
-                "mongo_url_source": mongo_url_source,
-                "db_name": db_name,
-                "mongo_url_preview": mask_mongo_url(mongo_url),
-            }
-        raise HTTPException(status_code=503, detail="Database unavailable")
-
-    if debug:
-        result.update({
-            "gemini_online": gemini_online,
-            "mongo_url_source": mongo_url_source,
-            "db_name": db_name,
-            "mongo_url_preview": mask_mongo_url(mongo_url),
-        })
-    return result
-
-
-@app.get("/")
-async def root():
-    return {"message": "Blueprint-1 API is officially LIVE locally!"}
-
 
 # Include the router
-    app.add_middleware(
-        CORSMiddleware,
-        allow_credentials=True,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger(__name__)
-
-    @app.on_event("shutdown")
-    async def shutdown_db_client():
-        client.close()
-
-    def _serialize_action(action: dict) -> dict:
-        action["id"] = str(action.pop("_id"))
-        return action
-
-    @api_router.post("/actions")
-    async def add_action(action: UserAction):
-        if action.status not in {"pending", "completed"}:
-            raise HTTPException(status_code=400, detail="Invalid action status")
-
-        action_dict = action.dict()
-        if action_dict["status"] == "completed":
-            action_dict["completed_at"] = datetime.now(timezone.utc)
-
-        result = await db.user_actions.insert_one(action_dict)
-        created = await db.user_actions.find_one({"_id": result.inserted_id})
-        return _serialize_action(created)
-
-    @api_router.get("/actions/{user_id}/goal")
-    async def get_revenue_goal(user_id: str):
-        goal = await db.user_action_goals.find_one({"user_id": user_id})
-        if not goal:
-            return {"user_id": user_id, "daily_revenue_goal": 0.0}
-
-        return {
-            "user_id": user_id,
-            "daily_revenue_goal": goal.get("daily_revenue_goal", 0.0),
-            "updated_at": goal.get("updated_at"),
-        }
-
-    @api_router.put("/actions/{user_id}/goal")
-    async def set_revenue_goal(user_id: str, payload: RevenueGoalUpdate):
-        await db.user_action_goals.update_one(
-            {"user_id": user_id},
-            {
-                "$set": {
-                    "user_id": user_id,
-                    "daily_revenue_goal": payload.daily_revenue_goal,
-                    "updated_at": datetime.now(timezone.utc),
-                }
-            },
-            upsert=True,
-        )
-        return await get_revenue_goal(user_id)
-
-    @api_router.get("/actions/{user_id}")
-    async def get_actions(user_id: str):
-        cursor = db.user_actions.find({"user_id": user_id}).sort("created_at", -1)
-        actions = await cursor.to_list(length=100)
-        return [_serialize_action(action) for action in actions]
-
-    @api_router.patch("/actions/item/{action_id}")
-    async def update_action_status(action_id: str, payload: ActionStatusUpdate):
-        if payload.status not in {"pending", "completed"}:
-            raise HTTPException(status_code=400, detail="Invalid action status")
-
-        if not ObjectId.is_valid(action_id):
-            raise HTTPException(status_code=404, detail="Action not found")
-
-        update_fields = {"status": payload.status}
-        if payload.status == "completed":
-            update_fields["completed_at"] = datetime.now(timezone.utc)
-        else:
-            update_fields["completed_at"] = None
-
-        result = await db.user_actions.update_one(
-            {"_id": ObjectId(action_id)},
-            {"$set": update_fields},
-        )
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Action not found")
-
-        updated = await db.user_actions.find_one({"_id": ObjectId(action_id)})
-        return _serialize_action(updated)
-
-    app.include_router(api_router)
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -3924,76 +2688,6 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-@app.on_event("startup")
-async def startup_event():
-    """Verify Atlas + Gemini connectivity and schedule verifier when online."""
-    global offline_mode, gemini_online
-    try:
-        await client.admin.command("ping")
-        offline_mode = False
-        logger.info("[Startup] Atlas ping successful.")
-        from app.services.blueprint_verifier import run_nightly_verifier
-        asyncio.create_task(run_nightly_verifier(db))
-        logger.info("[Startup] Nightly verifier task scheduled.")
-    except Exception as exc:
-        offline_mode = True
-        logger.error(f"Atlas Connection Error: {exc}")
-        logger.warning("[Startup] Running in Offline Mode. DB-backed endpoints will return 503.")
-
-    gemini_online = await ping_gemini()
-    if gemini_online:
-        logger.info("[Startup] Gemini ping successful.")
-    else:
-        logger.error("Gemini Connection Error: ping failed")
-
-
-@api_router.get("/verify/status")
-async def get_verification_status():
-    """Return aggregated verification-status counts and last check date."""
-    pipeline = [
-        {"$group": {"_id": "$verification_status", "count": {"$sum": 1}}},
-    ]
-    cursor = db["ideas"].aggregate(pipeline)
-    status_counts: dict = {}
-    async for doc in cursor:
-        key = doc.get("_id") or "unknown"
-        status_counts[key] = doc["count"]
-
-    last_doc = await db["ideas"].find_one(
-        {"verification_last_checked": {"$exists": True}},
-        sort=[("verification_last_checked", -1)],
-    )
-    return {
-        "status_counts": status_counts,
-        "last_checked": last_doc.get("verification_last_checked") if last_doc else None,
-        "total_ideas": sum(status_counts.values()),
-    }
-
-
-@api_router.post("/verify/refresh")
-async def trigger_verification_refresh():
-    """Manually trigger a single verification pass (admin / CI use)."""
-    try:
-        from app.services.blueprint_verifier import verify_all_once
-        asyncio.create_task(verify_all_once(db))
-        return {"message": "Verification refresh started in background", "status": "queued"}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-@api_router.post("/actions")
-async def add_action(action: UserAction):
-    action_dict = action.dict()
-    result = await db.user_actions.insert_one(action_dict)
-    return {"id": str(result.inserted_id), "status": "Action tracked"}
-
-@api_router.get("/actions/{user_id}")
-async def get_actions(user_id: str):
-    cursor = db.user_actions.find({"user_id": user_id})
-    actions = await cursor.to_list(length=100)
-    for a in actions:
-        a["_id"] = str(a["_id"]) # Convert MongoDB ID to string
-    return actions
