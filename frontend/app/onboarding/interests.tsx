@@ -60,7 +60,7 @@ export default function InterestsScreen() {
         
         <Text style={styles.step}>Step 1 of 5</Text>
         <Text style={[styles.title, { color: theme.text }]}>What interests you?</Text>
-        <Text style={[styles.subtitle, { color: theme.textSub }]}>Select categories you'd like to explore</Text>
+          <Text style={[styles.subtitle, { color: theme.textSub }]}>Select categories you&apos;d like to explore</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

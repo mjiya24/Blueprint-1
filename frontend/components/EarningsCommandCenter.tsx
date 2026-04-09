@@ -231,7 +231,7 @@ export function EarningsCommandCenter({ userId }: Props) {
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}>
           <Text style={styles.emptyEmoji}>💰</Text>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No wins logged yet</Text>
-          <Text style={[styles.emptySub, { color: theme.textSub }]}>Start a Quick Win blueprint and tap "Log a Win" when you get your first payout!</Text>
+            <Text style={[styles.emptySub, { color: theme.textSub }]}>Start a Quick Win blueprint and tap &quot;Log a Win&quot; when you get your first payout!</Text>
         </View>
       )}
     </Animated.View>

@@ -119,7 +119,7 @@ export function MarketPulse({ ideaId }: MarketPulseProps) {
           <Text style={styles.liveText}>LIVE</Text>
         </View>
       </View>
-      <Text style={styles.sectionSubtitle}>What's happening in this space right now</Text>
+      <Text style={styles.sectionSubtitle}>What&apos;s happening in this space right now</Text>
 
       {items.map((item, idx) => (
         <View key={idx} style={styles.newsCard}>

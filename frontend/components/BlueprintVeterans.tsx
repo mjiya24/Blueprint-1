@@ -137,7 +137,7 @@ export function BlueprintVeterans({ ideaId }: BlueprintVeteransProps) {
               <Text style={styles.earningsLabel}>in {v.weeks}w</Text>
             </View>
           </View>
-          <Text style={styles.quote}>"{v.quote}"</Text>
+            <Text style={styles.quote}>&quot;{v.quote}&quot;</Text>
         </View>
       ))}
     </View>

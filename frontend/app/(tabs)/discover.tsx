@@ -606,7 +606,7 @@ export default function DiscoverScreen() {
                       <Ionicons name="layers-outline" size={40} color={theme.accent} />
                     </View>
                     <Text style={[styles.emptyTitle, { color: theme.text }]}>Curation in Progress</Text>
-                    <Text style={[styles.emptySub, { color: theme.textMuted }]}>We're verifying more blueprints daily. Check back soon for verified-only opportunities.</Text>
+                      <Text style={[styles.emptySub, { color: theme.textMuted }]}>We&apos;re verifying more blueprints daily. Check back soon for verified-only opportunities.</Text>
                   </>
                 ) : (
                   <>

@@ -177,7 +177,7 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
                 textAlignVertical="top"
                 data-testid="victory-strategy-input"
               />
-              <Text style={styles.inputLabel}>Which step was trickiest? (e.g. "Step 9")</Text>
+                <Text style={styles.inputLabel}>Which step was trickiest? (e.g. &quot;Step 9&quot;)</Text>
               <TextInput
                 style={styles.singleInput}
                 placeholder="Step 9 — Finding the first client"
@@ -221,7 +221,7 @@ export function VictoryLapModal({ visible, onClose, userId, ideaId, ideaTitle, c
                 <View style={styles.celebrateRing}>
                   <Ionicons name="checkmark-circle" size={56} color="#00D95F" />
                 </View>
-                <Text style={styles.celebrateTitle}>You're an Architect.</Text>
+                  <Text style={styles.celebrateTitle}>You&apos;re an Architect.</Text>
                 <Text style={styles.celebrateSub}>
                   Your victory has been logged.{'\n'}
                   Your insights will help the next Architect win faster.

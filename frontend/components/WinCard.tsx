@@ -99,7 +99,7 @@ export function WinCard({ win, onUpvote }: Props) {
         </View>
 
         {/* Quote */}
-        <Text style={[styles.quote, { color: theme.textSub }]}>"{win.quote}"</Text>
+          <Text style={[styles.quote, { color: theme.textSub }]}>&quot;{win.quote}&quot;</Text>
 
         {/* Footer */}
         <TouchableOpacity style={styles.upvoteRow} onPress={onUpvote}>

@@ -54,7 +54,7 @@ export default function AboutBlueprintScreen() {
             <Image source={require('../assets/images/icon.png')} style={styles.logo} resizeMode="contain" />
           </View>
 
-          <Text style={styles.kicker}>ABOUT BLUEPRINT: THE ARCHITECT'S VISION</Text>
+            <Text style={styles.kicker}>ABOUT BLUEPRINT: THE ARCHITECT&apos;S VISION</Text>
           <Text style={styles.version}>Version: Architect Edition v1.2 (2026)</Text>
           <Text style={styles.mission}>Our Mission: Transparency in earning.</Text>
         </View>

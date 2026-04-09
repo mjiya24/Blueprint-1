@@ -52,7 +52,7 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
       <View style={styles.topRow}>
         <View style={styles.dayBadge}>
           <Ionicons name="calendar" size={11} color="#00D95F" />
-          <Text style={styles.dayBadgeText}>TODAY'S BLUEPRINT</Text>
+            <Text style={styles.dayBadgeText}>TODAY&apos;S BLUEPRINT</Text>
         </View>
         <View style={[styles.rarityBadge, { backgroundColor: scoreColor + '18', borderColor: scoreColor + '40' }]}>
           <View style={[styles.rarityDot, { backgroundColor: scoreColor }]} />

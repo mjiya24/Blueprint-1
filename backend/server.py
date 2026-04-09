@@ -52,6 +52,102 @@ gemini_online = False
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+
+def _serialize_live_action(action: dict) -> dict:
+    action["id"] = str(action.pop("_id"))
+    return action
+
+
+@app.get("/api/actions/{user_id}/goal")
+async def get_action_goal_live(user_id: str):
+    goal = await db.user_action_goals.find_one({"user_id": user_id})
+    if not goal:
+        return {"user_id": user_id, "daily_revenue_goal": 0.0}
+
+    return {
+        "user_id": user_id,
+        "daily_revenue_goal": goal.get("daily_revenue_goal", 0.0),
+        "updated_at": goal.get("updated_at"),
+    }
+
+
+@app.put("/api/actions/{user_id}/goal")
+async def set_action_goal_live(user_id: str, payload: Dict[str, Any]):
+    daily_revenue_goal = max(0.0, float(payload.get("daily_revenue_goal", 0.0) or 0.0))
+    await db.user_action_goals.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "user_id": user_id,
+                "daily_revenue_goal": daily_revenue_goal,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        upsert=True,
+    )
+    return await get_action_goal_live(user_id)
+
+
+@app.get("/api/actions/{user_id}")
+async def get_actions_live(user_id: str):
+    cursor = db.user_actions.find({"user_id": user_id}).sort("created_at", -1)
+    actions = await cursor.to_list(length=100)
+    return [_serialize_live_action(action) for action in actions]
+
+
+@app.post("/api/actions")
+async def add_action_live(payload: Dict[str, Any]):
+    title = str(payload.get("title", "")).strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Action title is required")
+
+    user_id = str(payload.get("user_id", "")).strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User id is required")
+
+    status = str(payload.get("status", "pending"))
+    if status not in {"pending", "completed"}:
+        raise HTTPException(status_code=400, detail="Invalid action status")
+
+    action_dict = {
+        "user_id": user_id,
+        "title": title,
+        "description": payload.get("description"),
+        "status": status,
+        "potential_revenue": max(0.0, float(payload.get("potential_revenue", 0.0) or 0.0)),
+        "created_at": datetime.now(timezone.utc),
+        "completed_at": datetime.now(timezone.utc) if status == "completed" else None,
+    }
+    result = await db.user_actions.insert_one(action_dict)
+    created = await db.user_actions.find_one({"_id": result.inserted_id})
+    return _serialize_live_action(created)
+
+
+@app.patch("/api/actions/item/{action_id}")
+async def update_action_status_live(action_id: str, payload: Dict[str, Any]):
+    status = payload.get("status")
+    if status not in {"pending", "completed"}:
+        raise HTTPException(status_code=400, detail="Invalid action status")
+
+    if not ObjectId.is_valid(action_id):
+        raise HTTPException(status_code=404, detail="Action not found")
+
+    update_fields = {"status": status}
+    if status == "completed":
+        update_fields["completed_at"] = datetime.now(timezone.utc)
+    else:
+        update_fields["completed_at"] = None
+
+    result = await db.user_actions.update_one(
+        {"_id": ObjectId(action_id)},
+        {"$set": update_fields},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Action not found")
+
+    updated = await db.user_actions.find_one({"_id": ObjectId(action_id)})
+    return _serialize_live_action(updated)
+
 # ============= Models =============
 
 class UserSignup(BaseModel):
@@ -82,6 +178,14 @@ class UserProfile(BaseModel):
     country_code: str = ""
     currency_code: str = ""
     currency_symbol: str = ""
+
+
+class ActionStatusUpdate(BaseModel):
+    status: str
+
+
+class RevenueGoalUpdate(BaseModel):
+    daily_revenue_goal: float = Field(default=0.0, ge=0.0)
 
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -3712,7 +3816,96 @@ async def root():
 
 
 # Include the router
-app.include_router(api_router)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
+    @app.on_event("shutdown")
+    async def shutdown_db_client():
+        client.close()
+
+    def _serialize_action(action: dict) -> dict:
+        action["id"] = str(action.pop("_id"))
+        return action
+
+    @api_router.post("/actions")
+    async def add_action(action: UserAction):
+        if action.status not in {"pending", "completed"}:
+            raise HTTPException(status_code=400, detail="Invalid action status")
+
+        action_dict = action.dict()
+        if action_dict["status"] == "completed":
+            action_dict["completed_at"] = datetime.now(timezone.utc)
+
+        result = await db.user_actions.insert_one(action_dict)
+        created = await db.user_actions.find_one({"_id": result.inserted_id})
+        return _serialize_action(created)
+
+    @api_router.get("/actions/{user_id}/goal")
+    async def get_revenue_goal(user_id: str):
+        goal = await db.user_action_goals.find_one({"user_id": user_id})
+        if not goal:
+            return {"user_id": user_id, "daily_revenue_goal": 0.0}
+
+        return {
+            "user_id": user_id,
+            "daily_revenue_goal": goal.get("daily_revenue_goal", 0.0),
+            "updated_at": goal.get("updated_at"),
+        }
+
+    @api_router.put("/actions/{user_id}/goal")
+    async def set_revenue_goal(user_id: str, payload: RevenueGoalUpdate):
+        await db.user_action_goals.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "user_id": user_id,
+                    "daily_revenue_goal": payload.daily_revenue_goal,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            upsert=True,
+        )
+        return await get_revenue_goal(user_id)
+
+    @api_router.get("/actions/{user_id}")
+    async def get_actions(user_id: str):
+        cursor = db.user_actions.find({"user_id": user_id}).sort("created_at", -1)
+        actions = await cursor.to_list(length=100)
+        return [_serialize_action(action) for action in actions]
+
+    @api_router.patch("/actions/item/{action_id}")
+    async def update_action_status(action_id: str, payload: ActionStatusUpdate):
+        if payload.status not in {"pending", "completed"}:
+            raise HTTPException(status_code=400, detail="Invalid action status")
+
+        if not ObjectId.is_valid(action_id):
+            raise HTTPException(status_code=404, detail="Action not found")
+
+        update_fields = {"status": payload.status}
+        if payload.status == "completed":
+            update_fields["completed_at"] = datetime.now(timezone.utc)
+        else:
+            update_fields["completed_at"] = None
+
+        result = await db.user_actions.update_one(
+            {"_id": ObjectId(action_id)},
+            {"$set": update_fields},
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Action not found")
+
+        updated = await db.user_actions.find_one({"_id": ObjectId(action_id)})
+        return _serialize_action(updated)
+
+    app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -69,10 +69,10 @@ export default function StreakScreen() {
             <Text style={styles.startMsg}>Open the app every day to build your streak.</Text>
           )}
           {streak >= 7 && streak < 30 && (
-            <Text style={styles.startMsg}>You're on fire. Keep showing up daily.</Text>
+              <Text style={styles.startMsg}>You&apos;re on fire. Keep showing up daily.</Text>
           )}
           {streak >= 30 && (
-            <Text style={[styles.startMsg, { color: '#FF6B35' }]}>Architect mode. You're unstoppable.</Text>
+              <Text style={[styles.startMsg, { color: '#FF6B35' }]}>Architect mode. You&apos;re unstoppable.</Text>
           )}
         </View>
 

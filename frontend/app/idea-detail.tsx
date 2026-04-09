@@ -613,7 +613,7 @@ export default function IdeaDetailScreen() {
                   </View>
                   <View style={styles.architectCardText}>
                     <Text style={[styles.architectCardTitle, { color: theme.text }]}>Troubleshooting Matrix</Text>
-                    <Text style={[styles.architectCardDesc, { color: theme.textSub }]}>Tap "Stuck?" on any step above to generate workarounds</Text>
+                      <Text style={[styles.architectCardDesc, { color: theme.textSub }]}>Tap &quot;Stuck?&quot; on any step above to generate workarounds</Text>
                 </View>
                 {user?.is_architect
                   ? <Ionicons name="checkmark-circle" size={18} color="#00D95F" />

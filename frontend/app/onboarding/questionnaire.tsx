@@ -256,7 +256,7 @@ export default function QuestionnaireScreen() {
               <Ionicons name="location" size={40} color="#00D95F" />
             </View>
             <Text style={[styles.locationBenefit, { color: theme.textSub }]}>
-              Unlocks "Trending in [Your City]" feed — hyper-local market data for your area
+                Unlocks &quot;Trending in [Your City]&quot; feed — hyper-local market data for your area
             </Text>
           </View>
           {/* Detected location display */}

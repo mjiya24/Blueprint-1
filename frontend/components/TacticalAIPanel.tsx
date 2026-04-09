@@ -292,16 +292,16 @@ export function TacticalAIPanel({ visible, onClose, userId, ideaId, ideaTitle, s
               {/* OBJECTIONS TAB */}
               {activeTab === 'objections' && (
                 <View style={styles.objectionsContainer}>
-                  <Text style={styles.objectionsIntro}>
-                    When they say "no," here's exactly what to say back:
-                  </Text>
+                    <Text style={styles.objectionsIntro}>
+                      When they say &quot;no,&quot; here&apos;s exactly what to say back:
+                    </Text>
                   {(data.objection_guide || []).map((item, i) => (
                     <View key={i} style={styles.objectionCard}>
                       <View style={styles.objectionHeader}>
                         <View style={styles.objectionBadge}>
                           <Text style={styles.objectionBadgeText}>THEY SAY</Text>
                         </View>
-                        <Text style={styles.objectionText}>"{item.objection}"</Text>
+                          <Text style={styles.objectionText}>&quot;{item.objection}&quot;</Text>
                       </View>
                       <View style={styles.reframeDivider}>
                         <Ionicons name="return-down-forward" size={14} color="#00D95F" />
@@ -319,7 +319,7 @@ export function TacticalAIPanel({ visible, onClose, userId, ideaId, ideaTitle, s
         ) : (
           <View style={styles.errorState}>
             <Ionicons name="alert-circle-outline" size={40} color="#4A4A4A" />
-            <Text style={styles.errorText}>Couldn't load tactical data</Text>
+              <Text style={styles.errorText}>Couldn&apos;t load tactical data</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={fetchTacticalData}>
               <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>

@@ -61,7 +61,7 @@ function MomentumAnim({ onDone }: { onDone: () => void }) {
     <Animated.View style={[styles.momentumContainer, { opacity }]}>
       <View style={styles.momentumCard}>
         <Text style={styles.momentumTitle}>Momentum Building! 📈</Text>
-        <Text style={styles.momentumSub}>You're halfway to launch</Text>
+          <Text style={styles.momentumSub}>You&apos;re halfway to launch</Text>
         <View style={styles.barsRow}>
           {heights.map((h, i) => (
             <Animated.View key={i} style={[styles.bar, { height: h, opacity: 0.6 + i * 0.08 }]} />
