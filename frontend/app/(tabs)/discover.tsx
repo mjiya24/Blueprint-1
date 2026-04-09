@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ScrollView, Modal,
-  TouchableOpacity, StatusBar, TextInput, ActivityIndicator,
+  TouchableOpacity, StatusBar, TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,6 +18,7 @@ const API_CANDIDATES = Array.from(new Set([
   DEFAULT_API_URL,
 ].filter(Boolean) as string[]));
 const DISCOVER_CACHE_KEY = 'discover_blueprints_cache_v1';
+const DISCOVER_TIMEOUT_ATTEMPTS_MS = [5000, 9000];
 
 const DIFF_COLORS: Record<string, string> = {
   easy: '#00D95F', medium: '#F59E0B', hard: '#FF6B6B',
@@ -54,13 +55,44 @@ const sanitizeBlueprintList = (items: any[]): any[] => {
   return Array.from(byId.values());
 };
 
+const parseCachedBlueprints = (raw: string | null): any[] => {
+  if (!raw) return [];
+  try {
+    return sanitizeBlueprintList(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+};
+
+const getErrorTag = (error: any): string => {
+  if (error?.response?.status) return `status:${error.response.status}`;
+  if (error?.code) return `code:${error.code}`;
+  return 'unknown-error';
+};
+
 const fetchBlueprintsFromApi = async (apiBaseUrl: string, params: any, timeout: number): Promise<any[]> => {
   try {
     const ideasRes = await axios.get(`${apiBaseUrl}/api/ideas`, { params, timeout });
+    if (__DEV__) {
+      console.log(`[Discover] success /api/ideas base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(ideasRes.data).length}`);
+    }
     return sanitizeBlueprintList(normalizeBlueprintList(ideasRes.data));
-  } catch {
-    const blueprintsRes = await axios.get(`${apiBaseUrl}/api/blueprints`, { params, timeout });
-    return sanitizeBlueprintList(normalizeBlueprintList(blueprintsRes.data));
+  } catch (ideasError) {
+    if (__DEV__) {
+      console.log(`[Discover] fail /api/ideas base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(ideasError)}`);
+    }
+    try {
+      const blueprintsRes = await axios.get(`${apiBaseUrl}/api/blueprints`, { params, timeout });
+      if (__DEV__) {
+        console.log(`[Discover] success /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(blueprintsRes.data).length}`);
+      }
+      return sanitizeBlueprintList(normalizeBlueprintList(blueprintsRes.data));
+    } catch (blueprintsError) {
+      if (__DEV__) {
+        console.log(`[Discover] fail /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(blueprintsError)}`);
+      }
+      throw blueprintsError;
+    }
   }
 };
 
@@ -111,6 +143,7 @@ export default function DiscoverScreen() {
   const [verifyModalBp, setVerifyModalBp]       = useState<any>(null);
   const [verifiedOnly, setVerifiedOnly]         = useState(false);
   const [hasLoadError, setHasLoadError]         = useState(false);
+  const [isRefreshing, setIsRefreshing]         = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -118,12 +151,16 @@ export default function DiscoverScreen() {
     const raw = await AsyncStorage.getItem('user');
     const u = raw ? JSON.parse(raw) : null;
     setUser(u);
-    await loadBlueprints(u);
+    await loadBlueprints(u, { reason: 'init' });
   };
 
-  const loadBlueprints = async (u?: any) => {
+  const loadBlueprints = async (u?: any, options?: { reason?: 'init' | 'refresh' | 'retry' }) => {
     const cachedRaw = await AsyncStorage.getItem(DISCOVER_CACHE_KEY);
-    const cachedItems = cachedRaw ? sanitizeBlueprintList(JSON.parse(cachedRaw)) : [];
+    const cachedItems = parseCachedBlueprints(cachedRaw);
+
+    if (__DEV__) {
+      console.log(`[Discover] load start reason=${options?.reason || 'unspecified'} cacheCount=${cachedItems.length}`);
+    }
 
     if (cachedItems.length > 0) {
       setBlueprints(cachedItems);
@@ -139,11 +176,13 @@ export default function DiscoverScreen() {
 
       let items: any[] = [];
       let fetched = false;
-      const timeoutAttempts = [12000, 22000];
 
       for (const apiBaseUrl of API_CANDIDATES) {
-        for (const timeout of timeoutAttempts) {
+        for (const timeout of DISCOVER_TIMEOUT_ATTEMPTS_MS) {
           try {
+            if (__DEV__) {
+              console.log(`[Discover] trying base=${apiBaseUrl} timeout=${timeout}ms`);
+            }
             const result = await fetchBlueprintsFromApi(apiBaseUrl, params, timeout);
             items = result;
             fetched = true;
@@ -160,22 +199,57 @@ export default function DiscoverScreen() {
         if (items.length > 0) {
           await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
         }
+        if (__DEV__) {
+          console.log(`[Discover] network data applied count=${items.length}`);
+        }
       } else {
         setHasLoadError(true);
         if (cachedItems.length === 0) {
           setBlueprints([]);
+          if (__DEV__) {
+            console.log('[Discover] no network, no cache: showing connection issue state');
+          }
+        } else if (__DEV__) {
+          console.log(`[Discover] network failed; serving cache count=${cachedItems.length}`);
         }
       }
     } catch {
       setHasLoadError(true);
       if (cachedItems.length === 0) {
         setBlueprints([]);
+        if (__DEV__) {
+          console.log('[Discover] exception path with empty cache: showing connection issue state');
+        }
+      } else if (__DEV__) {
+        console.log(`[Discover] exception path using cache count=${cachedItems.length}`);
       }
       if (__DEV__) {
         console.log('Discover data unavailable, showing empty state.');
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    setHasLoadError(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      await loadBlueprints(user, { reason: 'refresh' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRetryPress = async () => {
+    setIsRefreshing(true);
+    setHasLoadError(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    try {
+      await loadBlueprints(user, { reason: 'retry' });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -652,6 +726,13 @@ export default function DiscoverScreen() {
           keyExtractor={i => i.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.accent}
+              />
+            }
           ListHeaderComponent={
             <View style={styles.listHeader}>
               <Text style={[styles.resultsCount, { color: theme.textMuted }]}>
@@ -686,7 +767,7 @@ export default function DiscoverScreen() {
                       <Text style={[styles.emptySub, { color: theme.textMuted }]}>We couldn&apos;t load fresh blueprints. Check your connection and retry.</Text>
                       <TouchableOpacity
                         style={[styles.emptyBtn, { backgroundColor: theme.accentLight }]}
-                        onPress={() => loadBlueprints(user)}
+                          onPress={handleRetryPress}
                       >
                         <Text style={[styles.emptyBtnText, { color: theme.accent }]}>Retry</Text>
                       </TouchableOpacity>
