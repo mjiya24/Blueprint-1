@@ -173,6 +173,9 @@ export default function DiscoverScreen() {
     try {
       const params: any = { limit: 150 };
       if (u && !u.is_guest) params.user_id = u.id;
+      const profile = u?.profile || {};
+      if (profile.hours_per_week) params.hours_per_week = profile.hours_per_week;
+      if (profile.visa_status) params.visa_status = profile.visa_status;
 
       let items: any[] = [];
       let fetched = false;

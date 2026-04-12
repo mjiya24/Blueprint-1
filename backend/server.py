@@ -33,6 +33,15 @@ logger = logging.getLogger(__name__)
 
 from app.services.gemini_native import generate_json_strict, generate_text, ping_gemini
 
+# ============= Mass Ingestion Engine (Blueprint Scaling) =============
+try:
+    from mass_ingestion import scale_seeds as _scale_seeds_fn
+    _mass_ingestion_available = True
+except ImportError as e:
+    logger.warning(f"mass_ingestion module not found ({e}); scaling disabled")
+    _scale_seeds_fn = None
+    _mass_ingestion_available = False
+
 mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 mongo_url_source = "MONGO_URL" if os.getenv("MONGO_URL") else "default"
 if mongo_url_source == "default":
@@ -184,6 +193,10 @@ class UserProfile(BaseModel):
     country_code: str = ""
     currency_code: str = ""
     currency_symbol: str = ""
+    # Architect interview fields
+    student_status: str = ""       # full-time-student | recent-grad | professional | career-shift
+    visa_status: str = ""          # citizen | opt-cpt | visa-restricted | remote-only
+    hours_per_week: str = ""       # side-hustle | part-time | full-career
 
 
 class ActionStatusUpdate(BaseModel):
@@ -284,6 +297,72 @@ def calculate_match_score(user_profile: dict, idea: dict) -> int:
 
     # Normalize to 30-99 range for realism
     return min(99, max(30, int(30 + score * 0.69)))
+
+
+INITIAL_FEED_CAP = 500
+CATEGORY_FEED_MAX_LIMIT = 1000
+INITIAL_FEED_CACHE_TTL_SECONDS = 120
+_initial_feed_cache: Dict[str, Any] = {
+    "data": None,
+    "built_at": None,
+}
+
+
+def _idea_quality_score(idea: Dict[str, Any]) -> int:
+    """Quality heuristic for uncategorized feed ranking."""
+    score = int(idea.get("confidence_score", 0) or 0)
+    tags = set(idea.get("tags") or [])
+
+    if idea.get("verification_status") == "source-linked":
+        score += 10
+    if "premium" in tags:
+        score += 15
+    if "unverified" in tags:
+        score -= 25
+    if idea.get("difficulty") == "beginner":
+        score += 3
+
+    return score
+
+
+def _build_category_balanced_feed(ideas: List[Dict[str, Any]], cap: int = INITIAL_FEED_CAP) -> List[Dict[str, Any]]:
+    """Round-robin across categories after sorting each category by quality."""
+    buckets: Dict[str, List[Dict[str, Any]]] = {}
+    for idea in ideas:
+        category = idea.get("category") or "Other"
+        buckets.setdefault(category, []).append(idea)
+
+    ordered_categories = sorted(
+        buckets.keys(),
+        key=lambda cat: (-len(buckets[cat]), cat),
+    )
+
+    for category in ordered_categories:
+        buckets[category].sort(key=_idea_quality_score, reverse=True)
+
+    selected: List[Dict[str, Any]] = []
+    while len(selected) < cap:
+        picked_any = False
+        for category in ordered_categories:
+            if not buckets[category]:
+                continue
+            selected.append(buckets[category].pop(0))
+            picked_any = True
+            if len(selected) >= cap:
+                break
+        if not picked_any:
+            break
+
+    return selected
+
+
+def _is_initial_feed_cache_valid() -> bool:
+    built_at = _initial_feed_cache.get("built_at")
+    data = _initial_feed_cache.get("data")
+    if not built_at or data is None:
+        return False
+    age = (datetime.now(timezone.utc) - built_at).total_seconds()
+    return age <= INITIAL_FEED_CACHE_TTL_SECONDS
 
 async def send_expo_push_notification(push_token: str, title: str, body: str, data: dict = None):
     """Send push notification via Expo push API"""
@@ -2047,6 +2126,16 @@ REAL_LIFE_SEED_BLUEPRINTS.extend([
     {"title": "Digital Marketing Specialist Rotation", "category": "Digital & Content", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,500-$8,500/month", "horizon": "medium", "tags": ["specialist", "new-grad", "professional"]},
     {"title": "Vending Machine Business Route", "category": "Local & Service", "difficulty": "beginner", "startup_cost": "high", "potential_earnings": "$500-$2,000/month", "horizon": "medium", "tags": ["passive", "local", "unverified"]},
     {"title": "Casino Games Testing & Compliance", "category": "No-Code & SaaS", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$800-$3,500/month", "horizon": "fast", "tags": ["qa", "specialist", "unverified"]},
+    {"title": "CPT-Eligible Product Analyst Internship Sprint", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,200-$4,800/month", "horizon": "medium", "tags": ["student", "cpt", "internship", "f1-safe", "tech"]},
+    {"title": "OPT Startup Fellowship Pipeline", "category": "Student & Campus", "difficulty": "intermediate", "startup_cost": "free", "potential_earnings": "$1,500-$6,000/month", "horizon": "medium", "tags": ["student", "opt", "internship", "f1-safe", "startup"]},
+    {"title": "Preply Subject Tutoring Export", "category": "Student & Campus", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$600-$3,800/month", "horizon": "fast", "tags": ["student", "tutoring", "export", "f1-safe", "remote"]},
+    {"title": "Multilingual Translation Micro-Agency", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$1,500-$7,500/month", "horizon": "medium", "tags": ["translation", "service", "remote", "f1-safe"]},
+    {"title": "Notion Ops Template Studio", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$700-$6,500/month", "horizon": "medium", "tags": ["side-hustle", "templates", "notion", "digital-product"]},
+    {"title": "Niche Budget Tracker Pack Licensing", "category": "No-Code & SaaS", "difficulty": "beginner", "startup_cost": "free", "potential_earnings": "$500-$4,500/month", "horizon": "medium", "tags": ["side-hustle", "finance", "digital-product", "templates"]},
+    {"title": "Single-Workflow Micro SaaS Builder", "category": "No-Code & SaaS", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$2,500-$18,000/month", "horizon": "long", "tags": ["micro-saas", "side-hustle", "automation", "recurring"]},
+    {"title": "AI Content Strategy Agency Launch", "category": "Agency & B2B", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$3,000-$16,000/month", "horizon": "medium", "tags": ["career-shift", "agency", "ai", "content"]},
+    {"title": "Prompt Engineering Portfolio Sprint", "category": "AI & Automation", "difficulty": "intermediate", "startup_cost": "low", "potential_earnings": "$2,000-$10,000/month", "horizon": "medium", "tags": ["career-shift", "prompt-engineering", "portfolio", "specialist"]},
+    {"title": "AI Audit Specialist Track", "category": "AI & Automation", "difficulty": "advanced", "startup_cost": "low", "potential_earnings": "$3,500-$14,000/month", "horizon": "long", "tags": ["career-shift", "ai-audit", "b2b", "specialist"]},
 ])
 
 
@@ -2141,6 +2230,17 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
         if "unverified" in tags and payout_speed == "48h":
             payout_speed = "weekly"
 
+        final_tags = tags + [horizon, "real-life"]
+        earnings_str = row.get("potential_earnings", "")
+        try:
+            max_earning = int(
+                earnings_str.split("-")[1].replace("$", "").replace("/month", "").replace(",", "")
+            )
+            if max_earning > 5000:
+                final_tags.append("premium")
+        except Exception:
+            pass
+
         generated.append({
             "id": f"rl-{idx:03d}",
             "title": row["title"],
@@ -2157,7 +2257,7 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
             "action_steps": _f1_safe_steps() if is_f1_safe else _extra_action_steps(horizon),
             "potential_earnings": row["potential_earnings"],
             "difficulty": row["difficulty"],
-            "tags": tags + [horizon, "real-life"],
+            "tags": final_tags,
             "environment_fit": ["outdoor", "any"] if location_based else ["home", "office"],
             "social_fit": ["customer-facing"] if category in ["Local & Service", "Agency & B2B", "Gig Economy"] else ["solo"],
             "asset_requirements": asset_reqs,
@@ -2174,7 +2274,18 @@ def _generate_real_life_ideas(seed_rows: List[Dict[str, Any]]) -> List[Dict[str,
     return generated
 
 
-PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(REAL_LIFE_SEED_BLUEPRINTS))
+if _mass_ingestion_available and _scale_seeds_fn:
+    try:
+        scaled_blueprint_seeds = _scale_seeds_fn(REAL_LIFE_SEED_BLUEPRINTS)
+        logger.info(
+            f"Mass Ingestion: Scaled {len(REAL_LIFE_SEED_BLUEPRINTS)} seeds into {len(scaled_blueprint_seeds)} blueprints"
+        )
+        PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(scaled_blueprint_seeds))
+    except Exception as e:
+        logger.error(f"Mass Ingestion failed: {e}; falling back to base seeds")
+        PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(REAL_LIFE_SEED_BLUEPRINTS))
+else:
+    PRE_POPULATED_IDEAS.extend(_generate_real_life_ideas(REAL_LIFE_SEED_BLUEPRINTS))
 
 # ============= Sprint 5: Currency & Location Constants =============
 
@@ -2300,6 +2411,63 @@ async def update_push_token(user_id: str, token_data: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Push token updated"}
 
+# ============= Monetization: Architect Tier Subscription =============
+
+class UpgradeRequest(BaseModel):
+    tier: str = "architect"
+
+@api_router.post("/users/{user_id}/upgrade")
+async def upgrade_to_architect(user_id: str, data: UpgradeRequest):
+    """
+    Upgrade user to Architect tier.
+    Sets is_architect=True and profile.is_architect=True.
+    """
+    if data.tier != "architect":
+        raise HTTPException(status_code=400, detail="Invalid tier")
+    
+    try:
+        result = await db.users.update_one(
+            {"id": user_id},
+            {
+                "$set": {
+                    "is_architect": True,
+                    "profile.is_architect": True,
+                    "architect_tier_activated": datetime.now(timezone.utc),
+                }
+            }
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"✅ User {user_id} upgraded to Architect tier")
+        return {
+            "message": "Successfully upgraded to Architect tier",
+            "is_architect": True,
+            "tier": "architect",
+        }
+    except Exception as e:
+        logger.error(f"Upgrade failed for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Upgrade failed")
+
+@api_router.get("/users/{user_id}/tier")
+async def get_user_tier(user_id: str):
+    """Get current subscription tier status."""
+    try:
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        is_architect = user.get("is_architect", False)
+        return {
+            "user_id": user_id,
+            "tier": "architect" if is_architect else "free",
+            "is_architect": is_architect,
+            "activated_at": user.get("architect_tier_activated"),
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch tier for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch tier")
+
 @api_router.get("/location/ip-detect")
 async def detect_ip_location(request: Request):
     """Sprint 5: Server-side IP geolocation proxy (avoids CORS)."""
@@ -2359,19 +2527,61 @@ async def ensure_ideas_seeded():
         raise HTTPException(status_code=503, detail="Database unavailable")
 
 @api_router.get("/ideas")
-async def get_all_ideas(skip: int = 0, limit: int = 100, category: str = None, difficulty: str = None, cost: str = None):
+async def get_all_ideas(
+    skip: int = 0,
+    limit: int = 100,
+    category: str = None,
+    difficulty: str = None,
+    cost: str = None,
+    hours_per_week: str = None,
+    visa_status: str = None,
+):
     await ensure_ideas_seeded()
     try:
         query = {}
+        has_category_filter = bool(category and category != "All")
         if category and category != "All":
             query["category"] = category
         if difficulty and difficulty != "all":
             query["difficulty"] = difficulty
         if cost and cost != "all":
             query["startup_cost"] = cost
-        ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
-        total = await db.ideas.count_documents(query)
-        return {"ideas": ideas, "total": total, "skip": skip, "limit": limit}
+        if hours_per_week == "side-hustle":
+            query["time_needed"] = {"$in": ["flexible", "part-time"]}
+        if visa_status == "visa-restricted":
+            query["visa_required"] = {"$ne": True}
+
+        if has_category_filter:
+            effective_limit = max(1, min(limit, CATEGORY_FEED_MAX_LIMIT))
+            ideas = await db.ideas.find(query, {"_id": 0}).skip(skip).limit(effective_limit).to_list(effective_limit)
+            total = await db.ideas.count_documents(query)
+            return {"ideas": ideas, "total": total, "skip": skip, "limit": effective_limit}
+
+        using_default_filters = (
+            (not difficulty or difficulty == "all")
+            and (not cost or cost == "all")
+            and (not hours_per_week)
+            and (not visa_status)
+        )
+
+        curated: List[Dict[str, Any]]
+        if using_default_filters and _is_initial_feed_cache_valid():
+            curated = _initial_feed_cache["data"]
+        else:
+            all_ideas = await db.ideas.find(query, {"_id": 0}).to_list(6000)
+            curated = _build_category_balanced_feed(all_ideas, INITIAL_FEED_CAP)
+            if using_default_filters:
+                _initial_feed_cache["data"] = curated
+                _initial_feed_cache["built_at"] = datetime.now(timezone.utc)
+
+        total = len(curated)
+
+        if skip >= total:
+            return {"ideas": [], "total": total, "skip": skip, "limit": 0}
+
+        effective_limit = max(1, min(limit, INITIAL_FEED_CAP))
+        ideas = curated[skip: skip + effective_limit]
+        return {"ideas": ideas, "total": total, "skip": skip, "limit": effective_limit}
     except PyMongoError as exc:
         logger.error("MongoDB unavailable in /api/ideas", exc_info=exc)
         raise HTTPException(status_code=503, detail="Database unavailable")
