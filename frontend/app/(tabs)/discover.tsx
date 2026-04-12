@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
+import { PaywallModal } from '../../components/PaywallModal';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
@@ -141,6 +142,8 @@ export default function DiscoverScreen() {
   const [selectedPayout, setSelectedPayout]     = useState('all');
   const [showFilters, setShowFilters]           = useState(false);
   const [verifyModalBp, setVerifyModalBp]       = useState<any>(null);
+  const [paywallBp, setPaywallBp]               = useState<any>(null);
+  const [showPaywall, setShowPaywall]           = useState(false);
   const [verifiedOnly, setVerifiedOnly]         = useState(false);
   const [hasLoadError, setHasLoadError]         = useState(false);
   const [isRefreshing, setIsRefreshing]         = useState(false);
@@ -402,6 +405,25 @@ export default function DiscoverScreen() {
   const displayData = isSearchMode ? searchResults : filteredBlueprints;
   const libraryCount = blueprints.length;
 
+  const handleBlueprintPress = (blueprint: any) => {
+    const isPremium = (blueprint?.tags || []).includes('premium');
+    const isArchitect = !!user?.is_architect;
+    if (isPremium && !isArchitect) {
+      setPaywallBp(blueprint);
+      setShowPaywall(true);
+      return;
+    }
+    router.push({ pathname: '/blueprint-detail', params: { id: blueprint.id } });
+  };
+
+  const handleUpgradeSuccess = async () => {
+    if (!user) return;
+    const updated = { ...user, is_architect: true };
+    setUser(updated);
+    await AsyncStorage.setItem('user', JSON.stringify(updated));
+    setShowPaywall(false);
+  };
+
   const renderCard = ({ item }: { item: any }) => {
     const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
     const liveMatch = computeLocationAwareMatch(item);
@@ -413,7 +435,7 @@ export default function DiscoverScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: theme.surface, borderColor: 'rgba(255,255,255,0.05)' }]}
-        onPress={() => router.push({ pathname: '/blueprint-detail', params: { id: item.id } })}
+        onPress={() => handleBlueprintPress(item)}
         activeOpacity={0.75}
         data-testid={`discover-card-${item.id}`}
       >
@@ -803,6 +825,14 @@ export default function DiscoverScreen() {
           }
         />
       )}
+
+      <PaywallModal
+        visible={showPaywall}
+        blueprint={paywallBp}
+        user={user}
+        onClose={() => setShowPaywall(false)}
+        onUpgradeSuccess={handleUpgradeSuccess}
+      />
 
       {/* ── Verification Sources Modal ── */}
       <Modal
