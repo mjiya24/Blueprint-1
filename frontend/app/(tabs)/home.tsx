@@ -13,6 +13,8 @@ import { LocalMarketPulseWidget } from '../../components/LocalMarketPulseWidget'
 import { QuickWinsBanner } from '../../components/QuickWinsBanner';
 import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { useTheme } from '../../contexts/ThemeContext';
+import { fetchPaths } from '../../src/services/api';
+import type { PathModel } from '../../src/types/path';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
@@ -74,9 +76,18 @@ export default function HomeScreen() {
   const [dailyChallengeStreak, setDailyChallengeStreak] = useState(0);
   const [weeklyBlueprint, setWeeklyBlueprint] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [availablePaths, setAvailablePaths] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
   const [streak, setStreak] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const challengeRingPulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    fetchPaths()
+      .then((data) => setAvailablePaths(data.total ?? data.paths.length))
+      .catch(() => setAvailablePaths(0))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => { loadData(); }, []);
 
@@ -355,7 +366,7 @@ export default function HomeScreen() {
           <View>
             <View style={styles.logoRow}>
               <Ionicons name="grid" size={18} color="#00D95F" />
-              <Text style={styles.appTag}>Blueprint</Text>
+              <Text style={styles.appTag}>PATHFINDER</Text>
             </View>
             <Text style={[styles.greeting, { color: theme.text }]}>Hey, {firstName} 👋</Text>
             <Text style={[styles.headerSub, { color: theme.textMuted }]}>
@@ -467,7 +478,7 @@ export default function HomeScreen() {
                 style={[styles.dailyPrimaryButton, { backgroundColor: theme.isDark ? '#18E872' : '#06D865' }]}
                 onPress={() => router.push('/(tabs)/discover')}
               >
-                <Text style={styles.dailyPrimaryButtonText}>Explore Matches</Text>
+                <Text style={styles.dailyPrimaryButtonText}>Explore Paths</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.dailySecondaryButton, { borderColor: theme.isDark ? '#24416F' : '#C0D1E8', backgroundColor: theme.isDark ? '#0D1A33' : '#FFFFFF' }]}
@@ -512,11 +523,11 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
             <Text style={[styles.statNum, { color: theme.text }]}>{ideas.length}</Text>
-            <Text style={[styles.statLabel, { color: theme.text }]}>Matched Ideas</Text>
+            <Text style={[styles.statLabel, { color: theme.text }]}>Active Paths</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
-            <Text style={[styles.statNum, { color: theme.text }]}>99+</Text>
-            <Text style={[styles.statLabel, { color: theme.text }]}>Blueprints</Text>
+            <Text style={[styles.statNum, { color: theme.text }]}>{loading ? '…' : availablePaths}</Text>
+            <Text style={[styles.statLabel, { color: theme.text }]}>Available Paths</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}> 
             <Text style={[styles.statNum, { color: theme.text }]}>8</Text>
