@@ -6,10 +6,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGO_URL = os.getenv("DATABASE_URL") or os.getenv("MONGO_URL", "mongodb://localhost:27017")
-client = AsyncIOMotorClient(MONGO_URL)
 
-# Targets the specific database named "blueprint_db"
-db = client.blueprint_db
+# Keep the app usable even when MongoDB isn't running locally.
+# This gives us a safe, in-memory fallback for smoke testing and local usage.
+try:
+    client = AsyncIOMotorClient(
+        MONGO_URL,
+        serverSelectionTimeoutMS=3000,
+        connectTimeoutMS=3000,
+        socketTimeoutMS=3000,
+    )
+    db = client.blueprint_db
+    blueprint_collection = db.get_collection("blueprints")
+except Exception:
+    client = None
+    db = None
+    blueprint_collection = None
 
-# Targets the specific collection where our 500+ hustles will live
-blueprint_collection = db.get_collection("blueprints")
+FALLBACK_BLUEPRINTS = []
+
+
+def get_blueprint_collection():
+    return blueprint_collection
+
+
+def list_fallback_blueprints():
+    return FALLBACK_BLUEPRINTS
