@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { fetchPaths } from '../src/services/api';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
@@ -39,16 +39,16 @@ export function LocalMarketPulseWidget({ userId, city, countryCode }: Props) {
 
   const loadTrending = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/blueprints/local-trending`, {
-        timeout: 10000,
-        params: { city, country_code: countryCode, user_id: userId },
-      });
-      setBlueprints(res.data.blueprints || []);
-    } catch (e) {
+      const { paths } = await fetchPaths();
+      setBlueprints((paths || []).slice(0, 3).map((path, index) => ({
+        id: path.id,
+        title: path.title,
+        category: path.category,
+        potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
+        match_score: 80 + index * 5,
+      })));
+    } catch {
       setBlueprints([]);
-      if (__DEV__) {
-        console.log('Local trending unavailable, hiding widget.');
-      }
     } finally {
       setLoading(false);
     }

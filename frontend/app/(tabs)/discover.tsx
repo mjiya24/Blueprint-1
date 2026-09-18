@@ -15,13 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { fetchPaths } from '../../src/services/api';
 import type { PathModel } from '../../src/types/path';
 
-const DEFAULT_API_URL = 'https://blueprint-1-mnvh.onrender.com';
-const API_CANDIDATES = Array.from(new Set([
-  process.env.EXPO_PUBLIC_BACKEND_URL,
-  DEFAULT_API_URL,
-].filter(Boolean) as string[]));
 const DISCOVER_CACHE_KEY = 'discover_blueprints_cache_v1';
-const DISCOVER_TIMEOUT_ATTEMPTS_MS = [5000, 9000];
 
 const DIFF_COLORS: Record<string, string> = {
   easy: '#00D95F', medium: '#F59E0B', hard: '#FF6B6B',
@@ -32,8 +26,9 @@ const getMatchColor = (s: number) => s >= 75 ? '#00D95F' : s >= 55 ? '#F59E0B' :
 
 const normalizeBlueprintList = (payload: any): any[] => {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.ideas)) return payload.ideas;       // /api/ideas
-  if (Array.isArray(payload?.blueprints)) return payload.blueprints; // /api/blueprints
+  if (Array.isArray(payload?.ideas)) return payload.ideas;
+  if (Array.isArray(payload?.paths)) return payload.paths;
+  if (Array.isArray(payload?.blueprints)) return payload.blueprints;
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
 };
@@ -73,30 +68,18 @@ const getErrorTag = (error: any): string => {
   return 'unknown-error';
 };
 
-const fetchBlueprintsFromApi = async (apiBaseUrl: string, params: any, timeout: number): Promise<any[]> => {
-  try {
-    const ideasRes = await axios.get(`${apiBaseUrl}/api/ideas`, { params, timeout });
-    if (__DEV__) {
-      console.log(`[Discover] success /api/ideas base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(ideasRes.data).length}`);
-    }
-    return sanitizeBlueprintList(normalizeBlueprintList(ideasRes.data));
-  } catch (ideasError) {
-    if (__DEV__) {
-      console.log(`[Discover] fail /api/ideas base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(ideasError)}`);
-    }
-    try {
-      const blueprintsRes = await axios.get(`${apiBaseUrl}/api/blueprints`, { params, timeout });
-      if (__DEV__) {
-        console.log(`[Discover] success /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(blueprintsRes.data).length}`);
-      }
-      return sanitizeBlueprintList(normalizeBlueprintList(blueprintsRes.data));
-    } catch (blueprintsError) {
-      if (__DEV__) {
-        console.log(`[Discover] fail /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(blueprintsError)}`);
-      }
-      throw blueprintsError;
-    }
-  }
+const fetchBlueprintsFromApi = async (): Promise<any[]> => {
+  const { paths } = await fetchPaths();
+  return sanitizeBlueprintList(
+    (paths || []).map((path: any) => ({
+      ...path,
+      description: path.summary || path.description || 'Details coming soon.',
+      category: path.category || 'General',
+      difficulty: path.difficulty || 'beginner',
+      potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
+      title: path.title || 'Untitled Path',
+    }))
+  );
 };
 
 const CATEGORY_TABS = [
@@ -193,50 +176,13 @@ export default function DiscoverScreen() {
 
     setHasLoadError(false);
     try {
-      const params: any = { limit: 150 };
-      if (u && !u.is_guest) params.user_id = u.id;
-      const profile = u?.profile || {};
-      if (profile.hours_per_week) params.hours_per_week = profile.hours_per_week;
-      if (profile.visa_status) params.visa_status = profile.visa_status;
-
-      let items: any[] = [];
-      let fetched = false;
-
-      for (const apiBaseUrl of API_CANDIDATES) {
-        for (const timeout of DISCOVER_TIMEOUT_ATTEMPTS_MS) {
-          try {
-            if (__DEV__) {
-              console.log(`[Discover] trying base=${apiBaseUrl} timeout=${timeout}ms`);
-            }
-            const result = await fetchBlueprintsFromApi(apiBaseUrl, params, timeout);
-            items = result;
-            fetched = true;
-            if (items.length > 0) break;
-          } catch {
-            // Continue through timeout and endpoint fallbacks.
-          }
-        }
-        if (items.length > 0) break;
+      const items = await fetchBlueprintsFromApi();
+      setBlueprints(items);
+      if (items.length > 0) {
+        await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
       }
-
-      if (fetched) {
-        setBlueprints(items);
-        if (items.length > 0) {
-          await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
-        }
-        if (__DEV__) {
-          console.log(`[Discover] network data applied count=${items.length}`);
-        }
-      } else {
-        setHasLoadError(true);
-        if (cachedItems.length === 0) {
-          setBlueprints([]);
-          if (__DEV__) {
-            console.log('[Discover] no network, no cache: showing connection issue state');
-          }
-        } else if (__DEV__) {
-          console.log(`[Discover] network failed; serving cache count=${cachedItems.length}`);
-        }
+      if (__DEV__) {
+        console.log(`[Discover] network data applied count=${items.length}`);
       }
     } catch {
       setHasLoadError(true);
