@@ -12,6 +12,8 @@ import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { PaywallModal } from '../../components/PaywallModal';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
+import { fetchPaths } from '../../src/services/api';
+import type { PathModel } from '../../src/types/path';
 
 const DEFAULT_API_URL = 'https://blueprint-1-mnvh.onrender.com';
 const API_CANDIDATES = Array.from(new Set([
@@ -154,6 +156,23 @@ export default function DiscoverScreen() {
     const raw = await AsyncStorage.getItem('user');
     const u = raw ? JSON.parse(raw) : null;
     setUser(u);
+
+    try {
+      const { paths } = await fetchPaths();
+      const mappedPaths = paths.map((path: PathModel) => ({
+        ...path,
+        description: path.summary || path.description || 'Details coming soon.',
+        category: path.category || 'General',
+        difficulty: path.difficulty || 'beginner',
+        estimated_duration_days: path.estimated_duration_days ?? 7,
+        potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
+      }));
+      setBlueprints(mappedPaths);
+      await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(mappedPaths));
+    } catch {
+      // Fall back to the legacy discovery flow if the path API is unavailable.
+    }
+
     await loadBlueprints(u, { reason: 'init' });
   };
 

@@ -482,11 +482,11 @@ export default function HomeScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.dailySecondaryButton, { borderColor: theme.isDark ? '#24416F' : '#C0D1E8', backgroundColor: theme.isDark ? '#0D1A33' : '#FFFFFF' }]}
-                onPress={() => setIsTrackerExpanded((current) => !current)}
+                onPress={() => router.push('/(tabs)/my-plans')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Text style={[styles.dailySecondaryButtonText, { color: theme.text }]}>Track My Progress</Text>
-                <Ionicons name={isTrackerExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.text} />
+                <Ionicons name="arrow-forward" size={16} color={theme.text} />
               </TouchableOpacity>
             </View>
           </View>
