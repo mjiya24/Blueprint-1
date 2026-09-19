@@ -389,6 +389,30 @@ export default function DiscoverScreen() {
     setShowPaywall(false);
   };
 
+  const renderSkeletonCard = () => (
+    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: 'rgba(255,255,255,0.05)' }]}>
+      <View style={styles.cardTop}>
+        <View style={[styles.skeletonBadge, { backgroundColor: theme.surfaceAlt }]} />
+        <View style={[styles.skeletonMatch, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+      <View style={[styles.skeletonTitle, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={[styles.skeletonText, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={[styles.skeletonTextShort, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={styles.metaLine}>
+        <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+        <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+      <View style={[styles.skeletonImage, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={styles.cardFooter}>
+        <View style={styles.pillsRow}>
+          <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+          <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+        </View>
+        <View style={[styles.skeletonPrice, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+    </View>
+  );
+
   const renderCard = ({ item }: { item: any }) => {
     const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
     const liveMatch = computeLocationAwareMatch(item);
@@ -706,8 +730,15 @@ export default function DiscoverScreen() {
       {/* ── Blueprint list ── */}
       {isLoading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={theme.accent} />
-          <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading blueprints…</Text>
+          <View style={styles.loadingHeader}>
+            <ActivityIndicator size="small" color={theme.accent} />
+            <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading Pathfinder ideas…</Text>
+          </View>
+          <View style={styles.skeletonList}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <View key={`skeleton-${index}`}>{renderSkeletonCard()}</View>
+            ))}
+          </View>
         </View>
       ) : (
         <FlatList
@@ -925,6 +956,27 @@ const styles = StyleSheet.create({
   list:         { paddingHorizontal: 16, paddingBottom: 32 },
   listHeader:   { marginBottom: 6, marginTop: 2 },
   resultsCount: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  loadingWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 12,
+  },
+  loadingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  loadingText: { fontSize: 12, fontWeight: '600' },
+  skeletonList: { gap: 10 },
+  skeletonBadge: { width: 92, height: 22, borderRadius: 8 },
+  skeletonMatch: { width: 88, height: 24, borderRadius: 8 },
+  skeletonTitle: { width: '70%', height: 18, borderRadius: 8, marginBottom: 10 },
+  skeletonText: { width: '95%', height: 12, borderRadius: 6, marginBottom: 8 },
+  skeletonTextShort: { width: '55%', height: 12, borderRadius: 6, marginBottom: 10 },
+  skeletonPill: { width: 82, height: 22, borderRadius: 999 },
+  skeletonImage: { width: '100%', height: 52, borderRadius: 12, marginTop: 8, marginBottom: 8 },
+  skeletonPrice: { width: 82, height: 26, borderRadius: 8 },
 
   // Card
   card: {
@@ -986,9 +1038,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
 
-  // Loading / Empty
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 13 },
+  // Empty
   emptyState:  { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
   emptyIconWrap: {
     width: 80, height: 80, borderRadius: 20,
