@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { BrandLogoStrip } from './BrandLogoStrip';
+import { fetchPaths } from '../src/services/api';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
@@ -26,10 +26,11 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
 
   const loadDaily = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/blueprints/daily/${userId}`);
-      setBlueprint(res.data);
+      const { paths } = await fetchPaths();
+      const match = (paths || [])[0] ?? null;
+      setBlueprint(match);
     } catch {
-      // No v2 blueprints yet — hide widget
+      setBlueprint(null);
     } finally {
       setIsLoading(false);
     }

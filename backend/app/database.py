@@ -2,13 +2,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv
 
-# Load our environment variables (the secrets)
 load_dotenv()
 
 MONGO_URL = os.getenv("DATABASE_URL") or os.getenv("MONGO_URL", "mongodb://localhost:27017")
 
-# Keep the app usable even when MongoDB isn't running locally.
-# This gives us a safe, in-memory fallback for smoke testing and local usage.
 try:
     client = AsyncIOMotorClient(
         MONGO_URL,
@@ -17,18 +14,30 @@ try:
         socketTimeoutMS=3000,
     )
     db = client.blueprint_db
-    blueprint_collection = db.get_collection("blueprints")
+    path_collection = db.get_collection("paths")
+    user_path_progress_collection = db.get_collection("user_path_progress")
 except Exception:
     client = None
     db = None
-    blueprint_collection = None
-
-FALLBACK_BLUEPRINTS = []
-
-
-def get_blueprint_collection():
-    return blueprint_collection
+    path_collection = None
+    user_path_progress_collection = None
 
 
-def list_fallback_blueprints():
-    return FALLBACK_BLUEPRINTS
+async def ensure_indexes():
+    if path_collection is None or user_path_progress_collection is None:
+        return
+
+    try:
+        await path_collection.create_index("slug", unique=True)
+        await path_collection.create_index("creator_id")
+        await path_collection.create_index("status")
+        await path_collection.create_index("category")
+
+        await user_path_progress_collection.create_index(
+            [("user_id", 1), ("path_id", 1)],
+            unique=True,
+        )
+        await user_path_progress_collection.create_index("user_id")
+        await user_path_progress_collection.create_index("path_id")
+    except Exception as exc:
+        print(f"MongoDB offline/standby: Index creation skipped ({exc})")

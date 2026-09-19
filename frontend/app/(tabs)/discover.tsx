@@ -12,14 +12,10 @@ import { BrandLogoStrip } from '../../components/BrandLogoStrip';
 import { PaywallModal } from '../../components/PaywallModal';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
+import { fetchPaths } from '../../src/services/api';
+import type { PathModel } from '../../src/types/path';
 
-const DEFAULT_API_URL = 'https://blueprint-1-mnvh.onrender.com';
-const API_CANDIDATES = Array.from(new Set([
-  process.env.EXPO_PUBLIC_BACKEND_URL,
-  DEFAULT_API_URL,
-].filter(Boolean) as string[]));
 const DISCOVER_CACHE_KEY = 'discover_blueprints_cache_v1';
-const DISCOVER_TIMEOUT_ATTEMPTS_MS = [5000, 9000];
 
 const DIFF_COLORS: Record<string, string> = {
   easy: '#00D95F', medium: '#F59E0B', hard: '#FF6B6B',
@@ -30,8 +26,9 @@ const getMatchColor = (s: number) => s >= 75 ? '#00D95F' : s >= 55 ? '#F59E0B' :
 
 const normalizeBlueprintList = (payload: any): any[] => {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.ideas)) return payload.ideas;       // /api/ideas
-  if (Array.isArray(payload?.blueprints)) return payload.blueprints; // /api/blueprints
+  if (Array.isArray(payload?.ideas)) return payload.ideas;
+  if (Array.isArray(payload?.paths)) return payload.paths;
+  if (Array.isArray(payload?.blueprints)) return payload.blueprints;
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
 };
@@ -71,30 +68,18 @@ const getErrorTag = (error: any): string => {
   return 'unknown-error';
 };
 
-const fetchBlueprintsFromApi = async (apiBaseUrl: string, params: any, timeout: number): Promise<any[]> => {
-  try {
-    const ideasRes = await axios.get(`${apiBaseUrl}/api/ideas`, { params, timeout });
-    if (__DEV__) {
-      console.log(`[Discover] success /api/ideas base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(ideasRes.data).length}`);
-    }
-    return sanitizeBlueprintList(normalizeBlueprintList(ideasRes.data));
-  } catch (ideasError) {
-    if (__DEV__) {
-      console.log(`[Discover] fail /api/ideas base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(ideasError)}`);
-    }
-    try {
-      const blueprintsRes = await axios.get(`${apiBaseUrl}/api/blueprints`, { params, timeout });
-      if (__DEV__) {
-        console.log(`[Discover] success /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms count=${normalizeBlueprintList(blueprintsRes.data).length}`);
-      }
-      return sanitizeBlueprintList(normalizeBlueprintList(blueprintsRes.data));
-    } catch (blueprintsError) {
-      if (__DEV__) {
-        console.log(`[Discover] fail /api/blueprints base=${apiBaseUrl} timeout=${timeout}ms ${getErrorTag(blueprintsError)}`);
-      }
-      throw blueprintsError;
-    }
-  }
+const fetchBlueprintsFromApi = async (): Promise<any[]> => {
+  const { paths } = await fetchPaths();
+  return sanitizeBlueprintList(
+    (paths || []).map((path: any) => ({
+      ...path,
+      description: path.summary || path.description || 'Details coming soon.',
+      category: path.category || 'General',
+      difficulty: path.difficulty || 'beginner',
+      potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
+      title: path.title || 'Untitled Path',
+    }))
+  );
 };
 
 const CATEGORY_TABS = [
@@ -154,6 +139,23 @@ export default function DiscoverScreen() {
     const raw = await AsyncStorage.getItem('user');
     const u = raw ? JSON.parse(raw) : null;
     setUser(u);
+
+    try {
+      const { paths } = await fetchPaths();
+      const mappedPaths = paths.map((path: PathModel) => ({
+        ...path,
+        description: path.summary || path.description || 'Details coming soon.',
+        category: path.category || 'General',
+        difficulty: path.difficulty || 'beginner',
+        estimated_duration_days: path.estimated_duration_days ?? 7,
+        potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
+      }));
+      setBlueprints(mappedPaths);
+      await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(mappedPaths));
+    } catch {
+      // Fall back to the legacy discovery flow if the path API is unavailable.
+    }
+
     await loadBlueprints(u, { reason: 'init' });
   };
 
@@ -174,50 +176,13 @@ export default function DiscoverScreen() {
 
     setHasLoadError(false);
     try {
-      const params: any = { limit: 150 };
-      if (u && !u.is_guest) params.user_id = u.id;
-      const profile = u?.profile || {};
-      if (profile.hours_per_week) params.hours_per_week = profile.hours_per_week;
-      if (profile.visa_status) params.visa_status = profile.visa_status;
-
-      let items: any[] = [];
-      let fetched = false;
-
-      for (const apiBaseUrl of API_CANDIDATES) {
-        for (const timeout of DISCOVER_TIMEOUT_ATTEMPTS_MS) {
-          try {
-            if (__DEV__) {
-              console.log(`[Discover] trying base=${apiBaseUrl} timeout=${timeout}ms`);
-            }
-            const result = await fetchBlueprintsFromApi(apiBaseUrl, params, timeout);
-            items = result;
-            fetched = true;
-            if (items.length > 0) break;
-          } catch {
-            // Continue through timeout and endpoint fallbacks.
-          }
-        }
-        if (items.length > 0) break;
+      const items = await fetchBlueprintsFromApi();
+      setBlueprints(items);
+      if (items.length > 0) {
+        await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
       }
-
-      if (fetched) {
-        setBlueprints(items);
-        if (items.length > 0) {
-          await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
-        }
-        if (__DEV__) {
-          console.log(`[Discover] network data applied count=${items.length}`);
-        }
-      } else {
-        setHasLoadError(true);
-        if (cachedItems.length === 0) {
-          setBlueprints([]);
-          if (__DEV__) {
-            console.log('[Discover] no network, no cache: showing connection issue state');
-          }
-        } else if (__DEV__) {
-          console.log(`[Discover] network failed; serving cache count=${cachedItems.length}`);
-        }
+      if (__DEV__) {
+        console.log(`[Discover] network data applied count=${items.length}`);
       }
     } catch {
       setHasLoadError(true);
@@ -423,6 +388,30 @@ export default function DiscoverScreen() {
     await AsyncStorage.setItem('user', JSON.stringify(updated));
     setShowPaywall(false);
   };
+
+  const renderSkeletonCard = () => (
+    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: 'rgba(255,255,255,0.05)' }]}>
+      <View style={styles.cardTop}>
+        <View style={[styles.skeletonBadge, { backgroundColor: theme.surfaceAlt }]} />
+        <View style={[styles.skeletonMatch, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+      <View style={[styles.skeletonTitle, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={[styles.skeletonText, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={[styles.skeletonTextShort, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={styles.metaLine}>
+        <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+        <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+      <View style={[styles.skeletonImage, { backgroundColor: theme.surfaceAlt }]} />
+      <View style={styles.cardFooter}>
+        <View style={styles.pillsRow}>
+          <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+          <View style={[styles.skeletonPill, { backgroundColor: theme.surfaceAlt }]} />
+        </View>
+        <View style={[styles.skeletonPrice, { backgroundColor: theme.surfaceAlt }]} />
+      </View>
+    </View>
+  );
 
   const renderCard = ({ item }: { item: any }) => {
     const diffColor  = DIFF_COLORS[item.difficulty] || '#8E8E8E';
@@ -741,8 +730,15 @@ export default function DiscoverScreen() {
       {/* ── Blueprint list ── */}
       {isLoading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={theme.accent} />
-          <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading blueprints…</Text>
+          <View style={styles.loadingHeader}>
+            <ActivityIndicator size="small" color={theme.accent} />
+            <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading Pathfinder ideas…</Text>
+          </View>
+          <View style={styles.skeletonList}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <View key={`skeleton-${index}`}>{renderSkeletonCard()}</View>
+            ))}
+          </View>
         </View>
       ) : (
         <FlatList
@@ -960,6 +956,27 @@ const styles = StyleSheet.create({
   list:         { paddingHorizontal: 16, paddingBottom: 32 },
   listHeader:   { marginBottom: 6, marginTop: 2 },
   resultsCount: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  loadingWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 12,
+  },
+  loadingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  loadingText: { fontSize: 12, fontWeight: '600' },
+  skeletonList: { gap: 10 },
+  skeletonBadge: { width: 92, height: 22, borderRadius: 8 },
+  skeletonMatch: { width: 88, height: 24, borderRadius: 8 },
+  skeletonTitle: { width: '70%', height: 18, borderRadius: 8, marginBottom: 10 },
+  skeletonText: { width: '95%', height: 12, borderRadius: 6, marginBottom: 8 },
+  skeletonTextShort: { width: '55%', height: 12, borderRadius: 6, marginBottom: 10 },
+  skeletonPill: { width: 82, height: 22, borderRadius: 999 },
+  skeletonImage: { width: '100%', height: 52, borderRadius: 12, marginTop: 8, marginBottom: 8 },
+  skeletonPrice: { width: 82, height: 26, borderRadius: 8 },
 
   // Card
   card: {
@@ -1021,9 +1038,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
 
-  // Loading / Empty
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 13 },
+  // Empty
   emptyState:  { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
   emptyIconWrap: {
     width: 80, height: 80, borderRadius: 20,
