@@ -109,7 +109,10 @@ export async function publishGeneratedPath(payload: {
   category: string;
   creator_handle?: string;
   steps: Array<{ id: string; day: number; title: string; type: string; instructions: string; widget_data: Record<string, any> }>;
-  pricing_tiers: Array<{ name: string; price: number; description: string }>;
+  pricing_tiers: Array<{ name: string; price: number; description: string; currency?: string; billing_frequency?: "per_week" | "per_month" | "per_year" | "lifetime"; frequency_label?: string }>;
+  price?: number;
+  currency?: string;
+  billing_frequency?: "per_week" | "per_month" | "per_year" | "lifetime";
   access_limit?: number | null;
   visibility: "public" | "unlisted" | "private";
 }): Promise<{ status: string; path_id: string; slug: string; public_bio_link: string } | null> {
@@ -120,6 +123,18 @@ export async function publishGeneratedPath(payload: {
   });
 
   return result ?? null;
+}
+
+export async function publishCreatorShop(payload: Record<string, any>): Promise<{ status: string; handle: string; url: string; shop: Record<string, any> } | null> {
+  return await safeFetchJson<{ status: string; handle: string; url: string; shop: Record<string, any> }>(`${API_BASE}/api/shops/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchCreatorShop(handle: string): Promise<Record<string, any> | null> {
+  return await safeFetchJson<Record<string, any>>(`${API_BASE}/api/shops/${encodeURIComponent(handle)}`);
 }
 
 export async function createPathCheckout(payload: {

@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../../contexts/ThemeContext';
-import { generatePathFromSource, publishGeneratedPath } from '../../src/services/api';
-import { StepCard } from '../../components/interactive/StepCard';
+import { generatePathFromSource } from '../../src/services/api';
 import { useRouter } from 'expo-router';
 
-const domains = ['Finance', 'Fitness', 'Sales', 'Trading', 'Real Estate', 'Content', 'AI & Tech', 'Creator'];
-const sourceTypes = [
-  { label: 'Text', value: 'text' as const },
-  { label: 'YouTube', value: 'youtube' as const },
-  { label: 'Notion', value: 'notion' as const },
-  { label: 'PDF', value: 'pdf' as const },
-];
 const templates = [
   { label: '7-Day Challenge', value: '7-day-challenge' as const, days: 7 },
   { label: '3-Day Onboarding', value: '3-day-onboarding' as const, days: 3 },
@@ -22,9 +13,20 @@ const templates = [
   { label: 'Pre-Market Checklist', value: 'pre-market-checklist' as const, days: 5 },
 ];
 
+function inferBriefDomain(brief: string) {
+  const value = brief.toLowerCase();
+  if (/fitness|workout|macro|hypertrophy|coach/.test(value)) return 'Fitness';
+  if (/trading|stock|invest|risk|market/.test(value)) return 'Trading';
+  if (/real estate|brrrr|property|rehab|arv/.test(value)) return 'Real Estate';
+  if (/sales|closing|retainer|agency|client acquisition/.test(value)) return 'Sales';
+  if (/viral|content|creator|youtube|tiktok|instagram/.test(value)) return 'Content';
+  if (/saas|api|automation|software|no.code|ai/.test(value)) return 'AI & Tech';
+  return 'Creator';
+}
+
 type GeneratedPath = NonNullable<Awaited<ReturnType<typeof generatePathFromSource>>>;
 
-function buildFallbackPath(domain: string, template: (typeof templates)[number], attachments: Array<{ name: string; type: string }>): GeneratedPath {
+function buildFallbackPath(domain: string, template: (typeof templates)[number], attachments: { name: string; type: string }[]): GeneratedPath {
   const domainKey = domain.toLowerCase();
   const type = domainKey.includes('trad') || domainKey.includes('finance') ? 'trading' : domainKey.includes('fit') ? 'fitness' : domainKey.includes('sales') || domainKey.includes('content') ? 'creator' : domainKey.includes('creator') ? 'creator' : 'course';
   const presets = domainKey.includes('finance') || domainKey.includes('trad')
@@ -79,78 +81,33 @@ function buildFallbackPath(domain: string, template: (typeof templates)[number],
 export default function StudioScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const [title, setTitle] = useState('AI Sales Sprint');
-  const [prompt, setPrompt] = useState('Turn my coaching notes into a 5-day launch roadmap for creators.');
-  const [selectedDomain, setSelectedDomain] = useState('Creator');
-  const [sourceType, setSourceType] = useState<'youtube' | 'notion' | 'text' | 'pdf'>('text');
-  const [template, setTemplate] = useState<(typeof templates)[number]>(templates[0]);
-  const [attachments, setAttachments] = useState<Array<{ name: string; type: string; uri?: string }>>([]);
-  const [generatedPath, setGeneratedPath] = useState<GeneratedPath | null>(null);
-  const [pricingTier, setPricingTier] = useState<'free' | 'plus' | 'premium'>('plus');
-  const [accessLimit, setAccessLimit] = useState('');
-  const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
-  const [publishedLink, setPublishedLink] = useState<string | null>(null);
+  const [brief, setBrief] = useState('I teach fitness coaches to grow with organic content. Build practical tools and a paid program for my audience.');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleAttach = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'video/*', 'audio/*', 'text/*'],
-      multiple: true,
-      copyToCacheDirectory: true,
-    });
-    if (!result.canceled) {
-      setAttachments((current) => [...current, ...result.assets.map((asset) => ({ name: asset.name, type: asset.mimeType || 'file', uri: asset.uri }))]);
-    }
+  const openShopWizard = async () => {
+    await AsyncStorage.setItem('shop_wizard_seed', JSON.stringify({ category: inferBriefDomain(brief), description: brief, handle: 'creator' }));
+    router.push('/studio/shop-wizard');
   };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    setGeneratedPath(buildFallbackPath(selectedDomain, template, attachments));
+    const domain = inferBriefDomain(brief);
+    const template = templates[0];
+    const fallback = buildFallbackPath(domain, template, []);
 
     const result = await generatePathFromSource({
-      source_type: sourceType,
-      source_input: prompt,
-      domain: selectedDomain,
+      source_type: 'text',
+      source_input: brief,
+      domain,
       template: template.value,
-      attachments,
     });
 
     setIsGenerating(false);
 
-    const draft = result || buildFallbackPath(selectedDomain, template, attachments);
+    const draft = result || fallback;
     const draftId = `draft-${Date.now()}`;
     await AsyncStorage.setItem(`path_draft_${draftId}`, JSON.stringify(draft));
     router.push({ pathname: '/studio/editor/[pathId]', params: { pathId: draftId } });
-    if (!result) return;
-
-    setTitle(draft.title);
-    setGeneratedPath(draft);
-  };
-
-  const handlePublish = async () => {
-    if (!generatedPath) return;
-    const result = await publishGeneratedPath({
-      title: generatedPath.title,
-      description: generatedPath.description,
-      category: generatedPath.category,
-      creator_handle: generatedPath.creator_handle,
-      steps: generatedPath.steps,
-      pricing_tiers: [{
-        name: pricingTier === 'free' ? 'Free' : pricingTier === 'plus' ? 'Plus' : 'Premium',
-        price: pricingTier === 'free' ? 0 : pricingTier === 'plus' ? 29 : 79,
-        description: pricingTier === 'free' ? 'Preview access' : pricingTier === 'plus' ? 'Full path access' : 'Full access plus creator support',
-      }],
-      access_limit: accessLimit ? Number(accessLimit) : null,
-      visibility,
-    });
-
-    if (!result) {
-      Alert.alert('Publish unavailable', 'Your draft is ready, but the publishing service is offline.');
-      return;
-    }
-
-    setPublishedLink(result.public_bio_link);
-    Alert.alert('Path published', `Your public bio-link is ${result.public_bio_link}`);
   };
 
   return (
@@ -159,8 +116,13 @@ export default function StudioScreen() {
       <View style={[styles.ambientGlow, { backgroundColor: theme.accent + '12' }]} />
 
       <Text style={[styles.eyebrow, { color: theme.accent }]}>CREATOR STUDIO</Text>
-      <Text style={[styles.title, { color: theme.text }]}>Build a high-conversion path</Text>
-      <Text style={[styles.subtitle, { color: theme.textSub }]}>Ingest your raw content, shape the learning arc, and publish a proof-driven roadmap.</Text>
+      <Text style={[styles.title, { color: theme.text }]}>Build your creator business</Text>
+      <Text style={[styles.subtitle, { color: theme.textSub }]}>Start with one clear brief. Build an interactive path or open the full storefront wizard.</Text>
+
+      <View style={[styles.modeSwitch, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <TouchableOpacity style={[styles.modeButton, { backgroundColor: theme.accent }]}><Text style={[styles.modeText, { color: '#000' }]}>Single Path</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.modeButton, { backgroundColor: theme.surfaceAlt }]} onPress={openShopWizard}><Text style={[styles.modeText, { color: theme.textSub }]}>Full Shop</Text></TouchableOpacity>
+      </View>
 
       <View style={[styles.customerPreview, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
         <View style={styles.customerPreviewHeader}>
@@ -184,142 +146,15 @@ export default function StudioScreen() {
       </View>
 
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Path title</Text>
-        <TextInput value={title} onChangeText={setTitle} style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} />
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Target domain</Text>
-        <View style={styles.chipsWrap}>
-          {domains.map((domain) => (
-            <TouchableOpacity
-              key={domain}
-              onPress={() => setSelectedDomain(domain)}
-              style={[styles.chip, { backgroundColor: selectedDomain === domain ? theme.accentLight : theme.bg, borderColor: theme.border }]}
-            >
-              <Text style={[styles.chipText, { color: selectedDomain === domain ? theme.accent : theme.textSub }]}>{domain}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Source type</Text>
-        <View style={styles.chipsWrap}>
-          {sourceTypes.map((source) => (
-            <TouchableOpacity
-              key={source.value}
-              onPress={() => setSourceType(source.value)}
-              style={[styles.chip, { backgroundColor: sourceType === source.value ? theme.accentLight : theme.bg, borderColor: theme.border }]}
-            >
-              <Text style={[styles.chipText, { color: sourceType === source.value ? theme.accent : theme.textSub }]}>{source.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Starter framework</Text>
-        <View style={styles.chipsWrap}>
-          {templates.map((item) => (
-            <TouchableOpacity key={item.value} onPress={() => setTemplate(item)} style={[styles.chip, { backgroundColor: template.value === item.value ? theme.accentLight : theme.bg, borderColor: theme.border }]}>
-              <Text style={[styles.chipText, { color: template.value === item.value ? theme.accent : theme.textSub }]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={[styles.dropzone, { backgroundColor: theme.bg, borderColor: theme.border }]} onPress={handleAttach}>
-          <Ionicons name="cloud-upload-outline" size={22} color={theme.accent} />
-          <View style={styles.dropzoneCopy}>
-            <Text style={[styles.dropzoneTitle, { color: theme.text }]}>Attach playbooks, video, audio, or documents</Text>
-            <Text style={[styles.dropzoneSub, { color: theme.textSub }]}>PDFs and media become source context for the generated steps.</Text>
-          </View>
-        </TouchableOpacity>
-        {attachments.map((attachment) => <Text key={`${attachment.name}-${attachment.uri}`} style={[styles.attachment, { color: theme.textSub }]}>{attachment.name}</Text>)}
-
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Ingestion prompt</Text>
-        <TextInput
-          value={prompt}
-          onChangeText={setPrompt}
-          multiline
-          style={[styles.textArea, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} 
-        />
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Creator Vision & Store Brief</Text>
+        <TextInput value={brief} onChangeText={setBrief} multiline placeholder="Describe your background, audience, offer goals, and the outcome you help people achieve..." placeholderTextColor={theme.textMuted} style={[styles.textArea, { backgroundColor: '#080A0F', borderColor: '#FFFFFF18', color: '#F8FAFC' }]} />
 
         <TouchableOpacity style={[styles.primaryButton, { backgroundColor: theme.accent }]} onPress={handleGenerate} disabled={isGenerating}> 
           {isGenerating ? <ActivityIndicator size="small" color="#000" /> : <Ionicons name="rocket" size={16} color="#000" />}
-          <Text style={styles.primaryText}>{isGenerating ? 'Generating...' : 'Generate Path'}</Text>
+          <Text style={styles.primaryText}>{isGenerating ? 'Generating...' : 'Generate Single Path'}</Text>
         </TouchableOpacity>
       </View>
 
-      {false && generatedPath ? (
-        <View style={[styles.editor, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
-          <Text style={[styles.editorEyebrow, { color: theme.accent }]}>GENERATED PATH EDITOR</Text>
-          <Text style={[styles.editorTitle, { color: theme.text }]}>Review your interactive route</Text>
-          <TextInput
-            value={generatedPath!.title}
-            onChangeText={(value) => setGeneratedPath((current) => current ? { ...current, title: value } : current)}
-            style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-          />
-          <TextInput
-            value={generatedPath!.description}
-            onChangeText={(value) => setGeneratedPath((current) => current ? { ...current, description: value } : current)}
-            multiline
-            style={[styles.textArea, styles.editorDescription, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-          />
-          {generatedPath!.steps.map((step, index) => (
-            <View key={step.id} style={[styles.stepEditor, { backgroundColor: theme.bg, borderColor: theme.border }]}> 
-              <Text style={[styles.stepMeta, { color: theme.accent }]}>DAY {step.day} · {step.type.toUpperCase()}</Text>
-              <TextInput
-                value={step.title}
-                onChangeText={(value) => setGeneratedPath((current) => {
-                  if (!current) return current;
-                  const steps = [...current.steps];
-                  steps[index] = { ...steps[index], title: value };
-                  return { ...current, steps };
-                })}
-                style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              />
-              <TextInput
-                value={step.instructions}
-                onChangeText={(value) => setGeneratedPath((current) => {
-                  if (!current) return current;
-                  const steps = [...current.steps];
-                  steps[index] = { ...steps[index], instructions: value };
-                  return { ...current, steps };
-                })}
-                multiline
-                style={[styles.stepInstructions, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-              />
-            </View>
-          ))}
-
-          <Text style={[styles.previewHeading, { color: theme.text }]}>Live interactive preview</Text>
-          {generatedPath!.steps.slice(0, 4).map((step) => (
-            <StepCard key={`preview-${step.id}`} step={{ ...step, description: step.instructions }} pathCategory={generatedPath!.category} pathId="studio-preview" />
-          ))}
-
-          <View style={[styles.publishPanel, { borderColor: theme.border }]}> 
-            <Text style={[styles.publishTitle, { color: theme.text }]}>Publishing</Text>
-            <Text style={[styles.publishLabel, { color: theme.textSub }]}>Pricing tier</Text>
-            <View style={styles.chipsWrap}>
-              {(['free', 'plus', 'premium'] as const).map((tier) => (
-                <TouchableOpacity key={tier} onPress={() => setPricingTier(tier)} style={[styles.chip, { backgroundColor: pricingTier === tier ? theme.accentLight : theme.bg, borderColor: theme.border }]}> 
-                  <Text style={[styles.chipText, { color: pricingTier === tier ? theme.accent : theme.textSub }]}>{tier === 'free' ? 'Free' : tier === 'plus' ? '$29 Plus' : '$79 Premium'}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={[styles.publishLabel, { color: theme.textSub }]}>Member access limit</Text>
-            <TextInput value={accessLimit} onChangeText={setAccessLimit} keyboardType="numeric" placeholder="Unlimited" placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} />
-            <Text style={[styles.publishLabel, { color: theme.textSub }]}>Link visibility</Text>
-            <View style={styles.chipsWrap}>
-              {(['public', 'unlisted', 'private'] as const).map((option) => (
-                <TouchableOpacity key={option} onPress={() => setVisibility(option)} style={[styles.chip, { backgroundColor: visibility === option ? theme.accentLight : theme.bg, borderColor: theme.border }]}> 
-                  <Text style={[styles.chipText, { color: visibility === option ? theme.accent : theme.textSub }]}>{option}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={[styles.publishButton, { backgroundColor: theme.accent }]} onPress={handlePublish}>
-              <Ionicons name="globe-outline" size={16} color="#000" />
-              <Text style={styles.primaryText}>Publish Path</Text>
-            </TouchableOpacity>
-            {publishedLink ? <Text selectable style={[styles.publishedLink, { color: theme.accent }]}>{publishedLink}</Text> : null}
-          </View>
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -332,6 +167,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800' },
   subtitle: { fontSize: 13, marginTop: 8, marginBottom: 18, lineHeight: 20 },
   card: { borderWidth: 1, borderRadius: 20, padding: 16, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
+  modeSwitch: { borderWidth: 1, borderRadius: 12, padding: 4, flexDirection: 'row', marginBottom: 16 },
+  modeButton: { flex: 1, borderRadius: 9, paddingVertical: 10, alignItems: 'center' },
+  modeText: { fontSize: 12, fontWeight: '900' },
   sectionTitle: { fontSize: 13, fontWeight: '800', marginTop: 12, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

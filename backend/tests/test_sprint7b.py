@@ -9,10 +9,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'http://localhost:8000')
-
-ARCTEST_EMAIL = "arctest2@blueprint.com"
-ARCTEST_PASSWORD = "Test123!"
+BASE_URL = os.environ.get('EXPO_PUBLIC_BACKEND_URL', 'http://localhost:8000').rstrip('/')
 
 # ============ Fixtures ============
 
@@ -31,14 +28,13 @@ def fresh_test_user():
 
 
 @pytest.fixture(scope="module")
-def arctest_user():
-    """Login as arctest2 and return user object"""
+def arctest_user(fresh_test_user):
+    """Login as the fixture-created user for account-dependent checks."""
     res = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "email": ARCTEST_EMAIL,
-        "password": ARCTEST_PASSWORD
+        "email": fresh_test_user["email"],
+        "password": fresh_test_user["password"]
     })
-    if res.status_code != 200:
-        pytest.skip(f"Cannot login as arctest2: {res.text}")
+    assert res.status_code == 200, f"Fixture user login failed: {res.text}"
     return res.json()
 
 
@@ -142,26 +138,16 @@ class TestStreakCheckin:
 class TestLoginPhoneFields:
     """Test POST /api/auth/login returns phone_verified and phone_number fields"""
 
-    def test_login_returns_phone_verified_false_for_unverified(self):
+    def test_login_returns_phone_verified_false_for_unverified(self, arctest_user):
         """Login should return phone_verified=False for user who hasn't verified phone"""
-        res = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ARCTEST_EMAIL,
-            "password": ARCTEST_PASSWORD
-        })
-        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
-        data = res.json()
+        data = arctest_user
         assert "phone_verified" in data, f"phone_verified field missing from login response: {data}"
         assert data["phone_verified"] == False, f"Expected phone_verified=False for unverified user, got {data['phone_verified']}"
         print(f"PASS: Login returns phone_verified=False for unverified user")
 
-    def test_login_returns_phone_number_empty_string_for_unverified(self):
+    def test_login_returns_phone_number_empty_string_for_unverified(self, arctest_user):
         """Login should return phone_number as empty string for user who hasn't verified phone"""
-        res = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ARCTEST_EMAIL,
-            "password": ARCTEST_PASSWORD
-        })
-        assert res.status_code == 200, f"Expected 200, got {res.status_code}: {res.text}"
-        data = res.json()
+        data = arctest_user
         assert "phone_number" in data, f"phone_number field missing from login response: {data}"
         assert data["phone_number"] == "", f"Expected phone_number='' for unverified user, got '{data['phone_number']}'"
         print(f"PASS: Login returns phone_number='' for unverified user")
@@ -201,14 +187,9 @@ class TestSprint7BRegression:
         assert "arc_balance" in data
         print(f"PASS: ARC endpoint works, balance={data['arc_balance']}")
 
-    def test_login_full_response_structure(self):
+    def test_login_full_response_structure(self, arctest_user):
         """Login response should include all expected fields"""
-        res = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ARCTEST_EMAIL,
-            "password": ARCTEST_PASSWORD
-        })
-        assert res.status_code == 200
-        data = res.json()
+        data = arctest_user
         required_fields = ["id", "email", "name", "is_guest", "is_architect", "profile", "phone_verified", "phone_number"]
         for field in required_fields:
             assert field in data, f"Field '{field}' missing from login response: {data}"

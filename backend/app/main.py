@@ -1,14 +1,22 @@
 from fastapi import FastAPI
+from app.api.v1.auth import router as auth_router
+from app.api.v1.ideas import router as ideas_router
+from app.api.v1.streaks import router as streak_router
 from app.routes.path_routes import build_activity_feed, build_creator_insights, router as path_router
 from app.routes.payment_routes import TelemetryRequest, record_payment_event, router as payment_router
 from app.routes.analytics_routes import router as analytics_router
+from app.routes.shop_routes import router as shop_router
 from app.database import ensure_indexes
 
 app = FastAPI(title="Pathfinder API", version="2.0.0")
 
+app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(ideas_router, prefix="/api/ideas", tags=["Ideas"])
+app.include_router(streak_router, prefix="/api", tags=["Streaks"])
 app.include_router(path_router, prefix="/api/paths", tags=["Paths"])
 app.include_router(payment_router, prefix="/api/payments", tags=["Payments"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(shop_router, prefix="/api/shops", tags=["Shops"])
 
 
 @app.get("/api/activity")
