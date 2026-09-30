@@ -22,10 +22,10 @@ export default function WelcomeScreen() {
       if (user) {
         router.replace('/(tabs)/home');
       } else {
-        setIsLoading(false);
+        router.replace('/onboarding');
       }
     } catch {
-      setIsLoading(false);
+      router.replace('/onboarding');
     }
   };
 
@@ -49,13 +49,13 @@ export default function WelcomeScreen() {
           <View style={styles.logoIcon}>
             <Ionicons name="grid" size={28} color="#00D95F" />
           </View>
-          <Text style={[styles.appName, { color: theme.text }]}>Blueprint</Text>
+          <Text style={[styles.appName, { color: theme.text }]}>Pathfinder</Text>
         </View>
         <View style={styles.taglineContainer}>
-          <Text style={[styles.tagline, { color: theme.text }]}>Architect Your Income.</Text>
+          <Text style={[styles.tagline, { color: theme.text }]}>Execution engine for creator roadmaps.</Text>
         </View>
         <Text style={[styles.subtitle, { color: theme.textSub }]}> 
-          A personalized roadmap to every income stream that fits your life.
+          A personalized path roadmap for creators, routines, and action plans you can actually finish.
         </Text>
       </View>
 
@@ -92,15 +92,15 @@ export default function WelcomeScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push('/onboarding/auth')}
+          onPress={() => router.push('/onboarding')}
         >
-          <Text style={styles.primaryButtonText}>Build My Blueprint</Text>
+          <Text style={styles.primaryButtonText}>Choose Your Gateway</Text>
           <Ionicons name="arrow-forward" size={20} color="#000" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.secondaryButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => router.push('/onboarding/guest')}
+          onPress={() => router.push('/onboarding')}
         >
           <Text style={[styles.secondaryButtonText, { color: theme.text }]}>Preview as Guest</Text>
         </TouchableOpacity>

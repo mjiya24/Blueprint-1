@@ -53,6 +53,32 @@ const sanitizeBlueprintList = (items: any[]): any[] => {
   return Array.from(byId.values());
 };
 
+const PRACTICE_PATHS = sanitizeBlueprintList([
+  ['tradepilot_ai', '7-Day Algorithmic Edge & Prop Firm Challenge', 'Trading', 67],
+  ['gadzhi_agency', '5-Day Client Acquisition & Outreach Sprint', 'Agency', 97],
+  ['build_with_ai', 'AI Lead Generation & Workflow Architect', 'AI/SaaS', 49],
+  ['apex_physique', 'Peak Week Hypertrophy & Macro Sculptor', 'Fitness', 39],
+  ['ecom_scale', 'Winning Product Validator & Ad ROAS Calculator', 'E-commerce', 59],
+  ['viral_creator', '7-Day Hook-to-Format Virality Blueprint', 'Content', 29],
+  ['property_pro', 'BRRRR Deal Analyzer & Rehab Estimator', 'Real Estate', 149],
+  ['bootstrapped_saas', 'Zero-to-MVP Launch Sprint', 'No-Code', 79],
+  ['neuro_hacker', 'Circadian Rhythm & Deep Work Optimizer', 'Productivity', 45],
+  ['closer_matrix', 'Frame Control & Objection Handling Simulator', 'Sales', 99],
+].map(([handle, title, category, price], index) => ({
+  id: `practice-${index + 1}`,
+  creator_handle: handle,
+  slug: String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+  title,
+  category,
+  description: `Verified ${category} path with a live Day 1 interactive hook and member tools.`,
+  difficulty: 'intermediate',
+  price,
+  potential_earnings: `$${price} path`,
+  active_members: 120 + index * 137,
+  rating: 4.9,
+  verified_creator: true,
+})));
+
 const parseCachedBlueprints = (raw: string | null): any[] => {
   if (!raw) return [];
   try {
@@ -83,15 +109,17 @@ const fetchBlueprintsFromApi = async (): Promise<any[]> => {
 };
 
 const CATEGORY_TABS = [
-  { key: 'All',                  label: 'All' },
-  { key: 'Gig Economy',          label: 'Gig' },
-  { key: 'AI & Automation',      label: 'AI' },
-  { key: 'Digital & Content',    label: 'Content' },
-  { key: 'No-Code & SaaS',       label: 'No-Code' },
-  { key: 'Passive & Investment', label: 'Passive' },
-  { key: 'Agency & B2B',         label: 'Agency' },
-  { key: 'Local & Service',      label: 'Local' },
-  { key: 'Student & Campus',     label: 'Student' },
+  { key: 'All', label: 'All' },
+  { key: 'Trading', label: 'Trading' },
+  { key: 'Agency', label: 'Agency' },
+  { key: 'AI/SaaS', label: 'AI/SaaS' },
+  { key: 'Fitness', label: 'Fitness' },
+  { key: 'E-commerce', label: 'E-commerce' },
+  { key: 'Content', label: 'Content' },
+  { key: 'Real Estate', label: 'Real Estate' },
+  { key: 'No-Code', label: 'No-Code' },
+  { key: 'Productivity', label: 'Productivity' },
+  { key: 'Sales', label: 'Sales' },
 ];
 
 const PAY_FILTERS = [
@@ -115,9 +143,9 @@ export default function DiscoverScreen() {
   const searchRef = useRef<TextInput>(null);
 
   const [user, setUser]                         = useState<any>(null);
-  const [blueprints, setBlueprints]             = useState<any[]>([]);
+  const [blueprints, setBlueprints]             = useState<any[]>(PRACTICE_PATHS);
   const [searchResults, setSearchResults]       = useState<any[]>([]);
-  const [isLoading, setIsLoading]               = useState(true);
+  const [isLoading, setIsLoading]               = useState(false);
   const [isSearching, setIsSearching]           = useState(false);
   const [searchQuery, setSearchQuery]           = useState('');
   const [isSearchMode, setIsSearchMode]         = useState(false);
@@ -150,8 +178,9 @@ export default function DiscoverScreen() {
         estimated_duration_days: path.estimated_duration_days ?? 7,
         potential_earnings: path.price > 0 ? `$${path.price}` : 'Free',
       }));
-      setBlueprints(mappedPaths);
-      await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(mappedPaths));
+      const nextPaths = mappedPaths.length ? mappedPaths : PRACTICE_PATHS;
+      setBlueprints(nextPaths);
+      await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(nextPaths));
     } catch {
       // Fall back to the legacy discovery flow if the path API is unavailable.
     }
@@ -162,13 +191,14 @@ export default function DiscoverScreen() {
   const loadBlueprints = async (u?: any, options?: { reason?: 'init' | 'refresh' | 'retry' }) => {
     const cachedRaw = await AsyncStorage.getItem(DISCOVER_CACHE_KEY);
     const cachedItems = parseCachedBlueprints(cachedRaw);
+    const fallbackItems = cachedItems.length ? cachedItems : PRACTICE_PATHS;
 
     if (__DEV__) {
       console.log(`[Discover] load start reason=${options?.reason || 'unspecified'} cacheCount=${cachedItems.length}`);
     }
 
     if (cachedItems.length > 0) {
-      setBlueprints(cachedItems);
+      setBlueprints(fallbackItems);
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -177,7 +207,7 @@ export default function DiscoverScreen() {
     setHasLoadError(false);
     try {
       const items = await fetchBlueprintsFromApi();
-      setBlueprints(items);
+      setBlueprints(items.length ? items : fallbackItems);
       if (items.length > 0) {
         await AsyncStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify(items));
       }
@@ -187,7 +217,7 @@ export default function DiscoverScreen() {
     } catch {
       setHasLoadError(true);
       if (cachedItems.length === 0) {
-        setBlueprints([]);
+        setBlueprints(fallbackItems);
         if (__DEV__) {
           console.log('[Discover] exception path with empty cache: showing connection issue state');
         }
@@ -371,6 +401,10 @@ export default function DiscoverScreen() {
   const libraryCount = blueprints.length;
 
   const handleBlueprintPress = (blueprint: any) => {
+    if (blueprint?.creator_handle && blueprint?.slug) {
+      router.push({ pathname: '/c/[creatorHandle]/[pathSlug]', params: { creatorHandle: blueprint.creator_handle, pathSlug: blueprint.slug } });
+      return;
+    }
     const isPremium = (blueprint?.tags || []).includes('premium');
     const isArchitect = !!user?.is_architect;
     if (isPremium && !isArchitect) {
@@ -479,6 +513,11 @@ export default function DiscoverScreen() {
 
         <BrandLogoStrip item={item} theme={theme} />
 
+        <View style={[styles.liveTeaser, { borderColor: theme.accent + '35', backgroundColor: theme.accentLight }]}> 
+          <View style={[styles.teaserGauge, { width: `${Math.min(100, Number(item.active_members || 0) % 100 + 42)}%`, backgroundColor: theme.accent }]} />
+          <Text style={[styles.teaserText, { color: theme.accent }]}>LIVE HOOK · {item.active_members || '1,284'} members · ★ {item.rating || '4.9'}</Text>
+        </View>
+
         <View style={styles.cardFooter}>
           <View style={styles.pillsRow}>
             <View style={[styles.pill, { backgroundColor: diffColor + '18' }]}>
@@ -505,7 +544,7 @@ export default function DiscoverScreen() {
         <View>
           <Text style={[styles.title, { color: theme.text }]}>Discover</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {isLoading ? 'Loading…' : '99+ curated income blueprints'}
+            {isLoading ? 'Loading…' : 'Explore creator paths, challenges & step-by-step guides'}
           </Text>
         </View>
         <TouchableOpacity
@@ -530,7 +569,7 @@ export default function DiscoverScreen() {
           <TextInput
             ref={searchRef}
             style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Search blueprints, categories, tags…"
+            placeholder="Search paths, creators, challenges…"
             placeholderTextColor={theme.textMuted}
             value={searchQuery}
             onChangeText={handleSearchChange}
@@ -799,12 +838,12 @@ export default function DiscoverScreen() {
                       <Ionicons name="compass-outline" size={38} color={theme.textMuted} />
                     </View>
                     <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                      {isSearchMode ? 'No results found' : 'No blueprints yet'}
+                      {isSearchMode ? 'No results found' : 'No paths found'}
                     </Text>
                     <Text style={[styles.emptySub, { color: theme.textMuted }]}>
                       {isSearchMode
                         ? 'Try a different keyword or clear your filters'
-                        : 'New blueprints are added daily — check back soon'}
+                        : 'New creator paths are added daily — check back soon'}
                     </Text>
                   </>
                 )}
@@ -1005,6 +1044,9 @@ const styles = StyleSheet.create({
   },
   verifyText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  liveTeaser: { height: 34, borderRadius: 10, borderWidth: 1, overflow: 'hidden', justifyContent: 'center', marginTop: 11, paddingHorizontal: 9 },
+  teaserGauge: { position: 'absolute', left: 0, top: 0, bottom: 0, opacity: 0.14 },
+  teaserText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
   pillsRow:   { flexDirection: 'row', gap: 6, flex: 1 },
   pill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   pillText:   { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },

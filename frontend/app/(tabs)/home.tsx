@@ -370,7 +370,7 @@ export default function HomeScreen() {
             </View>
             <Text style={[styles.greeting, { color: theme.text }]}>Hey, {firstName} 👋</Text>
             <Text style={[styles.headerSub, { color: theme.textMuted }]}>
-              {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized income roadmap."}
+              {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized path roadmap."}
             </Text>
           </View>
           <TouchableOpacity style={[styles.notifBtn, { backgroundColor: theme.surfaceAlt }]} data-testid="notif-btn">
@@ -402,7 +402,7 @@ export default function HomeScreen() {
                 <Ionicons name="flash" size={12} color="#000" />
               </View>
               <View>
-                <Text style={[styles.architectBannerTitle, { color: theme.text }]}>Architect Tier Available</Text>
+                <Text style={[styles.architectBannerTitle, { color: theme.text }]}>Creator tools available</Text>
                 <Text style={[styles.architectBannerSub, { color: theme.textSub }]}>AI coaching · Workarounds · $14.99/mo</Text>
               </View>
             </View>
@@ -496,7 +496,7 @@ export default function HomeScreen() {
         {weeklyCandidate && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Blueprint of the Week</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Path of the Week</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/discover')}>
                 <Text style={[styles.seeAll, { color: theme.accent }]}>Browse</Text>
               </TouchableOpacity>
@@ -599,7 +599,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]} onPress={() => router.push('/(tabs)/saved')}>
               <Ionicons name="bookmark" size={28} color="#00D95F" />
-              <Text style={[styles.actionLabel, { color: theme.text }]}>My Plans</Text>
+              <Text style={[styles.actionLabel, { color: theme.text }]}>My Paths</Text>
             </TouchableOpacity>
             {user?.is_guest && (
               <TouchableOpacity style={[styles.actionCard, styles.actionCardMint]} onPress={() => router.push('/onboarding/auth')}>

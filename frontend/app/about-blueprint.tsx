@@ -44,7 +44,7 @@ export default function AboutBlueprintScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={20} color="#E5E7EB" />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>About Blueprint</Text>
+        <Text style={styles.topBarTitle}>About Pathfinder</Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -54,9 +54,9 @@ export default function AboutBlueprintScreen() {
             <Image source={require('../assets/images/icon.png')} style={styles.logo} resizeMode="contain" />
           </View>
 
-            <Text style={styles.kicker}>ABOUT BLUEPRINT: THE ARCHITECT&apos;S VISION</Text>
-          <Text style={styles.version}>Version: Architect Edition v1.2 (2026)</Text>
-          <Text style={styles.mission}>Our Mission: Transparency in earning.</Text>
+            <Text style={styles.kicker}>ABOUT PATHFINDER: EXECUTION FOR CREATOR ROADMAPS</Text>
+          <Text style={styles.version}>Version: Pathfinder Edition v1.2 (2026)</Text>
+          <Text style={styles.mission}>Our Mission: help creators execute consistently.</Text>
         </View>
 
         <View style={styles.letterCard}>

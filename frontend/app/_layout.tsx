@@ -4,8 +4,8 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#080A0F' }}>
+      <ThemeProvider forceDark>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />

@@ -53,7 +53,7 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
       <View style={styles.topRow}>
         <View style={styles.dayBadge}>
           <Ionicons name="calendar" size={11} color="#00D95F" />
-            <Text style={styles.dayBadgeText}>TODAY&apos;S BLUEPRINT</Text>
+            <Text style={styles.dayBadgeText}>TODAY&apos;S PATH</Text>
         </View>
         <View style={[styles.rarityBadge, { backgroundColor: scoreColor + '18', borderColor: scoreColor + '40' }]}>
           <View style={[styles.rarityDot, { backgroundColor: scoreColor }]} />
@@ -90,7 +90,7 @@ export function DailyBlueprintWidget({ userId, profile }: Props) {
 
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
-        <Text style={[styles.footerText, { color: theme.textSub }]}>17-step blueprint · Tap to explore</Text>
+        <Text style={[styles.footerText, { color: theme.textSub }]}>17-step path · Tap to explore</Text>
         <Ionicons name="arrow-forward" size={14} color="#00D95F" />
       </View>
     </TouchableOpacity>

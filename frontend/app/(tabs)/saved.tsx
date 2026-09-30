@@ -165,7 +165,7 @@ export default function SavedScreen() {
       <View style={[styles.container, { backgroundColor: theme.bg }] }>
         <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>My Plans</Text>
+          <Text style={[styles.title, { color: theme.text }]}>My Paths</Text>
         </View>
         <View style={styles.emptyState}>
           <View style={[styles.lockIcon, { backgroundColor: theme.surface, borderColor: theme.border }, elevatedCard]}>
@@ -186,7 +186,7 @@ export default function SavedScreen() {
       <StatusBar barStyle={theme.statusBar} backgroundColor={theme.bg} />
       <View style={styles.header}>
         <View>
-          <Text style={[styles.title, { color: theme.text }]}>My Plans</Text>
+          <Text style={[styles.title, { color: theme.text }]}>My Paths</Text>
           <Text style={[styles.subtitle, { color: theme.textSub }]}>{paths.length} active paths</Text>
         </View>
         {paths.length > 0 && (

@@ -10,15 +10,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 import axios from 'axios';
 import { EarningsCommandCenter } from '../../components/EarningsCommandCenter';
 import { ReferralCard } from '../../components/ReferralCard';
+import { PathfinderProfileCard } from '../../components/PathfinderProfileCard';
+import type { UserRole } from '../../types/path';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
-
-const ENV_LABELS: Record<string, string> = {
-  home: 'Work From Home', office: 'In an Office', outdoor: 'Outdoors'
-};
-const SOCIAL_LABELS: Record<string, string> = {
-  solo: 'Solo', 'small-team': 'Small Team', 'customer-facing': 'Customer-Facing'
-};
 
 const ARC_LEVELS = [
   { min: 0, max: 99, label: 'Apprentice', color: '#8E8E8E' },
@@ -52,8 +47,24 @@ export default function ProfileScreen() {
   const { theme, isDark, toggleTheme } = useTheme();
   const [arcBalance, setArcBalance] = useState(0);
   const [arcLoaded, setArcLoaded] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>('customer');
 
   useEffect(() => { loadUser(); }, []);
+
+  useEffect(() => {
+    const loadRole = async () => {
+      const savedRole = await AsyncStorage.getItem('userRole');
+      if (savedRole === 'creator' || savedRole === 'customer') {
+        setUserRole(savedRole);
+      }
+    };
+    loadRole();
+  }, []);
+
+  const handleRoleToggle = async (nextRole: UserRole) => {
+    setUserRole(nextRole);
+    await AsyncStorage.setItem('userRole', nextRole);
+  };
 
   const loadUser = async () => {
     const userData = await AsyncStorage.getItem('user');
@@ -127,6 +138,39 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Role Mode</Text>
+          <View style={[styles.roleCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
+            <View style={styles.roleHeader}>
+              <View>
+                <Text style={[styles.roleLabel, { color: theme.textSub }]}>Current Mode</Text>
+                <Text style={[styles.roleValue, { color: theme.text }]}>{userRole === 'creator' ? 'Creator Studio' : 'Customer Mode'}</Text>
+              </View>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleBadgeText}>{userRole === 'creator' ? 'CREATOR' : 'CUSTOMER'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.roleToggleRow}>
+              <TouchableOpacity
+                style={[styles.roleOption, userRole === 'customer' && styles.roleOptionActive, { borderColor: subtleBorder, backgroundColor: userRole === 'customer' ? theme.accentLight : 'transparent' }]}
+                onPress={() => handleRoleToggle('customer')}
+              >
+                <Ionicons name="person" size={16} color={userRole === 'customer' ? theme.accent : theme.textSub} />
+                <Text style={[styles.roleOptionText, { color: userRole === 'customer' ? theme.text : theme.textSub }]}>Customer</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.roleOption, userRole === 'creator' && styles.roleOptionActive, { borderColor: subtleBorder, backgroundColor: userRole === 'creator' ? theme.accentLight : 'transparent' }]}
+                onPress={() => handleRoleToggle('creator')}
+              >
+                <Ionicons name="sparkles" size={16} color={userRole === 'creator' ? theme.accent : theme.textSub} />
+                <Text style={[styles.roleOptionText, { color: userRole === 'creator' ? theme.text : theme.textSub }]}>Creator Studio</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* Identity Verification Section */}
         {!user?.is_guest && user?.id && (
           <View style={styles.section}>
@@ -153,7 +197,7 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.unverifiedTitle}>Phone Not Verified</Text>
                     <Text style={styles.unverifiedSub}>
-                      Verify your phone to access Blueprint Squads — the community of verified Architects helping each other win.
+                      Verify your phone to access Pathfinder community features.
                     </Text>
                   </View>
                 </View>
@@ -177,7 +221,7 @@ export default function ProfileScreen() {
           const progressPct = Math.min(100, Math.round((arcBalance / nextM) * 100));
           return (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Architect Credits (ARC)</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Pathfinder Credits (ARC)</Text>
               {/* Balance card */}
               <View style={[styles.arcCard, { backgroundColor: surfaceCard, borderColor: '#F59E0B30' }, elevatedCard]} data-testid="arc-balance-card">
                 <View style={styles.arcLeft}>
@@ -208,7 +252,7 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
-                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+100 ARC · Finish a blueprint</Text>
+                  <Text style={[styles.arcEarnItem, { color: theme.text }]}>+100 ARC · Finish a path</Text>
                 </View>
                 <View style={styles.arcEarnRow}>
                   <View style={styles.arcEarnDot} />
@@ -221,7 +265,7 @@ export default function ProfileScreen() {
               </View>
 
               {/* Teaser Store */}
-              <Text style={[styles.storeTitle, { color: theme.textSub }]}>Architect Store</Text>
+              <Text style={[styles.storeTitle, { color: theme.textSub }]}>Pathfinder Store</Text>
               {ARC_STORE_ITEMS.map((item, i) => (
                 <View key={i} style={[styles.storeItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} data-testid={`arc-store-item-${i}`}>
                   <View style={styles.storeItemLeft}>
@@ -244,44 +288,11 @@ export default function ProfileScreen() {
           );
         })()}
 
-        {/* Blueprint Profile */}
+        {/* Pathfinder Execution Attributes */}
         {!user?.is_guest && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Blueprint Profile</Text>
-
-            {profile.environment && (
-              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
-                <View style={styles.infoIcon}><Ionicons name="home" size={18} color="#00D95F" /></View>
-                <View>
-                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>Work Environment</Text>
-                  <Text style={[styles.infoValue, { color: theme.text }]}>{ENV_LABELS[profile.environment] || profile.environment}</Text>
-                </View>
-              </View>
-            )}
-
-            {profile.social_preference && (
-              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
-                <View style={styles.infoIcon}><Ionicons name="people" size={18} color="#00D95F" /></View>
-                <View>
-                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>Work Style</Text>
-                  <Text style={[styles.infoValue, { color: theme.text }]}>{SOCIAL_LABELS[profile.social_preference] || profile.social_preference}</Text>
-                </View>
-              </View>
-            )}
-
-            {profile.assets?.length > 0 && (
-              <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
-                <View style={styles.infoIcon}><Ionicons name="briefcase" size={18} color="#00D95F" /></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.infoLabel, { color: theme.textMuted }]}>My Assets</Text>
-                  <View style={styles.tagsRow}>
-                    {profile.assets.map((a: string, i: number) => (
-                      <View key={i} style={styles.tag}><Text style={styles.tagText}>{a}</Text></View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            )}
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Pathfinder Execution Attributes</Text>
+            <PathfinderProfileCard role={userRole} profile={profile} theme={theme} />
 
             {profile.questionnaire_interests?.length > 0 && (
               <View style={[styles.infoCard, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]}>
@@ -301,8 +312,8 @@ export default function ProfileScreen() {
               <TouchableOpacity style={[styles.retakeCard, { backgroundColor: theme.accentLight, borderColor: theme.accent + '40' }, elevatedCard]} onPress={() => router.push('/onboarding/questionnaire')}>
                 <Ionicons name="compass" size={20} color="#00D95F" />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.retakeTitle, { color: theme.text }]}>Complete Your Blueprint Profile</Text>
-                  <Text style={[styles.retakeDesc, { color: theme.textSub }]}>Get personalized match scores for every idea</Text>
+                  <Text style={[styles.retakeTitle, { color: theme.text }]}>Complete Your Pathfinder Profile</Text>
+                  <Text style={[styles.retakeDesc, { color: theme.textSub }]}>Get personalized match scores for every path</Text>
                 </View>
                 <Ionicons name="arrow-forward" size={16} color="#00D95F" />
               </TouchableOpacity>
@@ -318,7 +329,7 @@ export default function ProfileScreen() {
             <TouchableOpacity style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} onPress={() => router.push('/onboarding/questionnaire')}>
               <View style={styles.menuLeft}>
                 <Ionicons name="create-outline" size={22} color={iconTone} />
-                <Text style={[styles.menuText, { color: theme.text }]}>Retake Blueprint Quiz</Text>
+                <Text style={[styles.menuText, { color: theme.text }]}>Retake Path Matcher Quiz</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
             </TouchableOpacity>
@@ -337,7 +348,7 @@ export default function ProfileScreen() {
             <View style={styles.menuLeft}>
               <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={isDark ? '#8E8E8E' : '#F59E0B'} />
               <View>
-                <Text style={[styles.menuText, { color: theme.text }]}>Architect {isDark ? 'Dark' : 'Light'} Mode</Text>
+                <Text style={[styles.menuText, { color: theme.text }]}>Pathfinder {isDark ? 'Dark' : 'Light'} Mode</Text>
                 <Text style={[styles.menuSubtext, { color: theme.textSub }]}>{isDark ? 'Classic electric mint on black' : 'Fluent Light+ for clean focus and readability'}</Text>
               </View>
             </View>
@@ -353,7 +364,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={[styles.menuItem, { backgroundColor: surfaceCard, borderColor: subtleBorder }, elevatedCard]} onPress={() => router.push('/about-blueprint')}>
             <View style={styles.menuLeft}>
               <Ionicons name="information-circle-outline" size={22} color={iconTone} />
-              <Text style={[styles.menuText, { color: theme.text }]}>About Blueprint</Text>
+              <Text style={[styles.menuText, { color: theme.text }]}>About Pathfinder</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
           </TouchableOpacity>
@@ -373,7 +384,7 @@ export default function ProfileScreen() {
               <View style={styles.upgradeCardLeft}>
                 <Ionicons name="grid" size={20} color="#00D95F" />
                 <View>
-                  <Text style={[styles.upgradeCardTitle, { color: theme.text }]}>Upgrade to Blueprint</Text>
+                  <Text style={[styles.upgradeCardTitle, { color: theme.text }]}>Unlock Pathfinder</Text>
                   <Text style={[styles.upgradeCardDesc, { color: theme.textSub }]}>Unlock match scores & progress tracking</Text>
                 </View>
               </View>
@@ -382,7 +393,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <Text style={[styles.version, { color: theme.textMuted }]}>Blueprint v1.0 · Architect Your Income</Text>
+        <Text style={[styles.version, { color: theme.textMuted }]}>Pathfinder v1.0 · Creator Roadmaps</Text>
       </ScrollView>
     </View>
   );
@@ -403,6 +414,47 @@ const styles = StyleSheet.create({
   guestBadgeText: { fontSize: 12, color: '#F59E0B', fontWeight: '600' },
   section: { paddingHorizontal: 24, marginBottom: 32 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF', marginBottom: 14 },
+  roleCard: {
+    backgroundColor: '#1A1C23',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
+  },
+  roleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  roleLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  roleValue: { fontSize: 18, fontWeight: '800', marginTop: 4 },
+  roleBadge: {
+    backgroundColor: '#00D95F',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  roleBadgeText: { color: '#000', fontWeight: '800', fontSize: 10, letterSpacing: 0.8 },
+  roleToggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  roleOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  roleOptionActive: {
+    borderColor: '#00D95F',
+    backgroundColor: '#00D95F15',
+  },
+  roleOptionText: { fontWeight: '700', fontSize: 13 },
   infoCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1C23',
     borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#2A2C35',

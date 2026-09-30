@@ -19,10 +19,10 @@ export interface Theme {
 }
 
 export const DARK_THEME: Theme = {
-  bg: '#070B14',
-  surface: '#111827',
-  surfaceAlt: '#0B1222',
-  border: '#1F2A44',
+  bg: '#080A0F',
+  surface: '#0F141D',
+  surfaceAlt: '#0B1018',
+  border: '#FFFFFF18',
   text: '#F8FAFC',
   textSub: '#CBD5E1',
   textMuted: '#94A3B8',
@@ -64,11 +64,12 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleTheme: () => {},
 });
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children, forceDark = false }: { children: ReactNode; forceDark?: boolean }) {
   const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme !== 'light');
+  const [isDark, setIsDark] = useState(forceDark || systemScheme !== 'light');
 
   useEffect(() => {
+    if (forceDark) return;
     AsyncStorage.getItem(THEME_KEY).then(val => {
       if (val !== null) setIsDark(val === 'dark');
     });
@@ -80,8 +81,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
   };
 
+  const activeIsDark = forceDark || isDark;
+
   return (
-    <ThemeContext.Provider value={{ theme: isDark ? DARK_THEME : LIGHT_THEME, isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: activeIsDark ? DARK_THEME : LIGHT_THEME, isDark: activeIsDark, toggleTheme: forceDark ? async () => {} : toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

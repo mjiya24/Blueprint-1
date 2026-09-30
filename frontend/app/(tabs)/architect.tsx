@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,6 +16,7 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { EarningsCommandCenter } from '../../components/EarningsCommandCenter';
+import type { CreatorStudioDraft, PathDomain } from '../../types/path';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'https://blueprint-1-mnvh.onrender.com';
 
@@ -33,6 +35,14 @@ export default function ArchitectDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
+  const [roleMode, setRoleMode] = useState<'customer' | 'creator'>('creator');
+  const [studioDraft, setStudioDraft] = useState<CreatorStudioDraft>({
+    domain: 'Trading',
+    sourceType: 'Notion',
+    sourceText: '',
+    pathTitle: '',
+    description: '',
+  });
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -61,6 +71,13 @@ export default function ArchitectDashboardScreen() {
 
   useEffect(() => {
     loadDashboard();
+    const loadMode = async () => {
+      const savedRole = await AsyncStorage.getItem('userRole');
+      if (savedRole === 'customer' || savedRole === 'creator') {
+        setRoleMode(savedRole);
+      }
+    };
+    loadMode();
   }, [loadDashboard]);
 
   const onRefresh = async () => {
@@ -212,6 +229,83 @@ export default function ArchitectDashboardScreen() {
 
             <EarningsCommandCenter userId={user.id} />
 
+            <View style={[styles.creatorStudioCard, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
+              <View style={styles.creatorStudioHeader}>
+                <View style={styles.architectPill}>
+                  <Ionicons name="sparkles" size={12} color="#000" />
+                  <Text style={styles.architectPillText}>CREATOR STUDIO</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.roleSwitch}
+                  onPress={() => setRoleMode((prev) => (prev === 'creator' ? 'customer' : 'creator'))}
+                >
+                  <Text style={styles.roleSwitchText}>{roleMode === 'creator' ? 'Creator Mode' : 'Customer Mode'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.creatorStudioTitle, { color: theme.text }]}>Generate a path from your source content</Text>
+              <Text style={[styles.creatorStudioSubtitle, { color: theme.textSub }]}>Paste a YouTube link, Notion syllabus, PDF notes, or any source URL to turn it into an interactive Pathfinder route.</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSub }]}>Path domain</Text>
+                <View style={styles.domainRow}>
+                  {(['Fitness', 'Trading', 'AI & Tech', 'Creator', 'Marketing'] as PathDomain[]).map((domain) => (
+                    <TouchableOpacity
+                      key={domain}
+                      style={[styles.domainChip, { backgroundColor: domain === studioDraft.domain ? theme.accentLight : theme.bg, borderColor: domain === studioDraft.domain ? theme.accent : theme.border }]}
+                      onPress={() => setStudioDraft((prev) => ({ ...prev, domain }))}
+                    >
+                      <Text style={[styles.domainChipText, { color: domain === studioDraft.domain ? theme.accent : theme.textSub }]}>{domain}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSub }]}>Content source</Text>
+                <View style={styles.sourceTypeRow}>
+                  {(['YouTube', 'Notion', 'PDF', 'URL'] as const).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.sourceTypeChip, { backgroundColor: studioDraft.sourceType === type ? theme.accentLight : theme.bg, borderColor: studioDraft.sourceType === type ? theme.accent : theme.border }]}
+                      onPress={() => setStudioDraft((prev) => ({ ...prev, sourceType: type }))}
+                    >
+                      <Text style={[styles.sourceTypeChipText, { color: studioDraft.sourceType === type ? theme.accent : theme.textSub }]}>{type}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSub }]}>Path title</Text>
+                <TextInput
+                  value={studioDraft.pathTitle}
+                  onChangeText={(text) => setStudioDraft((prev) => ({ ...prev, pathTitle: text }))}
+                  placeholder="Trade Momentum 7-Day Sprint"
+                  placeholderTextColor={theme.textMuted}
+                  style={[styles.textInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSub }]}>Source content</Text>
+                <TextInput
+                  value={studioDraft.sourceText}
+                  onChangeText={(text) => setStudioDraft((prev) => ({ ...prev, sourceText: text }))}
+                  placeholder="Paste your YouTube playlist, Notion syllabus, PDF summary, or URL…"
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  numberOfLines={6}
+                  style={[styles.textArea, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+                />
+              </View>
+
+              <TouchableOpacity style={[styles.generateButton, { backgroundColor: '#00D95F' }]} onPress={() => {}}>
+                <Ionicons name="build" size={16} color="#000" />
+                <Text style={styles.generateButtonText}>Generate Pathfinder</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               style={[styles.milestoneCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
               onPress={() => {
@@ -340,6 +434,60 @@ const styles = StyleSheet.create({
   previewTrack: { height: 6, borderRadius: 999, overflow: 'hidden', marginBottom: 8 },
   previewFill: { height: '100%', borderRadius: 999, backgroundColor: '#00D95F' },
   previewMeta: { fontSize: 12, lineHeight: 18 },
+  creatorStudioCard: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+  },
+  creatorStudioHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  creatorStudioTitle: { fontSize: 18, fontWeight: '800', marginBottom: 6 },
+  creatorStudioSubtitle: { fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  inputGroup: { marginBottom: 14 },
+  inputLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
+  domainRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  domainChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 8 },
+  domainChipText: { fontSize: 11, fontWeight: '700' },
+  sourceTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sourceTypeChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 8 },
+  sourceTypeChipText: { fontSize: 11, fontWeight: '700' },
+  roleSwitch: {
+    backgroundColor: '#00D95F',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  roleSwitchText: { color: '#000', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 110,
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
+  generateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  generateButtonText: { color: '#000', fontWeight: '800', fontSize: 14 },
   milestoneCard: {
     marginTop: 14,
     borderWidth: 1,
