@@ -1,6 +1,8 @@
 import type { PathModel, PathsResponse, UserPathProgress } from "../types/path";
 
-const API_BASE = process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL
+  ?? process.env.EXPO_PUBLIC_BACKEND_URL
+  ?? "http://localhost:8000";
 
 const EMPTY_PATHS_RESPONSE: PathsResponse = { paths: [], total: 0, has_more: false };
 

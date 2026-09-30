@@ -373,12 +373,22 @@ export default function HomeScreen() {
               {user?.is_guest ? 'Preview mode — create an account for matches' : "Here's your personalized path roadmap."}
             </Text>
           </View>
-          <TouchableOpacity style={[styles.notifBtn, { backgroundColor: theme.surfaceAlt }]} data-testid="notif-btn">
-            {streak > 0 && !user?.is_guest
-              ? <StreakBadge streak={streak} isToday={true} />
-              : <Ionicons name="notifications-outline" size={22} color={theme.textMuted} />
-            }
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.notifBtn, { backgroundColor: theme.surfaceAlt }]}
+              onPress={() => router.push('/unified-member-hub')}
+              accessibilityLabel="Open unified member hub"
+              data-testid="member-hub-btn"
+            >
+              <Ionicons name="layers-outline" size={21} color={theme.accent} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.notifBtn, { backgroundColor: theme.surfaceAlt }]} data-testid="notif-btn">
+              {streak > 0 && !user?.is_guest
+                ? <StreakBadge streak={streak} isToday={true} />
+                : <Ionicons name="notifications-outline" size={22} color={theme.textMuted} />
+              }
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Guest upgrade banner */}
